@@ -1,0 +1,883 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap');
+:root {
+--intrvl-ink: #1c1c1c;
+--intrvl-ink-soft: #6b6b6b;
+--intrvl-card-bg: #f5f3ef;
+--intrvl-panel-bg: #ffffff;
+--intrvl-border: #e0ddd8;
+--intrvl-stone: #d6d2cc;
+--intrvl-placeholder: #a39a8d;
+--intrvl-success-bg: #dde8d8;
+--intrvl-success-fg: #3a5535;
+--intrvl-error-bg: #f6e3e6;
+--intrvl-error-fg: #7a3f47;
+--intrvl-active: #8a9e82;
+--intrvl-active-dark: #5e7a56;
+--intrvl-accent: #8a9e82;
+--intrvl-accent-dark: #5e7a56;
+}
+#intrvl-app, #intrvl-app *, #intrvl-app *::before, #intrvl-app *::after { box-sizing: border-box; }
+#intrvl-app {
+max-width: 560px;
+margin: 1rem auto 96px;
+padding: 1.25rem 1.15rem 1.5rem;
+background: var(--intrvl-card-bg);
+color: var(--intrvl-ink);
+border: 1px solid var(--intrvl-border);
+border-radius: 14px;
+font-family: 'Raleway', sans-serif;
+font-size: 15px;
+line-height: 1.5;
+text-align: left;
+position: relative;
+-webkit-text-size-adjust: 100%;
+}
+#intrvl-app h1, #intrvl-app h2, #intrvl-app h3, #intrvl-app h4 {
+font-family: 'Fraunces', serif;
+font-weight: 700;
+line-height: 1.2;
+letter-spacing: 0;
+text-transform: none;
+margin: 0;
+color: var(--intrvl-ink);
+}
+:where(#intrvl-app a) { color: inherit; }
+:where(#intrvl-app button, #intrvl-app input, #intrvl-app select, #intrvl-app textarea) { font-family: inherit; font-size: inherit; color: inherit; }
+:where(#intrvl-app button) { -webkit-tap-highlight-color: transparent; }
+#intrvl-app .hidden, .hidden { display: none !important; }
+.iv-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .78rem; color: var(--intrvl-ink-soft); margin-bottom: .85rem; }
+.iv-crumbs a { color: var(--intrvl-ink-soft); text-decoration: none; font-weight: 700; }
+.iv-crumbs a:hover { color: var(--intrvl-accent-dark); }
+.iv-head { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.1rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--intrvl-border); }
+.iv-badge { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; background: var(--intrvl-accent); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+#intrvl-app .iv-title { font-size: 1.3rem; }
+.iv-sub { font-size: .85rem; color: var(--intrvl-ink-soft); margin-top: 2px; }
+#intrvl-app .iv-h2 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.02rem; margin: 1.3rem 0 .6rem; }
+.iv-label { display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--intrvl-ink-soft); margin: 0 0 .4rem; }
+.iv-note { font-size: .84rem; color: var(--intrvl-ink-soft); }
+.iv-empty { font-size: .9rem; color: var(--intrvl-ink-soft); font-style: italic; }
+.iv-center { text-align: center; }
+.iv-strong-accent { color: var(--intrvl-accent-dark); font-weight: 700; }
+.iv-card { background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-radius: 12px; padding: .9rem 1rem; }
+.iv-card + .iv-card { margin-top: .7rem; }
+.iv-stack { display: flex; flex-direction: column; gap: .7rem; }
+.iv-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.iv-row.between { justify-content: space-between; }
+.iv-row.center { justify-content: center; }
+.iv-grow { flex: 1; min-width: 0; }
+.iv-btn, .btn-start, .btn-primary, .btn-practice, .btn-share {
+display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+border: 1px solid transparent;
+padding: .7rem 1.4rem;
+border-radius: 999px;
+font-family: 'Fraunces', serif;
+font-weight: 700;
+font-size: .98rem;
+cursor: pointer;
+transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+background: var(--intrvl-ink);
+color: var(--intrvl-card-bg);
+text-decoration: none;
+line-height: 1.2;
+}
+.iv-btn:hover, .btn-start:hover, .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(28,28,28,.2); }
+.iv-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.iv-btn.block, .btn-start, .btn-primary, .btn-practice, .btn-share { width: 100%; max-width: 320px; }
+.iv-btn.ghost, .btn-practice { background: var(--intrvl-panel-bg); color: var(--intrvl-ink); border-color: var(--intrvl-stone); }
+.iv-btn.ghost:hover, .btn-practice:hover { border-color: var(--intrvl-accent); box-shadow: none; }
+.iv-btn.small { padding: .45rem .9rem; font-size: .82rem; }
+.iv-btn.accent, .btn-share { background: var(--intrvl-accent); color: var(--intrvl-ink); }
+.iv-btn.danger { background: var(--intrvl-error-fg); color: #fff; }
+.iv-iconbtn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--intrvl-stone); background: var(--intrvl-panel-bg); cursor: pointer; font-size: 1.1rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.iv-iconbtn:hover { border-color: var(--intrvl-accent); }
+.iv-linkbtn { background: none; border: none; padding: 0; color: var(--intrvl-accent-dark); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: inherit; }
+.button-stack { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.iv-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.iv-chip { border: 1px solid var(--intrvl-stone); background: var(--intrvl-panel-bg); color: var(--intrvl-ink); border-radius: 999px; padding: .38rem .8rem; font-weight: 700; font-size: .86rem; cursor: pointer; line-height: 1.2; }
+.iv-chip:hover { border-color: var(--intrvl-accent); }
+.iv-chip.on { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); color: var(--intrvl-ink); }
+.iv-seg { display: flex; background: var(--intrvl-border); border-radius: 999px; padding: 3px; gap: 2px; }
+.iv-seg button { flex: 1; border: none; background: transparent; border-radius: 999px; padding: .45rem .6rem; font-weight: 700; font-size: .84rem; cursor: pointer; color: var(--intrvl-ink-soft); }
+.iv-seg button.on { background: var(--intrvl-panel-bg); color: var(--intrvl-ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.iv-select, .iv-input { width: 100%; padding: .6rem .75rem; border: 1px solid var(--intrvl-stone); border-radius: 10px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .95rem; }
+.iv-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236b6b6b' stroke-width='2'/></svg>"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
+.iv-input:focus, .iv-select:focus { outline: 2px solid var(--intrvl-accent); outline-offset: 1px; border-color: transparent; }
+.iv-range { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--intrvl-stone); outline: none; margin: .6rem 0; }
+.iv-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+.iv-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+.iv-field { display: flex; flex-direction: column; gap: .15rem; }
+.iv-list { display: flex; flex-direction: column; gap: .55rem; }
+.iv-item { display: flex; align-items: center; gap: .8rem; padding: .7rem .85rem; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-left: 4px solid var(--item-accent, var(--intrvl-accent)); border-radius: 12px; text-decoration: none; color: var(--intrvl-ink); }
+a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28,28,.08); }
+.iv-item .iv-badge { width: 38px; height: 38px; font-size: 1.15rem; background: var(--item-accent, var(--intrvl-accent)); }
+.iv-item-name { font-family: 'Fraunces', serif; font-weight: 700; font-size: .98rem; line-height: 1.2; }
+.iv-item-blurb { font-size: .8rem; color: var(--intrvl-ink-soft); margin-top: 1px; }
+.iv-item-end { margin-left: auto; display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--intrvl-ink-soft); font-weight: 700; flex-shrink: 0; }
+.iv-done { width: 22px; height: 22px; border-radius: 50%; background: var(--intrvl-active-dark); color: #fff; font-size: .72rem; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.iv-chev { color: var(--intrvl-placeholder); font-size: 1.1rem; }
+.iv-icongrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
+.iv-icongrid a { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-radius: 12px; text-align: center; }
+.iv-icongrid a:hover { border-color: var(--item-accent, var(--intrvl-accent)); }
+.iv-icongrid .iv-badge { width: 36px; height: 36px; font-size: 1.1rem; background: var(--item-accent, var(--intrvl-accent)); }
+.iv-icongrid span.n { font-size: .68rem; font-weight: 700; line-height: 1.15; }
+.iv-icongrid .iv-done { position: absolute; top: 4px; right: 4px; width: 17px; height: 17px; font-size: .58rem; }
+.iv-hero { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.iv-hero a { display: flex; flex-direction: column; gap: .35rem; padding: 1rem; border-radius: 14px; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); }
+.iv-hero a:hover { box-shadow: 0 6px 16px rgba(28,28,28,.1); transform: translateY(-1px); }
+.iv-hero .iv-badge { margin-bottom: .2rem; }
+.iv-hero b { font-family: 'Fraunces', serif; font-size: 1.1rem; }
+.iv-hero small { color: var(--intrvl-ink-soft); font-size: .8rem; line-height: 1.35; }
+.iv-scoreline { display: flex; justify-content: space-between; align-items: center; padding: .55rem 0; border-bottom: 1px solid var(--intrvl-border); gap: .6rem; }
+.iv-scoreline:last-child { border-bottom: none; }
+.iv-scoreline .t { font-weight: 700; }
+.iv-scoreline .s { font-size: .8rem; color: var(--intrvl-ink-soft); }
+.iv-bigval { font-family: 'Fraunces', serif; font-weight: 700; font-size: 3rem; line-height: 1; text-align: center; font-variant-numeric: tabular-nums; }
+.iv-unit { font-size: .72rem; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; color: var(--intrvl-ink-soft); text-align: center; }
+.iv-notechips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.iv-n { min-width: 2.3rem; text-align: center; padding: .35rem .5rem; border-radius: 8px; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); font-weight: 700; font-size: .92rem; }
+.iv-n.root { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); }
+.iv-n small { display: block; font-size: .6rem; font-weight: 600; color: var(--intrvl-ink-soft); }
+#iv-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9000; display: flex; background: #fff; border-top: 1px solid var(--intrvl-border); padding-bottom: env(safe-area-inset-bottom, 0); box-shadow: 0 -4px 16px rgba(0,0,0,.06); font-family: 'Raleway', sans-serif; }
+#iv-tabbar .iv-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 8px 2px; background: none; border: none; color: var(--intrvl-ink-soft); font: 700 .62rem 'Raleway', sans-serif; text-transform: uppercase; letter-spacing: .4px; text-decoration: none; cursor: pointer; }
+#iv-tabbar .iv-tab .i { font-size: 1.25rem; line-height: 1.1; }
+#iv-tabbar .iv-tab.on { color: var(--intrvl-ink); }
+#iv-tabbar .iv-tab.on .l { border-bottom: 2px solid var(--intrvl-active-dark); }
+#iv-backdrop { position: fixed; inset: 0; background: rgba(28,28,28,.45); z-index: 9100; }
+#iv-sheet { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 560px; z-index: 9200; max-height: 86vh; overflow-y: auto; background: var(--intrvl-card-bg); border-radius: 20px 20px 0 0; padding: 1.4rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom, 0)); box-shadow: 0 -8px 30px rgba(0,0,0,.18); font-family: 'Raleway', sans-serif; font-size: 15px; line-height: 1.5; color: var(--intrvl-ink); text-align: left; box-sizing: border-box; }
+#iv-sheet *, #iv-sheet *::before, #iv-sheet *::after { box-sizing: border-box; }
+#iv-sheet :where(button, input, select, textarea) { font-family: inherit; font-size: inherit; color: inherit; }
+#iv-sheet h3 { font-family: 'Fraunces', serif; font-size: 1.15rem; margin: 0 0 .8rem; font-weight: 700; color: var(--intrvl-ink); }
+#iv-sheet p { margin: 0; }
+#iv-sheet .x { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 1.1rem; color: var(--intrvl-ink-soft); cursor: pointer; }
+.iv-hiddenx { display: none !important; }
+#iv-sheet .iv-sel-n { display: block; }
+.iv-code { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .7rem .85rem; background: #fff; border: 1px solid var(--intrvl-border); border-radius: 12px; margin-bottom: .9rem; }
+.iv-code b { font-family: 'Fraunces', serif; letter-spacing: 1.5px; font-size: 1.15rem; }
+.iv-addrow { display: flex; gap: .5rem; margin-bottom: .4rem; }
+.iv-status { font-size: .82rem; min-height: 1.2em; color: var(--intrvl-accent-dark); margin-bottom: .6rem; }
+.iv-boardrow { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .5rem .2rem; border-bottom: 1px solid var(--intrvl-border); }
+.iv-boardrow:last-child { border-bottom: none; }
+.iv-boardrow.me { font-weight: 700; color: var(--intrvl-active-dark); }
+.iv-boardrow .rk { width: 1.4rem; color: var(--intrvl-placeholder); font-size: .8rem; font-weight: 700; }
+.iv-boardrow .x2 { background: none; border: none; color: var(--intrvl-ink-soft); cursor: pointer; padding: 2px 6px; }
+.iv-boardrow .x2:hover { color: var(--intrvl-error-fg); }
+.iv-avatars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: .8rem; }
+.iv-avatars button { aspect-ratio: 1; font-size: 1.35rem; background: #fff; border: 2px solid var(--intrvl-border); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.iv-avatars button.on { border-color: var(--intrvl-active-dark); background: var(--intrvl-success-bg); }
+.iv-share-status { margin-top: 1rem; font-size: .84rem; color: var(--intrvl-ink-soft); text-align: center; }
+.iv-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+.iv-cal-nav button { width: 34px; height: 34px; border: 1px solid var(--intrvl-border); background: #fff; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+.iv-cal-nav button:disabled { opacity: .35; cursor: not-allowed; }
+.iv-cal-wd, .iv-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.iv-cal-wd { text-align: center; font-size: .72rem; font-weight: 700; color: var(--intrvl-ink-soft); margin-bottom: 4px; }
+.iv-cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: .78rem; color: var(--intrvl-ink-soft); }
+.iv-cal-cell.e { visibility: hidden; }
+.iv-cal-cell.today { border: 2px solid var(--intrvl-active-dark); }
+.iv-cal-cell.played { background: var(--cal-accent, var(--intrvl-accent)); color: #fff; }
+.iv-cal-cell b { font-size: .84rem; }
+.intrvl-header-v2 { display: flex; justify-content: center; margin: 0 0 1rem; padding-bottom: .9rem; border-bottom: 1px dashed var(--intrvl-border); }
+.stats-wrapper { display: flex; gap: 2.2rem; justify-content: center; }
+.stat-box { display: flex; flex-direction: column; align-items: center; }
+.stat-label { font: 700 .66rem 'Fraunces', serif; text-transform: uppercase; letter-spacing: 2px; color: var(--intrvl-ink-soft); margin-bottom: .25rem; }
+.stat-display { font: 700 1.5rem/1 'Fraunces', serif; display: flex; align-items: center; gap: 6px; color: var(--intrvl-ink); }
+#intrvl-game-area { min-height: 240px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; text-align: center; }
+.level-title { font: 700 .76rem 'Fraunces', serif; color: var(--intrvl-accent-dark); text-transform: uppercase; letter-spacing: 2px; margin-bottom: .4rem; }
+.instruction-text { font-size: 1.05rem; font-weight: 600; margin: 0 0 1rem; color: var(--intrvl-ink); }
+.instruction-text strong { color: var(--intrvl-accent-dark); font-family: 'Fraunces', serif; text-transform: uppercase; }
+.press-indicator { font-size: .78rem; color: var(--intrvl-ink-soft); margin-bottom: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; animation: iv-bounce 2s infinite ease-in-out; }
+@keyframes iv-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.audio-controls { display: flex; gap: 12px; margin-bottom: 1.6rem; justify-content: center; align-items: center; }
+.play-btn { width: 78px; height: 78px; border-radius: 50%; border: 2px solid var(--intrvl-border); background: #fff; color: var(--intrvl-ink); font: 700 .9rem 'Fraunces', serif; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 4px 12px rgba(28,28,28,.08); transition: transform .15s ease; }
+.play-btn:hover { transform: scale(1.05); border-color: var(--intrvl-accent); }
+.play-btn:active { transform: scale(.95); }
+.choice-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.choice-controls { display: flex; gap: 10px; width: 100%; justify-content: center; flex-wrap: wrap; }
+.en-options-grid, .csb-options-grid, .clef-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 380px; }
+.choice-btn { flex: 1; min-width: 104px; max-width: 170px; padding: 12px 8px; background: #fff; border: 2px solid var(--intrvl-border); color: var(--intrvl-ink); border-radius: 12px; font: 700 .98rem 'Fraunces', serif; cursor: pointer; transition: all .15s ease; line-height: 1.2; }
+.choice-btn:hover:not(:disabled) { border-color: var(--intrvl-accent); background: var(--intrvl-card-bg); }
+.choice-btn:disabled { opacity: .5; cursor: not-allowed; }
+.choice-btn:active:not(:disabled) { transform: scale(.96); }
+.choice-btn.correct { background: var(--intrvl-success-bg) !important; border-color: var(--intrvl-active) !important; color: var(--intrvl-success-fg) !important; }
+.choice-btn.incorrect { background: var(--intrvl-error-bg) !important; border-color: #c98b95 !important; color: var(--intrvl-error-fg) !important; animation: iv-shake .3s ease-in-out; }
+@keyframes iv-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.clef-btn-img { display: block; width: 100%; max-width: 100%; height: auto; max-height: 40px; object-fit: contain; transition: filter .1s ease; }
+.game-hud { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: .9rem; font: 600 1rem 'Fraunces', serif; color: var(--intrvl-ink-soft); position: relative; }
+.score-highlight { color: var(--intrvl-accent-dark); font-weight: 800; font-size: 1.2rem; }
+.timer-highlight { color: var(--intrvl-ink); font-weight: 800; }
+.combo-badge { position: absolute; top: -4px; left: 50%; background: var(--intrvl-accent); color: #fff; padding: 5px 11px; border-radius: 20px; font-weight: 800; font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; transform: translateX(-50%) scale(0); transition: transform .2s cubic-bezier(.175, .885, .32, 1.275); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.combo-badge.active { transform: translateX(-50%) scale(1); }
+.message { margin-top: 1.1rem; font: 700 1rem 'Raleway', sans-serif; min-height: 26px; }
+.msg-success { color: var(--intrvl-success-fg); }
+.msg-error { color: var(--intrvl-error-fg); }
+.mobile-warning { display: none; font-size: .8rem; color: var(--intrvl-error-fg); margin-bottom: 1.1rem; font-weight: 700; padding: 0 .5rem; }
+@media (max-width: 600px) { .mobile-warning { display: block; } }
+.btn-start, .btn-primary { margin-bottom: 8px; }
+.game-title-sm { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; }
+.game-end-title { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700; margin-bottom: .4rem; }
+.game-end-score { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700; margin-bottom: .3rem; color: var(--intrvl-accent-dark); }
+#page .sqs-block-html:not(.sqs-block-website-component) h1 { font-size: clamp(1.7rem, 6.5vw, 2.4rem) !important; line-height: 1.05 !important; margin: 0 0 .15em !important; }
+#page .sqs-block-html:not(.sqs-block-website-component) h2 { font-size: clamp(1.05rem, 4vw, 1.4rem) !important; line-height: 1.15 !important; margin: 0 !important; }
+</style>
+
+<div id="intrvl-app">
+  <div class="iv-row between">
+    <span class="iv-label" style="margin:0">Choose a game</span>
+    <span class="iv-note" id="games-count"></span>
+  </div>
+  <div class="iv-list" id="games-list" style="margin-top:.5rem"></div>
+
+  <h2 class="iv-h2">Your scores</h2>
+  <div class="iv-card" id="games-scores" style="padding-top:.4rem;padding-bottom:.4rem"></div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'games' };</script>
+<script>
+window.IV = window.IV || {};
+IV.CONFIG = {
+  endpoint: 'https://script.google.com/macros/s/AKfycbzXoNJxCfMtJNiAVGXf2qmVcTccOZ4IRN5Jcs292Q1iTKw-NHIE4Wkuqllez0fTZXg7xg/exec',
+  secret: '1m8L5MqViDvQhKj'
+};
+window.IV = window.IV || {};
+IV.SECTIONS = {
+  home:  { title: 'intrvl',  icon: '🎼', url: '/intrvl',       blurb: 'Daily music games and practice tools' },
+  games: { title: 'Games',   icon: '🎮', url: '/intrvl-games', blurb: 'One short challenge a day — build your streak' },
+  tools: { title: 'Tools',   icon: '🧰', url: '/intrvl-tools', blurb: 'Practice tools for every musician' }
+};
+IV.GAMES = [
+  { id: 'interval',   name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',   blurb: 'Name the interval you hear' },
+  { id: 'enharmonic', name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',  blurb: '30 seconds: find the enharmonic twin' },
+  { id: 'pitch',      name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',         blurb: 'Which pitch is higher, which is lower?' },
+  { id: 'seventh',    name: '7th Heaven',            icon: '🎹', accent: '#9db0a8', url: '/intrvl-heaven',      blurb: 'Hear the quality of a 7th chord' },
+  { id: 'spelling',   name: 'Chord Spelling Bee',    icon: '🐝', accent: '#c79aa0', url: '/intrvl-spelling',    blurb: '30 seconds: spell the chord correctly' },
+  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
+  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' }
+];
+IV.TOOLS = [
+  { id: 'metronome',    name: 'Metronome',          icon: '⏱️', accent: '#c2a687', url: '/intrvl-metronome',        blurb: 'Tempo, time signatures and tap tempo' },
+  { id: 'tuner',        name: 'Tuner',              icon: '🎸', accent: '#9db0a8', url: '/intrvl-tuner',            blurb: 'Tune with your microphone or by ear' },
+  { id: 'note-spinner', name: 'Note Spinner',       icon: '🎡', accent: '#b0a3c7', url: '/intrvl-note-spinner',     blurb: 'Spin for an expressive word to play with' },
+  { id: 'circle',       name: 'Circle of Fifths',   icon: '🕛', accent: '#8eaab5', url: '/intrvl-circle-of-fifths', blurb: 'Every key, scale and key signature' },
+  { id: 'modes',        name: 'Modes Buster',       icon: '🌗', accent: '#c9a0b8', url: '/intrvl-modes',            blurb: 'See how the modes really work' },
+  { id: 'transpose',    name: 'Transposer',         icon: '🎷', accent: '#b9ae8a', url: '/intrvl-transpose',        blurb: 'Concert pitch and transposing instruments' },
+  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' }
+];
+IV.find = function (id) {
+  var all = IV.GAMES.concat(IV.TOOLS);
+  for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
+  return null;
+};
+(function (global) {
+  'use strict';
+  var CFG = global.INTRVL_CONFIG || {};
+  var GAME_ID = CFG.gameId || CFG.id || 'unknown';
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ } }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+  function getDailySeed() {
+    var today = new Date();
+    var dateString = today.getFullYear() + '-' + today.getMonth() + '-' + today.getDate();
+    var hash = 0;
+    for (var i = 0; i < dateString.length; i++) hash = (Math.imul(31, hash) + dateString.charCodeAt(i)) | 0;
+    return hash;
+  }
+  function mulberry32(a) {
+    return function () {
+      var t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function todayStr() { return new Date().toDateString(); }
+  function pad2(n) { return String(n).length < 2 ? '0' + n : String(n); }
+  function dailySeedDate(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function statsKey(id) { return 'intrvl.' + id + '.stats.v1'; }
+  function defaultStats(id) {
+    return { gameId: id, totalPlayed: 0, totalCorrect: 0, currentStreak: 0, bestStreak: 0, lastPlayedDate: null, dailyBest: null, highScorePractice: 0 };
+  }
+  function migrateLegacyStats() {
+    var keys = CFG.legacyStatsKeys || [];
+    for (var i = 0; i < keys.length; i++) {
+      var raw = lsGet(keys[i]);
+      if (!raw) continue;
+      try {
+        var legacy = JSON.parse(raw);
+        var m = defaultStats(GAME_ID);
+        m.currentStreak = legacy.streak || 0;
+        m.bestStreak = legacy.streak || 0;
+        m.lastPlayedDate = legacy.lastCompleted || null;
+        m.totalPlayed = legacy.totalPlayed || 0;
+        m.totalCorrect = legacy.totalCorrect || 0;
+        m.highScorePractice = legacy.highScorePractice || 0;
+        if (legacy.highScoreDaily) m.dailyBest = { date: legacy.lastCompleted, score: legacy.highScoreDaily };
+        return m;
+      } catch (e) { /* ignore malformed legacy data */ }
+    }
+    return null;
+  }
+  function applyLapse(stats) {
+    var y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (stats.lastPlayedDate !== todayStr() && stats.lastPlayedDate !== y.toDateString()) stats.currentStreak = 0;
+    return stats;
+  }
+  function statsFor(id) {
+    var stats = null;
+    try { stats = JSON.parse(lsGet(statsKey(id)) || 'null'); } catch (e) { stats = null; }
+    return applyLapse(stats || defaultStats(id));
+  }
+  function playedToday(id) { return statsFor(id).lastPlayedDate === todayStr(); }
+  function loadStats() {
+    var raw = lsGet(statsKey(GAME_ID));
+    var stats = null;
+    if (raw) { try { stats = JSON.parse(raw); } catch (e) { stats = null; } }
+    if (!stats) { stats = migrateLegacyStats() || defaultStats(GAME_ID); saveStats(stats); }
+    return applyLapse(stats);
+  }
+  function saveStats(stats) { lsSet(statsKey(GAME_ID), JSON.stringify(stats)); }
+  function recordCompletion(stats, correctCount, totalCount) {
+    stats.totalPlayed += totalCount;
+    stats.totalCorrect += correctCount;
+    if (stats.lastPlayedDate !== todayStr()) {
+      stats.currentStreak += 1;
+      stats.bestStreak = Math.max(stats.bestStreak, stats.currentStreak);
+      stats.lastPlayedDate = todayStr();
+    }
+    saveStats(stats);
+    return stats;
+  }
+  function loadDailyBlocks() {
+    try { return JSON.parse(lsGet('intrvl.' + GAME_ID + '.blocks.v1') || '{}'); } catch (e) { return {}; }
+  }
+  function saveDailyBlock(results) {
+    var blocks = loadDailyBlocks();
+    blocks[dailySeedDate()] = results.map(function (r) { return r ? '✅' : '❌'; }).join('');
+    lsSet('intrvl.' + GAME_ID + '.blocks.v1', JSON.stringify(blocks));
+  }
+  function getHistoryFor(id) {
+    try { return JSON.parse(lsGet('intrvl.' + id + '.history.v1') || '{}'); } catch (e) { return {}; }
+  }
+  function getHistory() { return getHistoryFor(GAME_ID); }
+  function recordDailyResult(score) {
+    var h = getHistory();
+    h[dailySeedDate()] = score;
+    lsSet('intrvl.' + GAME_ID + '.history.v1', JSON.stringify(h));
+  }
+  function getDeviceId() {
+    var id = lsGet('intrvl.deviceId');
+    if (!id) {
+      id = (global.crypto && global.crypto.randomUUID) ? global.crypto.randomUUID() : ('id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+      lsSet('intrvl.deviceId', id);
+    }
+    return id;
+  }
+  var CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L — easy to read aloud
+  function generateCode(length) {
+    length = length || 6;
+    var bytes = new Uint8Array(length);
+    if (global.crypto && global.crypto.getRandomValues) global.crypto.getRandomValues(bytes);
+    else for (var i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    var c = '';
+    for (var j = 0; j < length; j++) c += CODE_ALPHABET[bytes[j] % CODE_ALPHABET.length];
+    return c;
+  }
+  function getPlayerCode() {
+    var code = lsGet('intrvl.playerCode');
+    if (!code) { code = generateCode(6); lsSet('intrvl.playerCode', code); }
+    return code;
+  }
+  function regeneratePlayerCode() { var c = generateCode(6); lsSet('intrvl.playerCode', c); return c; }
+  function isNameSet() { return !!lsGet('intrvl.displayName'); }
+  function getDisplayName() {
+    return lsGet('intrvl.displayName') || ('Player ' + getPlayerCode().slice(0, 3));
+  }
+  function setDisplayName(name) {
+    var t = String(name || '').replace(/[<>]/g, '').trim().slice(0, 24);
+    if (!t) { lsDel('intrvl.displayName'); return getDisplayName(); }
+    lsSet('intrvl.displayName', t);
+    return t;
+  }
+  var AVATARS = ['🎹', '🎸', '🥁', '🎺', '🎻', '🎷', '😀', '🦊', '🐱', '🐶', '🦁', '🐼'];
+  function getAvatar() { return lsGet('intrvl.avatar') || AVATARS[0]; }
+  function setAvatar(emoji) {
+    var c = String(emoji || '').replace(/[<>]/g, '').trim().slice(0, 16) || AVATARS[0];
+    lsSet('intrvl.avatar', c);
+    return c;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function darken(hex, f) {
+    var h = String(hex || '#8a9e82').replace('#', '');
+    if (h.length === 3) h = h.replace(/(.)/g, '$1$1');
+    var n = parseInt(h, 16);
+    var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+    return '#' + [r, g, b].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+  }
+  function showScreen(showId, hideIds) {
+    var s = document.getElementById(showId);
+    if (s) s.classList.remove('hidden');
+    (hideIds || []).forEach(function (id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+  }
+  function confetti(canvasId) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.opacity = 1;
+    var ctx = canvas.getContext('2d');
+    var cols = CFG.accentColors || ['#8a9e82', '#5e7a56', '#bda569', '#b3a8c7'];
+    var conf = Array.from({ length: 120 }, function () {
+      return { x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height, r: Math.random() * 6 + 4, c: cols[Math.floor(Math.random() * cols.length)], v: Math.random() * 4 + 3 };
+    });
+    var f = 0;
+    (function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      conf.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, (p.y += p.v), p.r, 0, 2 * Math.PI); ctx.fillStyle = p.c; ctx.fill(); });
+      if (++f < 180) requestAnimationFrame(draw);
+      else { canvas.style.opacity = 0; setTimeout(function () { ctx.clearRect(0, 0, canvas.width, canvas.height); }, 1000); }
+    })();
+  }
+  function flashButton(btn, message) {
+    if (!btn) return;
+    var original = btn.textContent;
+    btn.textContent = message;
+    setTimeout(function () { btn.textContent = original; }, 3000);
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; });
+    return new Promise(function (resolve) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta); resolve(ok);
+    });
+  }
+  function share(text, buttonEl, title) {
+    copyText(text).then(function () {
+      if (navigator.share) {
+        navigator.share({ title: title || 'intrvl', text: text }).then(function () { flashButton(buttonEl, 'Shared! ✓'); }).catch(function () { /* cancelled — clipboard copy already happened */ });
+      } else {
+        flashButton(buttonEl, 'Copied to Clipboard! ✓');
+      }
+    });
+  }
+  global.IntrvlCore = {
+    AVATARS: AVATARS,
+    getDailySeed: getDailySeed, mulberry32: mulberry32,
+    todayStr: todayStr, dailySeedDate: dailySeedDate,
+    loadStats: loadStats, saveStats: saveStats, recordCompletion: recordCompletion,
+    statsFor: statsFor, playedToday: playedToday,
+    loadDailyBlocks: loadDailyBlocks, saveDailyBlock: saveDailyBlock,
+    getHistory: getHistory, getHistoryFor: getHistoryFor, recordDailyResult: recordDailyResult,
+    getDeviceId: getDeviceId, getPlayerCode: getPlayerCode, regeneratePlayerCode: regeneratePlayerCode,
+    isNameSet: isNameSet, getDisplayName: getDisplayName, setDisplayName: setDisplayName,
+    getAvatar: getAvatar, setAvatar: setAvatar,
+    esc: esc, darken: darken, copyText: copyText,
+    showScreen: showScreen, confetti: confetti, share: share,
+    lsGet: lsGet, lsSet: lsSet
+  };
+})(window);
+(function (global) {
+  'use strict';
+  var CFG = (global.IV && global.IV.CONFIG) || {};
+  var ENDPOINT = CFG.endpoint || '';
+  var SECRET = CFG.secret || '';
+  var FRIENDS_KEY = 'intrvl.friends';
+  var Core = global.IntrvlCore;
+  function isConfigured() { return !!ENDPOINT && ENDPOINT.indexOf('PASTE_') !== 0 && !!SECRET; }
+  var NOT_CONFIGURED = { ok: false, error: 'not configured' };
+  var NET_ERR = { ok: false, error: 'network error' };
+  function get(params) {
+    if (!isConfigured()) return Promise.resolve(NOT_CONFIGURED);
+    var qs = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    return fetch(ENDPOINT + '?' + qs).then(function (r) { return r.json(); }).catch(function () { return NET_ERR; });
+  }
+  function post(payload) {
+    if (!isConfigured()) return Promise.resolve(NOT_CONFIGURED);
+    payload.secret = SECRET;
+    return fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(payload) }).then(function (r) { return r.json(); }).catch(function () { return NET_ERR; });
+  }
+  function ping() { return get({ action: 'ping' }); }
+  var registered = null;
+  function register(force) {
+    if (!force && registered) return registered;
+    function send() {
+      return post({ action: 'registerPlayer', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), displayName: Core.getDisplayName(), avatar: Core.getAvatar() });
+    }
+    registered = send().then(function (res) {
+      if (!res.ok && res.error === 'code taken') { Core.regeneratePlayerCode(); return send(); } // astronomically rare collision
+      return res;
+    });
+    return registered;
+  }
+  function resolveCode(code) { return get({ action: 'resolveCode', code: String(code || '').trim().toUpperCase() }); }
+  function getFriends() {
+    try { return JSON.parse(Core.lsGet(FRIENDS_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function setFriends(list) { Core.lsSet(FRIENDS_KEY, JSON.stringify(list)); return list; }
+  function addFriend(code) {
+    var clean = String(code || '').trim().toUpperCase();
+    if (!clean) return Promise.resolve({ ok: false, error: 'enter a code' });
+    if (clean === Core.getPlayerCode()) return Promise.resolve({ ok: false, error: "that's your own code" });
+    if (!isConfigured()) return Promise.resolve(NOT_CONFIGURED);
+    return register().then(function () {
+      return post({ action: 'addFriend', code: Core.getPlayerCode(), friendCode: clean });
+    }).then(function (res) {
+      if (res.ok) {
+        var list = getFriends();
+        if (list.indexOf(clean) === -1) list.push(clean);
+        setFriends(list);
+      }
+      return res;
+    });
+  }
+  function removeFriend(code) {
+    var clean = String(code || '').toUpperCase();
+    function dropLocal() { setFriends(getFriends().filter(function (c) { return c !== clean; })); }
+    if (!isConfigured()) { dropLocal(); return Promise.resolve({ ok: true }); }
+    return post({ action: 'removeFriend', code: Core.getPlayerCode(), friendCode: clean }).then(function (res) {
+      if (res.ok) dropLocal();
+      return res;
+    });
+  }
+  function syncFriends() {
+    if (!isConfigured()) return Promise.resolve({ ok: true, friends: getFriends() });
+    return register().then(function () { return get({ action: 'friendsOf', code: Core.getPlayerCode() }); }).then(function (res) {
+      if (!res.ok) return { ok: false, error: res.error, friends: getFriends() };
+      var merged = getFriends();
+      (res.friends || []).forEach(function (f) { if (merged.indexOf(f.code) === -1) merged.push(f.code); });
+      setFriends(merged);
+      return { ok: true, friends: merged };
+    });
+  }
+  function submitScore(opts) {
+    return register().then(function () {
+      return post({
+        gameId: opts.gameId, deviceId: Core.getDeviceId(), displayName: Core.getDisplayName(),
+        dailySeedDate: Core.dailySeedDate(), score: opts.score, streak: opts.streak
+      });
+    });
+  }
+  function fetchBoard(gameId, date) {
+    var codes = [Core.getPlayerCode()].concat(getFriends());
+    var p = { action: 'friends', codes: codes.join(','), date: date || Core.dailySeedDate() };
+    if (gameId) p.gameId = gameId;
+    return get(p);
+  }
+  function boardHtml(res, gameId) {
+    var me = Core.getPlayerCode();
+    var rows = (res.friends || []).map(function (f, i) {
+      var sc = gameId ? f.score : null;
+      var right = gameId ? (f.hasPlayed ? '<b>' + Core.esc(sc) + '</b>' : '<span class="iv-note">—</span>') : '<span class="iv-note">' + (f.playedCount || 0) + ' played</span>';
+      var rk = (gameId && f.hasPlayed) ? (i + 1) : '';
+      return '<div class="iv-boardrow' + (f.code === me ? ' me' : '') + '"><span class="rk">' + rk + '</span><span class="iv-grow">' + Core.esc(f.avatar || '') + ' ' + Core.esc(f.displayName) + (f.code === me ? ' (you)' : '') + '</span>' + right + '</div>';
+    });
+    return rows.join('');
+  }
+  function attachSubmitButton(opts) {
+    var host = document.getElementById('screen-done') || document.getElementById('intrvl-app');
+    if (!host) return;
+    var old = document.getElementById('iv-lb');
+    if (old) old.remove();
+    var box = document.createElement('div');
+    box.id = 'iv-lb';
+    box.style.cssText = 'margin-top:1.2rem;width:100%;max-width:320px;text-align:left;margin-left:auto;margin-right:auto';
+    host.appendChild(box);
+    if (!isConfigured()) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="iv-note iv-center">Sending your score…</div>';
+    var date = Core.dailySeedDate();
+    var sentKey = 'intrvl.sent.' + opts.gameId + '.' + date;
+    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) Core.lsSet(sentKey, '1'); return r; });
+    send.then(function (res) {
+      if (!res.ok) {
+        box.innerHTML = '<div class="iv-note iv-center">Couldn’t reach the leaderboard just now — your score is saved on this device. <button class="iv-linkbtn" id="iv-lb-retry">Try again</button></div>';
+        var rb = document.getElementById('iv-lb-retry');
+        if (rb) rb.onclick = function () { attachSubmitButton(opts); };
+        return;
+      }
+      syncFriends().then(function () { return fetchBoard(opts.gameId, date); }).then(function (board) {
+        if (!board.ok) { box.innerHTML = '<div class="iv-note iv-center">Score sent ✓</div>'; return; }
+        var many = (board.friends || []).length > 1;
+        box.innerHTML =
+          '<div class="iv-label iv-center">' + (many ? 'Today, among friends' : 'Score sent ✓') + '</div>' + boardHtml(board, opts.gameId) +
+          '<div class="iv-center" style="margin-top:.7rem"><button class="iv-btn ghost small" id="iv-lb-add">' + (many ? 'Manage friends' : 'Invite a friend to compare') + '</button></div>';
+        var ab = document.getElementById('iv-lb-add');
+        if (ab && global.IV && IV.openFriends) ab.onclick = function () { IV.openFriends(opts.gameId); };
+      });
+    });
+  }
+  global.IntrvlLeaderboard = {
+    isConfigured: isConfigured, ping: ping, register: register,
+    resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
+    submitScore: submitScore, fetchBoard: fetchBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
+  };
+})(window);
+(function (global) {
+  'use strict';
+  var IV = global.IV, Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
+  var CFG = global.INTRVL_CONFIG || {};
+  var KIND = CFG.kind || 'home';
+  var esc = Core.esc;
+  var EXT = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) ? '.html' : '';
+  IV.href = function (url) { return url + EXT; };
+  var app = document.getElementById('intrvl-app');
+  var item = (KIND === 'game' || KIND === 'tool') ? IV.find(CFG.id || CFG.gameId) : null;
+  var accent = item ? item.accent : (CFG.accent || '#8a9e82');
+  if (app) {
+    app.style.setProperty('--intrvl-accent', accent);
+    app.style.setProperty('--intrvl-accent-dark', Core.darken(accent, 0.62));
+  }
+  function buildHeader() {
+    if (!app) return;
+    var S = IV.SECTIONS, crumbs = '', title, sub, icon;
+    var home = '<a href="' + IV.href(S.home.url) + '">intrvl</a>';
+    if (KIND === 'home') { title = S.home.title; sub = S.home.blurb; icon = S.home.icon; crumbs = ''; }
+    else if (KIND === 'games' || KIND === 'tools') {
+      var sec = S[KIND]; title = sec.title; sub = sec.blurb; icon = sec.icon;
+      crumbs = home + ' › <span>' + esc(sec.title) + '</span>';
+    } else if (item) {
+      var parent = KIND === 'game' ? S.games : S.tools;
+      title = item.name; sub = item.blurb; icon = item.icon;
+      crumbs = home + ' › <a href="' + IV.href(parent.url) + '">' + esc(parent.title) + '</a> › <span>' + esc(item.name) + '</span>';
+    } else { return; }
+    var html = '';
+    if (crumbs) html += '<div class="iv-crumbs">' + crumbs + '</div>';
+    html += '<div class="iv-head"><div class="iv-badge">' + icon + '</div><div><h1 class="iv-title">' + esc(title) + '</h1><div class="iv-sub">' + esc(sub) + '</div></div></div>';
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html;
+    while (wrap.lastChild) app.insertBefore(wrap.lastChild, app.firstChild);
+  }
+  function closeSheet() {
+    var b = document.getElementById('iv-backdrop'), s = document.getElementById('iv-sheet');
+    if (b) b.remove();
+    if (s) s.remove();
+    setTab(null);
+  }
+  function openSheet(html, mount, tab) {
+    closeSheet();
+    var b = document.createElement('div'); b.id = 'iv-backdrop'; b.onclick = closeSheet;
+    var s = document.createElement('div'); s.id = 'iv-sheet';
+    s.innerHTML = '<button class="x" aria-label="Close">✕</button>' + html;
+    s.querySelector('.x').onclick = closeSheet;
+    document.body.appendChild(b); document.body.appendChild(s);
+    if (tab) setTab(tab);
+    if (mount) mount(s);
+    return s;
+  }
+  IV.openSheet = openSheet; IV.closeSheet = closeSheet;
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function openFriends(gameId) {
+    var gid = gameId || (KIND === 'game' ? (CFG.id || CFG.gameId) : IV.GAMES[0].id);
+    var inviteBase = location.origin + IV.href(IV.SECTIONS.home.url);
+    var s = openSheet(
+      '<h3>Friends</h3>' +
+      '<div class="iv-code"><div><div class="iv-label" style="margin:0">Your code</div><b>' + esc(Core.getPlayerCode()) + '</b></div>' +
+      '<div class="iv-row"><button class="iv-btn small ghost" id="ivf-copy">Copy code</button><button class="iv-btn small" id="ivf-link">Invite link</button></div></div>' +
+      '<div id="ivf-note" class="iv-status"></div>' +
+      '<div class="iv-label">Add a friend by code</div>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivf-code" maxlength="12" placeholder="e.g. 7K2P9Q" autocapitalize="characters" autocomplete="off"><button class="iv-btn small" id="ivf-add">Add</button></div>' +
+      '<div id="ivf-status" class="iv-status"></div>' +
+      '<div class="iv-label" style="margin-top:.6rem">Leaderboard · today</div>' +
+      '<div class="iv-chips" id="ivf-games" style="margin-bottom:.6rem"></div>' +
+      '<div id="ivf-board"><div class="iv-note">Loading…</div></div>',
+      null, 'friends');
+    var note = $('#ivf-note', s), status = $('#ivf-status', s), codeIn = $('#ivf-code', s);
+    function say(el, msg) { el.textContent = msg; }
+    $('#ivf-copy', s).onclick = function () { Core.copyText(Core.getPlayerCode()).then(function (ok) { say(note, ok ? 'Code copied ✓' : 'Copy failed — long-press the code instead'); }); };
+    $('#ivf-link', s).onclick = function () {
+      var link = inviteBase + '?add=' + Core.getPlayerCode();
+      Core.copyText(link).then(function (ok) { say(note, ok ? 'Invite link copied ✓ — send it to a friend' : link); });
+    };
+    var chips = $('#ivf-games', s);
+    chips.innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip' + (g.id === gid ? ' on' : '') + '" data-id="' + g.id + '">' + g.icon + ' ' + esc(g.name) + '</button>'; }).join('');
+    chips.onclick = function (e) {
+      var b = e.target.closest('.iv-chip'); if (!b) return;
+      gid = b.getAttribute('data-id');
+      Array.prototype.forEach.call(chips.children, function (c) { c.classList.toggle('on', c === b); });
+      drawBoard();
+    };
+    var boardEl = $('#ivf-board', s);
+    function drawBoard() {
+      if (!LB.isConfigured()) { boardEl.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return; }
+      boardEl.innerHTML = '<div class="iv-note">Loading…</div>';
+      LB.syncFriends().then(function () { return LB.fetchBoard(gid); }).then(function (res) {
+        if (!res.ok) { boardEl.innerHTML = '<div class="iv-empty">Couldn’t load the board (' + esc(res.error || 'error') + '). Check your connection and try again.</div>'; return; }
+        var html = LB.boardHtml(res, gid);
+        var friends = LB.getFriends();
+        html += friends.length ? '<div class="iv-note" style="margin-top:.7rem">Tap ✕ to remove a friend.</div>' : '<div class="iv-empty" style="margin-top:.5rem">No friends yet — share your code or invite link above.</div>';
+        boardEl.innerHTML = html;
+        Array.prototype.forEach.call(boardEl.querySelectorAll('.iv-boardrow'), function (row, i) {
+          var f = res.friends[i];
+          if (!f || f.code === Core.getPlayerCode()) return;
+          var x = document.createElement('button'); x.className = 'x2'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove ' + f.displayName);
+          x.onclick = function () {
+            if (!confirm('Remove ' + f.displayName + ' from your friends?')) return;
+            LB.removeFriend(f.code).then(function (r) { if (r.ok) drawBoard(); else say(status, 'Couldn’t remove right now — try again.'); });
+          };
+          row.appendChild(x);
+        });
+      });
+    }
+    function addByCode(code) {
+      code = String(code || '').trim().toUpperCase();
+      if (!code) { say(status, 'Type a friend’s code first.'); return; }
+      say(status, 'Looking up ' + code + '…');
+      LB.resolveCode(code).then(function (r) {
+        if (!r.ok) { say(status, r.error === 'code not found' ? 'No player has that code — check it and try again.' : 'Couldn’t reach the leaderboard.'); return null; }
+        return LB.addFriend(code).then(function (a) {
+          if (a.ok) { say(status, 'Added ' + r.displayName + ' ✓ — you’re now friends both ways.'); codeIn.value = ''; drawBoard(); }
+          else say(status, a.error === 'not configured' ? 'Friends aren’t switched on yet.' : (a.error || 'Couldn’t add that friend.'));
+        });
+      });
+    }
+    $('#ivf-add', s).onclick = function () { addByCode(codeIn.value); };
+    codeIn.onkeydown = function (e) { if (e.key === 'Enter') addByCode(codeIn.value); };
+    if (LB.isConfigured()) LB.register();
+    drawBoard();
+    return s;
+  }
+  IV.openFriends = openFriends;
+  function openProfile() {
+    var cur = Core.getAvatar();
+    var isPreset = Core.AVATARS.indexOf(cur) !== -1;
+    var s = openSheet(
+      '<h3>You</h3>' +
+      '<div class="iv-label">Your name</div>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivp-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"><button class="iv-btn small" id="ivp-save">Save</button></div>' +
+      '<div id="ivp-status" class="iv-status"></div>' +
+      '<div class="iv-label">Your avatar</div>' +
+      '<div class="iv-avatars" id="ivp-avatars"></div>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
+      '<div class="iv-label" style="margin-top:1.1rem">Your history</div>' +
+      '<div id="ivp-hist" class="iv-chips"></div>' +
+      '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
+      '<div id="ivp-conn" class="iv-note">Checking…</div>',
+      null, 'you');
+    var status = $('#ivp-status', s);
+    function sync() { if (LB.isConfigured()) LB.register(true); }
+    function drawAvatars() {
+      var cur2 = Core.getAvatar();
+      $('#ivp-avatars', s).innerHTML = Core.AVATARS.map(function (a) { return '<button data-a="' + a + '"' + (a === cur2 ? ' class="on"' : '') + '>' + a + '</button>'; }).join('');
+    }
+    drawAvatars();
+    $('#ivp-avatars', s).onclick = function (e) { var b = e.target.closest('button'); if (!b) return; Core.setAvatar(b.getAttribute('data-a')); $('#ivp-custom', s).value = ''; drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
+    $('#ivp-usecustom', s).onclick = function () { var v = $('#ivp-custom', s).value.trim(); if (!v) return; Core.setAvatar(v); drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
+    $('#ivp-save', s).onclick = function () { var n = Core.setDisplayName($('#ivp-name', s).value); $('#ivp-name', s).value = n; sync(); status.textContent = 'Name saved ✓'; };
+    $('#ivp-hist', s).innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip" data-id="' + g.id + '">📅 ' + esc(g.name) + '</button>'; }).join('');
+    $('#ivp-hist', s).onclick = function (e) { var b = e.target.closest('.iv-chip'); if (b) openHistory(b.getAttribute('data-id')); };
+    var conn = $('#ivp-conn', s);
+    if (!LB.isConfigured()) conn.textContent = 'Not set up (src/config.js has no endpoint yet).';
+    else LB.ping().then(function (r) {
+      conn.textContent = r.ok ? 'Connected ✓ (backend v' + r.version + ')' : 'Can’t reach the leaderboard (' + (r.error || 'error') + ').';
+    });
+    return s;
+  }
+  IV.openProfile = openProfile;
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function openHistory(gameId) {
+    var g = IV.find(gameId) || IV.GAMES[0];
+    var hist = Core.getHistoryFor(g.id);
+    var dates = Object.keys(hist).sort();
+    var now = new Date(), view = new Date(now.getFullYear(), now.getMonth(), 1);
+    var first = dates.length ? new Date(dates[0].slice(0, 4), Number(dates[0].slice(5, 7)) - 1, 1) : new Date(now.getFullYear(), now.getMonth(), 1);
+    var s = openSheet('<h3>' + g.icon + ' ' + esc(g.name) + ' — history</h3><div id="ivh-body"></div>', null, null);
+    function draw() {
+      var y = view.getFullYear(), m = view.getMonth();
+      var startDow = (new Date(y, m, 1).getDay() + 6) % 7; // Monday first
+      var days = new Date(y, m + 1, 0).getDate();
+      var cells = '', i;
+      for (i = 0; i < startDow; i++) cells += '<div class="iv-cal-cell e"></div>';
+      var today = Core.dailySeedDate();
+      var total = 0, count = 0;
+      for (i = 1; i <= days; i++) {
+        var key = y + '-' + ('0' + (m + 1)).slice(-2) + '-' + ('0' + i).slice(-2);
+        var played = hist[key] != null;
+        if (played) { total += Number(hist[key]) || 0; count++; }
+        cells += '<div class="iv-cal-cell' + (played ? ' played' : '') + (key === today ? ' today' : '') + '"' + (played ? ' style="--cal-accent:' + g.accent + '"' : '') + '><span>' + i + '</span>' + (played ? '<b>' + esc(hist[key]) + '</b>' : '') + '</div>';
+      }
+      $('#ivh-body', s).innerHTML =
+        '<div class="iv-cal-nav"><button id="ivh-prev"' + (view <= first ? ' disabled' : '') + '>‹</button><b>' + MONTHS[m] + ' ' + y + '</b><button id="ivh-next"' + (y === now.getFullYear() && m === now.getMonth() ? ' disabled' : '') + '>›</button></div>' +
+        '<div class="iv-cal-wd"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="iv-cal-grid">' + cells + '</div>' +
+        '<p class="iv-note iv-center" style="margin-top:.8rem">' + (count ? count + ' day' + (count > 1 ? 's' : '') + ' played this month · total ' + total : 'No games played this month.') + '</p>';
+      $('#ivh-prev', s).onclick = function () { view = new Date(y, m - 1, 1); draw(); };
+      $('#ivh-next', s).onclick = function () { view = new Date(y, m + 1, 1); draw(); };
+    }
+    draw();
+  }
+  IV.openHistory = openHistory;
+  var TABS = [
+    { id: 'home', icon: '🏠', label: 'Home' },
+    { id: 'games', icon: '🎮', label: 'Games' },
+    { id: 'tools', icon: '🧰', label: 'Tools' },
+    { id: 'friends', icon: '👥', label: 'Friends' },
+    { id: 'you', icon: '🙂', label: 'You' }
+  ];
+  function pageTab() { return KIND === 'game' ? 'games' : KIND === 'tool' ? 'tools' : KIND; }
+  function setTab(sheetTab) {
+    var bar = document.getElementById('iv-tabbar'); if (!bar) return;
+    var on = sheetTab || pageTab();
+    Array.prototype.forEach.call(bar.children, function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === on); });
+  }
+  function buildTabBar() {
+    if (document.getElementById('iv-tabbar')) return;
+    var bar = document.createElement('nav'); bar.id = 'iv-tabbar';
+    bar.innerHTML = TABS.map(function (t) {
+      var inner = '<span class="i">' + t.icon + '</span><span class="l">' + t.label + '</span>';
+      if (IV.SECTIONS[t.id]) return '<a class="iv-tab" data-tab="' + t.id + '" href="' + IV.href(IV.SECTIONS[t.id].url) + '">' + inner + '</a>';
+      return '<button class="iv-tab" data-tab="' + t.id + '">' + inner + '</button>';
+    }).join('');
+    document.body.appendChild(bar);
+    bar.querySelector('[data-tab="friends"]').onclick = function () { openFriends(); };
+    bar.querySelector('[data-tab="you"]').onclick = function () { openProfile(); };
+    setTab(null);
+  }
+  buildHeader();
+  buildTabBar();
+  (function () {
+    var m = /[?&]add=([A-Za-z0-9]{4,12})/.exec(location.search);
+    if (!m) return;
+    var code = m[1].toUpperCase();
+    setTimeout(function () {
+      var s = openFriends();
+      var inp = $('#ivf-code', s);
+      if (inp) { inp.value = code; var b = $('#ivf-add', s); if (b) b.click(); }
+    }, 400);
+  })();
+})(window);
+</script>
+<script>
+  (function () {
+    var Core = IntrvlCore, esc = Core.esc, today = Core.dailySeedDate(), done = 0;
+
+    document.getElementById('games-list').innerHTML = IV.GAMES.map(function (g) {
+      var st = Core.statsFor(g.id), played = st.lastPlayedDate === Core.todayStr();
+      if (played) done++;
+      return '<a class="iv-item" href="' + IV.href(g.url) + '" style="--item-accent:' + g.accent + '">' +
+        '<div class="iv-badge">' + g.icon + '</div>' +
+        '<div><div class="iv-item-name">' + esc(g.name) + '</div><div class="iv-item-blurb">' + esc(g.blurb) + '</div></div>' +
+        '<div class="iv-item-end">' + (st.currentStreak > 0 ? '🔥 ' + st.currentStreak : '') + (played ? '<span class="iv-done">✓</span>' : '<span class="iv-chev">›</span>') + '</div></a>';
+    }).join('');
+    document.getElementById('games-count').textContent = done + ' of ' + IV.GAMES.length + ' done today';
+
+    var rows = IV.GAMES.map(function (g) {
+      var st = Core.statsFor(g.id), h = Core.getHistoryFor(g.id);
+      var played = Object.keys(h).length;
+      var sub = played ? ('🔥 ' + st.currentStreak + ' · best ' + st.bestStreak + ' · ' + played + ' day' + (played > 1 ? 's' : '') + ' played') : 'Not played yet';
+      var todays = h[today] != null ? '<b>' + esc(h[today]) + '</b> today' : '';
+      return '<div class="iv-scoreline"><div class="iv-grow"><div class="t">' + g.icon + ' ' + esc(g.name) + '</div><div class="s">' + sub + '</div></div>' +
+        '<span class="iv-note">' + todays + '</span><button class="iv-iconbtn" data-id="' + g.id + '" aria-label="History for ' + esc(g.name) + '">📅</button></div>';
+    });
+    var el = document.getElementById('games-scores');
+    el.innerHTML = rows.join('');
+    el.onclick = function (e) { var b = e.target.closest('button[data-id]'); if (b) IV.openHistory(b.getAttribute('data-id')); };
+  })();
+</script>
+
