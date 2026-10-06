@@ -533,13 +533,19 @@ IV.find = function (id) {
   }
   function ping() { return get({ action: 'ping' }); }
   var registered = null;
+  function regKey() { return [Core.getPlayerCode(), Core.getDisplayName(), Core.getAvatar(), Core.getDeviceId()].join('|'); }
   function register(force) {
+    if (!force && Core.lsGet('intrvl.reg') === regKey()) return Promise.resolve({ ok: true, cached: true });
     if (!force && registered) return registered;
     function send() {
       return post({ action: 'registerPlayer', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), displayName: Core.getDisplayName(), avatar: Core.getAvatar() });
     }
     registered = send().then(function (res) {
       if (!res.ok && res.error === 'code taken') { Core.regeneratePlayerCode(); return send(); } // astronomically rare collision
+      return res;
+    }).then(function (res) {
+      if (res.ok) Core.lsSet('intrvl.reg', regKey());
+      registered = null;
       return res;
     });
     return registered;
@@ -592,11 +598,23 @@ IV.find = function (id) {
       });
     });
   }
+  function cacheKey(gameId, date) { return 'intrvl.board.' + (gameId || 'all') + '.' + date; }
+  function cachedBoard(gameId, date) {
+    try { return JSON.parse(Core.lsGet(cacheKey(gameId, date || Core.dailySeedDate())) || 'null'); } catch (e) { return null; }
+  }
   function fetchBoard(gameId, date) {
-    var codes = [Core.getPlayerCode()].concat(getFriends());
-    var p = { action: 'friends', codes: codes.join(','), date: date || Core.dailySeedDate() };
+    date = date || Core.dailySeedDate();
+    var p = { action: 'board', code: Core.getPlayerCode(), codes: getFriends().join(','), date: date };
     if (gameId) p.gameId = gameId;
-    return get(p);
+    return get(p).then(function (res) {
+      if (res.ok) {
+        var merged = getFriends();
+        (res.friendCodes || []).forEach(function (c) { if (merged.indexOf(c) === -1) merged.push(c); });
+        setFriends(merged);
+        Core.lsSet(cacheKey(gameId, date), JSON.stringify(res));
+      }
+      return res;
+    });
   }
   function boardHtml(res, gameId) {
     var me = Core.getPlayerCode();
@@ -629,7 +647,7 @@ IV.find = function (id) {
         if (rb) rb.onclick = function () { attachSubmitButton(opts); };
         return;
       }
-      syncFriends().then(function () { return fetchBoard(opts.gameId, date); }).then(function (board) {
+      fetchBoard(opts.gameId, date).then(function (board) {
         if (!board.ok) { box.innerHTML = '<div class="iv-note iv-center">Score sent ✓</div>'; return; }
         var many = (board.friends || []).length > 1;
         box.innerHTML =
@@ -643,7 +661,7 @@ IV.find = function (id) {
   global.IntrvlLeaderboard = {
     isConfigured: isConfigured, ping: ping, register: register,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
-    submitScore: submitScore, fetchBoard: fetchBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
+    submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
   };
 })(window);
 (function (global) {
@@ -730,38 +748,47 @@ IV.find = function (id) {
       Array.prototype.forEach.call(chips.children, function (c) { c.classList.toggle('on', c === b); });
       drawBoard();
     };
-    var boardEl = $('#ivf-board', s);
+    var boardEl = $('#ivf-board', s), loadId = 0;
+    function paintBoard(res) {
+      var html = LB.boardHtml(res, gid);
+      var friends = LB.getFriends();
+      html += friends.length ? '<div class="iv-note" style="margin-top:.7rem">Tap ✕ to remove a friend.</div>' : '<div class="iv-empty" style="margin-top:.5rem">No friends yet — share your code or invite link above.</div>';
+      boardEl.innerHTML = html;
+      Array.prototype.forEach.call(boardEl.querySelectorAll('.iv-boardrow'), function (row, i) {
+        var f = res.friends[i];
+        if (!f || f.code === Core.getPlayerCode()) return;
+        var x = document.createElement('button'); x.className = 'x2'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove ' + f.displayName);
+        x.onclick = function () {
+          if (!confirm('Remove ' + f.displayName + ' from your friends?')) return;
+          say(status, 'Removing…');
+          LB.removeFriend(f.code).then(function (r) { if (r.ok) { say(status, 'Removed.'); drawBoard(); } else say(status, 'Couldn’t remove right now — try again.'); });
+        };
+        row.appendChild(x);
+      });
+    }
     function drawBoard() {
       if (!LB.isConfigured()) { boardEl.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return; }
-      boardEl.innerHTML = '<div class="iv-note">Loading…</div>';
-      LB.syncFriends().then(function () { return LB.fetchBoard(gid); }).then(function (res) {
-        if (!res.ok) { boardEl.innerHTML = '<div class="iv-empty">Couldn’t load the board (' + esc(res.error || 'error') + '). Check your connection and try again.</div>'; return; }
-        var html = LB.boardHtml(res, gid);
-        var friends = LB.getFriends();
-        html += friends.length ? '<div class="iv-note" style="margin-top:.7rem">Tap ✕ to remove a friend.</div>' : '<div class="iv-empty" style="margin-top:.5rem">No friends yet — share your code or invite link above.</div>';
-        boardEl.innerHTML = html;
-        Array.prototype.forEach.call(boardEl.querySelectorAll('.iv-boardrow'), function (row, i) {
-          var f = res.friends[i];
-          if (!f || f.code === Core.getPlayerCode()) return;
-          var x = document.createElement('button'); x.className = 'x2'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove ' + f.displayName);
-          x.onclick = function () {
-            if (!confirm('Remove ' + f.displayName + ' from your friends?')) return;
-            LB.removeFriend(f.code).then(function (r) { if (r.ok) drawBoard(); else say(status, 'Couldn’t remove right now — try again.'); });
-          };
-          row.appendChild(x);
-        });
+      var my = ++loadId, cached = LB.cachedBoard(gid);
+      if (cached) { paintBoard(cached); boardEl.insertAdjacentHTML('afterbegin', '<div class="iv-note" id="ivf-upd" style="margin-bottom:.4rem">Updating…</div>'); }
+      else boardEl.innerHTML = '<div class="iv-note">Loading… the first load can take a few seconds.</div>';
+      LB.fetchBoard(gid).then(function (res) {
+        if (my !== loadId) return;               // a newer request replaced this one
+        if (!res.ok) {
+          if (!cached) boardEl.innerHTML = '<div class="iv-empty">Couldn’t load the board (' + esc(res.error || 'error') + '). Check your connection and try again.</div>';
+          else { var u = $('#ivf-upd', s); if (u) u.textContent = 'Couldn’t update — showing the last board.'; }
+          return;
+        }
+        paintBoard(res);
       });
     }
     function addByCode(code) {
       code = String(code || '').trim().toUpperCase();
       if (!code) { say(status, 'Type a friend’s code first.'); return; }
-      say(status, 'Looking up ' + code + '…');
-      LB.resolveCode(code).then(function (r) {
-        if (!r.ok) { say(status, r.error === 'code not found' ? 'No player has that code — check it and try again.' : 'Couldn’t reach the leaderboard.'); return null; }
-        return LB.addFriend(code).then(function (a) {
-          if (a.ok) { say(status, 'Added ' + r.displayName + ' ✓ — you’re now friends both ways.'); codeIn.value = ''; drawBoard(); }
-          else say(status, a.error === 'not configured' ? 'Friends aren’t switched on yet.' : (a.error || 'Couldn’t add that friend.'));
-        });
+      if (!LB.isConfigured()) { say(status, 'Friends aren’t switched on yet.'); return; }
+      say(status, 'Adding ' + code + '… this can take a few seconds.');
+      LB.addFriend(code).then(function (a) {
+        if (a.ok) { say(status, 'Added ' + ((a.friend && a.friend.displayName) || code) + ' ✓ — you’re now friends both ways.'); codeIn.value = ''; drawBoard(); }
+        else say(status, a.error === 'code not found' ? 'No player has that code — check it and try again.' : a.error === 'network error' ? 'Couldn’t reach the leaderboard — try again.' : (a.error || 'Couldn’t add that friend.'));
       });
     }
     $('#ivf-add', s).onclick = function () { addByCode(codeIn.value); };
@@ -867,6 +894,7 @@ IV.find = function (id) {
   }
   buildHeader();
   buildTabBar();
+  if (LB.isConfigured()) setTimeout(function () { LB.register(); }, 2500);   // so friends can find your code
   function setupShortcut() {
     var base = (IV.CONFIG && IV.CONFIG.assets) || '';
     if (!base) return;

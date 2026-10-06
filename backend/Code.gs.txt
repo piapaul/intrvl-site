@@ -24,7 +24,8 @@
  * read the `ok` field in the JSON.
  */
 
-var VERSION = 2;
+var VERSION = 3;
+var FMT_VERSION = 2;   // bump only if the column formats need re-applying
 
 var SCORES = 'scores';     // timestamp | gameId | deviceId | displayName | dailySeedDate | score | streak
 var PLAYERS = 'players';   // code | deviceId | displayName | avatar | updatedAt
@@ -55,6 +56,7 @@ function doGet(e) {
       case 'ping': return ping_();
       case 'resolveCode': return resolveCode_(p);
       case 'friends': return friendsBoard_(p);
+      case 'board': return myBoard_(p);
       case 'friendsOf': return friendsOf_(p);
       default: return json_({ ok: false, error: 'unknown action' });
     }
@@ -185,9 +187,30 @@ function friendsOf_(p) {
 // codes=A,B,C  date=YYYY-MM-DD  [gameId=x]  -> each player's scores for that date (all games) + their score for gameId
 function friendsBoard_(p) {
   var codes = String(p.codes || '').split(',').map(cleanCode_).filter(Boolean).slice(0, 60);
-  var date = /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : today_();
-  var gameId = SCORE_BOUNDS.hasOwnProperty(p.gameId) ? p.gameId : null;
-  var players = playersByCode_(), byDevice = {};
+  return json_(buildBoard_(codes, p.date, p.gameId, playersByCode_()));
+}
+
+// ONE call for the whole Friends screen: code=ME [codes=local,friends] -> board of me + every friend
+// (friends stored on the server + any the phone sends), so the page needs a single round trip.
+function myBoard_(p) {
+  var me = cleanCode_(p.code);
+  if (!me) return json_({ ok: false, error: 'invalid code' });
+  var players = playersByCode_(), seen = {}, codes = [me];
+  seen[me] = true;
+  var vals = sheet_(FRIENDS).getDataRange().getValues();
+  for (var i = 1; i < vals.length; i++) {
+    var x = String(vals[i][0]).toUpperCase(), y = String(vals[i][1]).toUpperCase(), other = x === me ? y : y === me ? x : null;
+    if (other && !seen[other]) { seen[other] = true; codes.push(other); }
+  }
+  String(p.codes || '').split(',').map(cleanCode_).filter(Boolean).forEach(function (c) { if (!seen[c] && players[c]) { seen[c] = true; codes.push(c); } });
+  var out = buildBoard_(codes.slice(0, 60), p.date, p.gameId, players);
+  out.friendCodes = codes.slice(1);
+  return json_(out);
+}
+
+function buildBoard_(codes, dateParam, gameParam, players) {
+  var date = /^\d{4}-\d{2}-\d{2}$/.test(dateParam || '') ? dateParam : today_();
+  var gameId = SCORE_BOUNDS.hasOwnProperty(gameParam) ? gameParam : null, byDevice = {};
 
   var vals = sheet_(SCORES).getDataRange().getValues();
   for (var i = 1; i < vals.length; i++) {
@@ -209,7 +232,7 @@ function friendsBoard_(p) {
     if (gameId && a.hasPlayed) return b.score - a.score;
     return b.playedCount - a.playedCount;
   });
-  return json_({ ok: true, date: date, gameId: gameId, friends: list });
+  return { ok: true, date: date, gameId: gameId, friends: list };
 }
 
 // ---------------------------------------------------------------- helpers
@@ -220,9 +243,9 @@ function sheet_(name) {
   var h = HEADERS[name];
   if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
   var props = PropertiesService.getScriptProperties();
-  if (props.getProperty('FMT_' + name) !== String(VERSION)) {
+  if (props.getProperty('FMT_' + name) !== String(FMT_VERSION)) {
     TEXT_COLS[name].forEach(function (c) { sh.getRange(1, c, sh.getMaxRows(), 1).setNumberFormat('@'); });
-    props.setProperty('FMT_' + name, String(VERSION));
+    props.setProperty('FMT_' + name, String(FMT_VERSION));
   }
   return sh;
 }
