@@ -1,0 +1,281 @@
+/**
+ * intrvl friends leaderboard — Google Apps Script web app (version 2).
+ *
+ * Paste this whole file over the old Code.gs in your Sheet's Apps Script
+ * project, then redeploy as a NEW VERSION (see docs/LEADERBOARD-SETUP.md).
+ *
+ * What changed from version 1:
+ *   - The three sheet tabs (scores / players / friends) are created for you,
+ *     with the right headers and with date/code columns formatted as TEXT, so
+ *     Google Sheets can no longer turn "2026-10-06" into a real date and break
+ *     the comparison (that was the main reason the leaderboard "didn't work").
+ *   - Dates that were already converted by Sheets are repaired when read.
+ *   - Friends are stored on the server and are MUTUAL: when A adds B, B also
+ *     sees A. Removing a friend removes both directions.
+ *   - The page sends its own local date, so a player in another time zone
+ *     still sees "today" correctly.
+ *   - A duplicate score submission is treated as success.
+ *   - ?action=ping tells you the backend is alive and which version it is.
+ *
+ * Script Property needed (Project Settings → Script properties):
+ *   SHARED_SECRET = the same text as `secret` in src/config.js
+ *
+ * All responses are HTTP 200 (Apps Script can't set status codes); callers
+ * read the `ok` field in the JSON.
+ */
+
+var VERSION = 2;
+
+var SCORES = 'scores';     // timestamp | gameId | deviceId | displayName | dailySeedDate | score | streak
+var PLAYERS = 'players';   // code | deviceId | displayName | avatar | updatedAt
+var FRIENDS = 'friends';   // codeA | codeB | createdAt   (one row per friendship, treated as two-way)
+
+var HEADERS = {
+  scores: ['timestamp', 'gameId', 'deviceId', 'displayName', 'dailySeedDate', 'score', 'streak'],
+  players: ['code', 'deviceId', 'displayName', 'avatar', 'updatedAt'],
+  friends: ['codeA', 'codeB', 'createdAt']
+};
+// 1-based columns that must stay plain text
+var TEXT_COLS = { scores: [1, 2, 3, 4, 5], players: [1, 2, 3, 4, 5], friends: [1, 2, 3] };
+
+var DEFAULT_AVATAR = '🎹';
+
+// Plausible score ranges per game (rejects obviously spoofed submissions).
+var SCORE_BOUNDS = {
+  interval: [0, 3], pitch: [0, 3], seventh: [0, 3],
+  enharmonic: [0, 150], spelling: [0, 150], clef: [0, 150], note: [0, 150]
+};
+
+// ---------------------------------------------------------------- entry points
+
+function doGet(e) {
+  try {
+    var p = (e && e.parameter) || {};
+    switch (p.action) {
+      case 'ping': return ping_();
+      case 'resolveCode': return resolveCode_(p);
+      case 'friends': return friendsBoard_(p);
+      case 'friendsOf': return friendsOf_(p);
+      default: return json_({ ok: false, error: 'unknown action' });
+    }
+  } catch (err) {
+    return json_({ ok: false, error: 'server error: ' + err });
+  }
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    var body;
+    try { body = JSON.parse(e.postData.contents); } catch (x) { return json_({ ok: false, error: 'invalid JSON body' }); }
+    var secret = PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
+    if (!secret || body.secret !== secret) return json_({ ok: false, error: 'unauthorized' });
+
+    lock.waitLock(15000);
+    switch (body.action) {
+      case 'registerPlayer': return registerPlayer_(body);
+      case 'addFriend': return addFriend_(body);
+      case 'removeFriend': return removeFriend_(body);
+      default: return submitScore_(body);       // no action = a score submission
+    }
+  } catch (err) {
+    return json_({ ok: false, error: 'server error: ' + err });
+  } finally {
+    try { lock.releaseLock(); } catch (x2) { /* not held */ }
+  }
+}
+
+// You can also run this by hand once (Run ▶ setup) to create the tabs.
+function setup() {
+  Object.keys(HEADERS).forEach(function (n) { sheet_(n); });
+  PropertiesService.getScriptProperties().setProperty('SETUP_V', String(VERSION));
+  return 'ok';
+}
+
+// ---------------------------------------------------------------- handlers
+
+function ping_() {
+  setup();
+  return json_({ ok: true, version: VERSION, serverDate: today_(), timezone: Session.getScriptTimeZone() });
+}
+
+function registerPlayer_(b) {
+  var code = cleanCode_(b.code);
+  if (!code) return json_({ ok: false, error: 'invalid code' });
+  if (!b.deviceId || typeof b.deviceId !== 'string') return json_({ ok: false, error: 'missing deviceId' });
+
+  var sh = sheet_(PLAYERS), vals = sh.getDataRange().getValues();
+  var name = cleanName_(b.displayName), avatar = cleanAvatar_(b.avatar), now = new Date().toISOString();
+  for (var i = 1; i < vals.length; i++) {
+    if (String(vals[i][0]).toUpperCase() === code) {
+      if (String(vals[i][1]) !== b.deviceId) return json_({ ok: false, error: 'code taken' });
+      sh.getRange(i + 1, 2, 1, 4).setValues([[b.deviceId, name, avatar, now]]);
+      return json_({ ok: true });
+    }
+  }
+  appendText_(sh, 'players', [code, b.deviceId, name, avatar, now]);
+  return json_({ ok: true });
+}
+
+function submitScore_(b) {
+  if (!SCORE_BOUNDS.hasOwnProperty(b.gameId)) return json_({ ok: false, error: 'unknown gameId' });
+  if (!b.deviceId || typeof b.deviceId !== 'string') return json_({ ok: false, error: 'missing deviceId' });
+  var date = String(b.dailySeedDate || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json_({ ok: false, error: 'missing/invalid dailySeedDate' });
+  if (Math.abs(daysBetween_(date, today_())) > 2) return json_({ ok: false, error: 'date out of range' });
+  var score = Number(b.score), bounds = SCORE_BOUNDS[b.gameId];
+  if (isNaN(score) || score < bounds[0] || score > bounds[1]) return json_({ ok: false, error: 'score out of range for this game' });
+
+  var sh = sheet_(SCORES), vals = sh.getDataRange().getValues();
+  for (var i = 1; i < vals.length; i++) {
+    if (String(vals[i][1]) === b.gameId && String(vals[i][2]) === b.deviceId && normDate_(vals[i][4]) === date) {
+      return json_({ ok: true, duplicate: true });          // first score of the day stands
+    }
+  }
+  appendText_(sh, 'scores', [new Date().toISOString(), b.gameId, b.deviceId, cleanName_(b.displayName), date, score, Number(b.streak) || 0]);
+  return json_({ ok: true });
+}
+
+function resolveCode_(p) {
+  var code = cleanCode_(p.code);
+  var player = code && playersByCode_()[code];
+  if (!player) return json_({ ok: false, error: 'code not found' });
+  return json_({ ok: true, code: code, displayName: player.displayName, avatar: player.avatar });
+}
+
+function addFriend_(b) {
+  var a = cleanCode_(b.code), f = cleanCode_(b.friendCode);
+  if (!a || !f) return json_({ ok: false, error: 'invalid code' });
+  if (a === f) return json_({ ok: false, error: "that's your own code" });
+  var players = playersByCode_();
+  if (!players[a]) return json_({ ok: false, error: 'your code is not registered yet — try again' });
+  if (!players[f]) return json_({ ok: false, error: 'code not found' });
+
+  var sh = sheet_(FRIENDS);
+  if (!edgeExists_(sh.getDataRange().getValues(), a, f)) appendText_(sh, 'friends', [a, f, new Date().toISOString()]);
+  return json_({ ok: true, friend: { code: f, displayName: players[f].displayName, avatar: players[f].avatar } });
+}
+
+function removeFriend_(b) {
+  var a = cleanCode_(b.code), f = cleanCode_(b.friendCode);
+  if (!a || !f) return json_({ ok: false, error: 'invalid code' });
+  var sh = sheet_(FRIENDS), vals = sh.getDataRange().getValues();
+  for (var i = vals.length - 1; i >= 1; i--) {            // bottom-up so row numbers stay valid
+    var x = String(vals[i][0]).toUpperCase(), y = String(vals[i][1]).toUpperCase();
+    if ((x === a && y === f) || (x === f && y === a)) sh.deleteRow(i + 1);
+  }
+  return json_({ ok: true });
+}
+
+function friendsOf_(p) {
+  var code = cleanCode_(p.code);
+  if (!code) return json_({ ok: false, error: 'invalid code' });
+  var players = playersByCode_(), vals = sheet_(FRIENDS).getDataRange().getValues(), out = [], seen = {};
+  for (var i = 1; i < vals.length; i++) {
+    var x = String(vals[i][0]).toUpperCase(), y = String(vals[i][1]).toUpperCase(), other = x === code ? y : y === code ? x : null;
+    if (other && !seen[other]) {
+      seen[other] = true;
+      var pl = players[other];
+      out.push({ code: other, displayName: pl ? pl.displayName : other, avatar: pl ? pl.avatar : DEFAULT_AVATAR });
+    }
+  }
+  return json_({ ok: true, friends: out });
+}
+
+// codes=A,B,C  date=YYYY-MM-DD  [gameId=x]  -> each player's scores for that date (all games) + their score for gameId
+function friendsBoard_(p) {
+  var codes = String(p.codes || '').split(',').map(cleanCode_).filter(Boolean).slice(0, 60);
+  var date = /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : today_();
+  var gameId = SCORE_BOUNDS.hasOwnProperty(p.gameId) ? p.gameId : null;
+  var players = playersByCode_(), byDevice = {};
+
+  var vals = sheet_(SCORES).getDataRange().getValues();
+  for (var i = 1; i < vals.length; i++) {
+    if (normDate_(vals[i][4]) !== date) continue;
+    var dev = String(vals[i][2]), g = String(vals[i][1]), sc = Number(vals[i][5]);
+    byDevice[dev] = byDevice[dev] || {};
+    if (byDevice[dev][g] == null || sc > byDevice[dev][g]) byDevice[dev][g] = sc;
+  }
+
+  var list = codes.map(function (code) {
+    var pl = players[code];
+    if (!pl) return { code: code, displayName: code, avatar: null, scores: {}, playedCount: 0, hasPlayed: false, score: null };
+    var scores = byDevice[pl.deviceId] || {};
+    var has = gameId ? scores[gameId] != null : Object.keys(scores).length > 0;
+    return { code: code, displayName: pl.displayName, avatar: pl.avatar, scores: scores, playedCount: Object.keys(scores).length, hasPlayed: has, score: gameId && has ? scores[gameId] : null };
+  });
+  list.sort(function (a, b) {
+    if (a.hasPlayed !== b.hasPlayed) return a.hasPlayed ? -1 : 1;
+    if (gameId && a.hasPlayed) return b.score - a.score;
+    return b.playedCount - a.playedCount;
+  });
+  return json_({ ok: true, date: date, gameId: gameId, friends: list });
+}
+
+// ---------------------------------------------------------------- helpers
+
+function sheet_(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  var h = HEADERS[name];
+  if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('FMT_' + name) !== String(VERSION)) {
+    TEXT_COLS[name].forEach(function (c) { sh.getRange(1, c, sh.getMaxRows(), 1).setNumberFormat('@'); });
+    props.setProperty('FMT_' + name, String(VERSION));
+  }
+  return sh;
+}
+
+// appendRow, but guarantee text cells stay text
+function appendText_(sh, name, row) {
+  var r = sh.getLastRow() + 1;
+  TEXT_COLS[name].forEach(function (c) { sh.getRange(r, c).setNumberFormat('@'); });
+  sh.getRange(r, 1, 1, row.length).setValues([row]);
+}
+
+function playersByCode_() {
+  var vals = sheet_(PLAYERS).getDataRange().getValues(), out = {};
+  for (var i = 1; i < vals.length; i++) {
+    var code = String(vals[i][0]).toUpperCase();
+    if (code) out[code] = { code: code, deviceId: String(vals[i][1]), displayName: String(vals[i][2] || code), avatar: String(vals[i][3] || DEFAULT_AVATAR) };
+  }
+  return out;
+}
+
+function edgeExists_(vals, a, b) {
+  for (var i = 1; i < vals.length; i++) {
+    var x = String(vals[i][0]).toUpperCase(), y = String(vals[i][1]).toUpperCase();
+    if ((x === a && y === b) || (x === b && y === a)) return true;
+  }
+  return false;
+}
+
+// Sheets may have auto-converted "2026-10-06" to a real date in the past — turn either form back into text.
+function normDate_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  if (typeof v === 'number') return Utilities.formatDate(new Date(Math.round((v - 25569) * 86400000)), 'UTC', 'yyyy-MM-dd');   // a sheet date serial number
+  return String(v).slice(0, 10);
+}
+function today_() { return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'); }
+function daysBetween_(a, b) {
+  var da = new Date(a + 'T00:00:00Z'), db = new Date(b + 'T00:00:00Z');
+  return Math.round((da - db) / 86400000);
+}
+
+function cleanCode_(c) {
+  var s = String(c || '').trim().toUpperCase();
+  return /^[A-Z0-9]{4,12}$/.test(s) ? s : '';
+}
+function cleanName_(n) {
+  var t = typeof n === 'string' ? n.replace(/[<>]/g, '').trim().slice(0, 24) : '';
+  return t || 'Anonymous';
+}
+function cleanAvatar_(a) {
+  var t = typeof a === 'string' ? a.replace(/[<>]/g, '').trim().slice(0, 16) : '';
+  return t || DEFAULT_AVATAR;
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
