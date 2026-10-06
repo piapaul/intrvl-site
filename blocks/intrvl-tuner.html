@@ -259,6 +259,7 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 <script>
 window.IV = window.IV || {};
 IV.CONFIG = {
+  assets: 'https://piapaul.github.io/intrvl-site',   // where icons are published (GitHub Pages)
   endpoint: 'https://script.google.com/macros/s/AKfycbzXoNJxCfMtJNiAVGXf2qmVcTccOZ4IRN5Jcs292Q1iTKw-NHIE4Wkuqllez0fTZXg7xg/exec',
   secret: '1m8L5MqViDvQhKj'
 };
@@ -865,6 +866,32 @@ IV.find = function (id) {
   }
   buildHeader();
   buildTabBar();
+  function setupShortcut() {
+    var base = (IV.CONFIG && IV.CONFIG.assets) || '';
+    if (!base) return;
+    var key = item ? item.id : KIND;
+    var name = KIND === 'home' ? 'intrvl' : 'intrvl | ' + (item ? item.name : IV.SECTIONS[KIND].title);
+    var head = document.head;
+    Array.prototype.forEach.call(head.querySelectorAll('link[rel="apple-touch-icon"],link[rel="apple-touch-icon-precomposed"],link[rel="manifest"],link[rel~="icon"]'), function (n) { n.parentNode.removeChild(n); });
+    function tag(t, attrs) { var el = document.createElement(t); Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); }); head.appendChild(el); }
+    var small = base + '/icons/' + key + '-180.png', big = base + '/icons/' + key + '-512.png';
+    tag('link', { rel: 'apple-touch-icon', sizes: '180x180', href: small });
+    tag('link', { rel: 'icon', type: 'image/png', href: small });
+    tag('meta', { name: 'apple-mobile-web-app-title', content: name });
+    tag('meta', { name: 'application-name', content: name });
+    tag('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+    tag('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+    document.title = name;
+    try {
+      var manifest = {
+        name: name, short_name: name, start_url: location.origin + location.pathname, scope: location.origin + '/',
+        display: 'standalone', background_color: '#f5f3ef', theme_color: '#f5f3ef',
+        icons: [{ src: small, sizes: '180x180', type: 'image/png' }, { src: big, sizes: '512x512', type: 'image/png', purpose: 'any' }]
+      };
+      tag('link', { rel: 'manifest', href: URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })) });
+    } catch (e) { /* older browsers: the apple-touch-icon alone is enough */ }
+  }
+  setupShortcut();
   (function () {
     var m = /[?&]add=([A-Za-z0-9]{4,12})/.exec(location.search);
     if (!m) return;
