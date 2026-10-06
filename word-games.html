@@ -75,12 +75,34 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;background:rgba(
 nav button{flex:1;border:none;background:none;border-radius:14px;padding:9px 4px;font:700 13px var(--body);color:var(--slate)}
 nav button span{display:block;font-size:20px;margin-bottom:2px}
 nav button.on{background:var(--sage);color:var(--char)}
+.homesub{text-align:center;color:var(--off);font-weight:600;margin:-8px 0 16px}
+.menu{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.tile{display:flex;align-items:center;gap:14px;text-align:left;background:var(--off);border:none;border-radius:24px;padding:16px;font-family:var(--body);color:var(--char);width:100%}
+.tile:active{filter:brightness(.95)}
+.ti{flex:none;width:58px;height:58px;border-radius:14px;color:#fff;font:900 30px var(--head);display:flex;align-items:center;justify-content:center}
+.ti.g{background:var(--green)} .ti.y{background:var(--mustard)} .ti.s{background:var(--slate)}
+.tx b{display:block;font:900 19px var(--head);margin-bottom:3px}
+.tx small{font-size:14px;color:var(--slate);font-weight:500;line-height:1.35}
+.field{position:relative;display:block}
+.field .text{padding-right:44px}
+.field .x{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:none;background:var(--stone);color:var(--char);font:700 15px/1 var(--body);display:none;align-items:center;justify-content:center}
+.field.has .x{display:flex}
 section{display:none} section.on{display:block}
 </style>
 </head>
 <body>
 
-<section id="v-wordle" class="on">
+<section id="v-home" class="on">
+  <h1>Word Game Help</h1>
+  <p class="homesub">Pick a helper</p>
+  <div class="menu">
+    <button class="tile" data-go="wordle"><span class="ti g">W</span><span class="tx"><b>Wordle Helper</b><small>Green, yellow and grey letters in, possible words out.</small></span></button>
+    <button class="tile" data-go="cross"><span class="ti y">C</span><span class="tx"><b>Crossplay Finder</b><small>Your rack in, best-scoring plays out.</small></span></button>
+    <button class="tile" data-go="anag"><span class="ti s">A</span><span class="tx"><b>Anagram Solver</b><small>Scrambled letters in, every anagram out.</small></span></button>
+  </div>
+</section>
+
+<section id="v-wordle">
   <h1>Wordle Helper</h1>
   <div class="card">
     <h2>Green letters</h2>
@@ -112,9 +134,9 @@ section{display:none} section.on{display:block}
       <input class="text" id="cStarts" placeholder="Starts" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false">
       <input class="text" id="cEnds" placeholder="Ends" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false">
       <input class="text" id="cHas" placeholder="Contains" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false">
-      <input class="text" id="cLen" placeholder="Length, e.g. 4-6" inputmode="text" autocomplete="off">
+      <input class="text" id="cLen" placeholder="Length" inputmode="text" autocomplete="off">
     </div>
-    <p class="hint">Starts / Ends / Contains are letters already on the board, so they don't need to be in your rack. Scores use Crossplay tile values (no premium squares) plus the 40-point sweep for using all 7 rack tiles.</p>
+    <p class="hint">Starts / Ends / Contains are letters already on the board, so they don't need to be in your rack. Length can be one number (5) or a range (4-6). Scores use Crossplay tile values (no premium squares) plus the 40-point sweep for using all 7 rack tiles.</p>
     <div class="btnrow"><button class="btn" id="cGo">Search</button><button class="btn ghost" id="cClear">Clear</button></div>
   </div>
   <div class="card" id="cOut"></div>
@@ -133,7 +155,8 @@ section{display:none} section.on{display:block}
 </section>
 
 <nav>
-  <button data-t="wordle" class="on"><span>🟩</span>Wordle</button>
+  <button data-t="home" class="on"><span>🏠</span>Home</button>
+  <button data-t="wordle"><span>🟩</span>Wordle</button>
   <button data-t="cross"><span>🔤</span>Crossplay</button>
   <button data-t="anag"><span>🔀</span>Anagram</button>
 </nav>
@@ -180,11 +203,25 @@ function el(tag,cls,html){const e=document.createElement(tag);if(cls)e.className
 function showTab(t){
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='v-'+t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  try{localStorage.setItem('wg-tab',t)}catch(e){}
   window.scrollTo(0,0);
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
-try{const t=localStorage.getItem('wg-tab');if(t&&document.getElementById('v-'+t))showTab(t)}catch(e){}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showTab(b.dataset.go));
+
+/* ---------- Clear (x) buttons in text fields ---------- */
+document.querySelectorAll('input.text').forEach(inp=>{
+  const wrap=el('span','field');
+  inp.parentNode.insertBefore(wrap,inp);
+  wrap.appendChild(inp);
+  const x=el('button','x','✕');
+  x.type='button';x.setAttribute('aria-label','Clear');
+  wrap.appendChild(x);
+  const sync=()=>wrap.classList.toggle('has',inp.value!=='');
+  inp.addEventListener('input',sync);
+  x.addEventListener('mousedown',e=>e.preventDefault());
+  x.onclick=()=>{inp.value='';sync();inp.dispatchEvent(new Event('input',{bubbles:true}));inp.focus()};
+  inp._sync=sync;
+});
 
 /* ---------- Letter boxes ---------- */
 function makeBoxes(host,n,cls,cb){
@@ -230,13 +267,13 @@ function addYellowRow(){
   syncRm();
 }
 function syncRm(){yRows.forEach(r=>r.rm.style.display=yRows.length>1?'flex':'none')}
-addYellowRow();addYellowRow();
+addYellowRow();
 $('#addRow').onclick=()=>{addYellowRow();yRows[yRows.length-1].boxes[0].focus()};
 $('#strict').onchange=runWordle;
 $('#excl').addEventListener('input',debounce(runWordle,80));
 $('#wClear').onclick=()=>{
   greens.concat(...yRows.map(r=>r.boxes)).forEach(b=>{b.value='';b.classList.remove('f')});
-  $('#excl').value='';runWordle();
+  $('#excl').value='';$('#excl')._sync();runWordle();
 };
 
 function runWordle(){
@@ -379,7 +416,7 @@ const runCrossD=debounce(runCross,150);
 ['#rack','#cStarts','#cEnds','#cHas','#cLen'].forEach(s=>$(s).addEventListener('input',runCrossD));
 $('#cGo').onclick=()=>{document.activeElement&&document.activeElement.blur();runCross()};
 ['#rack','#cStarts','#cEnds','#cHas','#cLen'].forEach(s=>$(s).addEventListener('keydown',e=>{if(e.key==='Enter'){e.target.blur();runCross()}}));
-$('#cClear').onclick=()=>{['#rack','#cStarts','#cEnds','#cHas','#cLen'].forEach(s=>$(s).value='');runCross()};
+$('#cClear').onclick=()=>{['#rack','#cStarts','#cEnds','#cHas','#cLen'].forEach(s=>{$(s).value='';$(s)._sync()});runCross()};
 
 /* ---------- Anagram ---------- */
 function runAnag(){
@@ -408,7 +445,7 @@ function runAnag(){
 }
 $('#aIn').addEventListener('input',debounce(runAnag,150));
 $('#aShort').onchange=runAnag;
-$('#aClear').onclick=()=>{$('#aIn').value='';runAnag()};
+$('#aClear').onclick=()=>{$('#aIn').value='';$('#aIn')._sync();runAnag()};
 
 runWordle();runCross();runAnag();
 </script>
