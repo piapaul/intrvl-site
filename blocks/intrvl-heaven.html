@@ -1189,6 +1189,6 @@ IV.find = function (id) {
     IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl 7th Heaven');
   }
 
-  document.addEventListener('DOMContentLoaded', initApp);
+  initApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away
 </script>
 

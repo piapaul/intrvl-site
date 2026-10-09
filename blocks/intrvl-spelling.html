@@ -1279,6 +1279,6 @@ IV.find = function (id) {
     IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Chord Spelling Bee');
   }
 
-  document.addEventListener('DOMContentLoaded', initCsbApp);
+  initCsbApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away
 </script>
 

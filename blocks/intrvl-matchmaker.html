@@ -1255,6 +1255,6 @@ IV.find = function (id) {
     IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Enharmonic Sprint');
   }
 
-  document.addEventListener('DOMContentLoaded', initEnApp);
+  initEnApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away
 </script>
 
