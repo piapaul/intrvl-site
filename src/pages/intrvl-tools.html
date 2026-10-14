@@ -1,0 +1,18 @@
+<!--@shared-css-->
+
+<div id="intrvl-app">
+  <span class="iv-label">Choose a tool</span>
+  <div class="iv-list" id="tools-list"></div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'tools' };</script>
+<!--@shared-js-->
+<script>
+  document.getElementById('tools-list').innerHTML = IV.TOOLS.map(function (t) {
+    return '<a class="iv-item" href="' + IV.href(t.url) + '" style="--item-accent:' + t.accent + '">' +
+      '<div class="iv-badge" aria-hidden="true">' + t.icon + '</div>' +
+      '<div><div class="iv-item-name">' + IntrvlCore.esc(t.name) + '</div><div class="iv-item-blurb">' + IntrvlCore.esc(t.blurb) + '</div></div>' +
+      '<div class="iv-item-end"><span class="iv-chev">›</span></div></a>';
+  }).join('');
+</script>
+

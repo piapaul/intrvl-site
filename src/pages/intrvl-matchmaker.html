@@ -1,0 +1,379 @@
+<!--@shared-css-->
+
+<style>
+  #en-streak-count { color: var(--intrvl-accent-dark); }
+  #en-accuracy-count { color: var(--intrvl-active-dark); }
+  .score-highlight { color: var(--intrvl-accent-dark); }
+
+  #en-img-container {
+    background: var(--intrvl-panel-bg);
+    border: 2px solid var(--intrvl-border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 280px;
+    height: 140px;
+    margin: 0 auto 1.5rem auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 4px 15px rgba(0,0,0,0.02);
+    padding: 5px;
+    box-sizing: border-box;
+  }
+  #main-target-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+</style>
+
+<canvas aria-hidden="true" id="confetti-canvas-en" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; opacity:0; transition:opacity 1s ease;"></canvas>
+
+<div id="intrvl-app">
+
+  <div class="intrvl-header-v2">
+    <div class="stats-wrapper">
+      <div class="stat-box">
+        <span class="stat-label">Streak</span>
+        <div class="stat-display"><span aria-hidden="true">🔥</span> <span id="en-streak-count">0</span></div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-display"><span aria-hidden="true">🎯</span> <span id="en-accuracy-count">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="intrvl-game-area">
+
+    <div id="screen-start" class="button-stack">
+      <p style="color: var(--intrvl-ink-soft); line-height: 1.5; margin-bottom: 2rem;">
+        30 seconds. Identify the enharmonic equivalent.<br>Build your combo for massive points.
+      </p>
+      <button class="btn-primary" onclick="startEnSprint(true)">Start Daily Sprint</button>
+      <button class="btn-practice" onclick="startEnSprint(false)">Practice Sprint</button>
+    </div>
+
+    <div id="screen-game" class="hidden" style="width: 100%;">
+      <div class="game-hud">
+        <div>Score: <span id="ui-score" class="score-highlight">0</span></div>
+        <div id="ui-combo" class="combo-badge" aria-hidden="true">🔥 x2 COMBO</div>
+        <div><span id="ui-timer" class="timer-highlight">30</span>s</div>
+      </div>
+
+      <p class="instruction-text">Find the <strong>Enharmonic Equivalent</strong></p>
+
+      <div id="en-img-container">
+        <img id="main-target-image" src="" alt="Note on stave" />
+      </div>
+
+      <div class="en-options-grid" id="en-buttons-container">
+        <button class="choice-btn" id="btn-en-0" onclick="submitEnGuess(0)">Opt 1</button>
+        <button class="choice-btn" id="btn-en-1" onclick="submitEnGuess(1)">Opt 2</button>
+        <button class="choice-btn" id="btn-en-2" onclick="submitEnGuess(2)">Opt 3</button>
+        <button class="choice-btn" id="btn-en-3" onclick="submitEnGuess(3)">Opt 4</button>
+      </div>
+    </div>
+
+    <div id="screen-done" class="hidden button-stack">
+      <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;" id="end-title">Time's Up!</h2>
+      <p style="font-size: 1.4rem; font-family: var(--intrvl-font-head); font-weight: 900; color: var(--intrvl-accent-dark); margin-bottom: 0.5rem;" id="end-score">Score: 0</p>
+      <p style="color: var(--intrvl-ink-soft); font-size: 0.9rem; margin-bottom: 2rem;" id="end-high-score">Personal High: 0</p>
+
+      <button class="btn-share hidden" id="btn-share" onclick="shareEnResults()">Share Results 🚀</button>
+      <button class="btn-primary hidden" id="btn-try-again" onclick="resetEnToStart()">Back to Menu</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.INTRVL_CONFIG = {
+    kind: 'game', id: 'enharmonic', gameId: 'enharmonic',
+    legacyStatsKeys: ['intrvlEnharmonicStatsV1'],
+    accentColors: ['#ada6b8', '#A9B9A2', '#bda569', '#c2a687']
+  };
+</script>
+<!--@shared-js-->
+<script>
+  let enPool = [];
+  let enCurrentQ = null;
+  let enScore = 0;
+  let enCombo = 0;
+  let enMaxCombo = 0;
+  let enTimerInterval;
+  let enEndTime;
+  let enIsDailyMode = true;
+  let enIsGameActive = false;
+  let currentLevel = 0;
+  let enStats;
+
+  const clefs = ['treble', 'bass', 'alto', 'tenor'];
+
+  const validOctaves = {
+    'treble': { 'C': [4, 5], 'D': [4, 5], 'E': [4, 5], 'F': [4, 5], 'G': [4, 5], 'A': [4, 5], 'B': [4, 5] },
+    'bass': { 'C': [3], 'D': [3], 'E': [2, 3], 'F': [2, 3], 'G': [2, 3], 'A': [2, 3], 'B': [2, 3] },
+    'alto': { 'C': [4], 'D': [4], 'E': [3, 4], 'F': [3, 4], 'G': [3, 4], 'A': [3, 4], 'B': [3, 4] },
+    'tenor': { 'C': [4], 'D': [3, 4], 'E': [3, 4], 'F': [3, 4], 'G': [3, 4], 'A': [3], 'B': [3] }
+  };
+
+  const enharmonicPairs = [
+    { note: 'C#', acc: 'sharp', base: 'C', answer: 'Db', isBlackKey: true },
+    { note: 'Db', acc: 'flat', base: 'D', answer: 'C#', isBlackKey: true },
+    { note: 'D#', acc: 'sharp', base: 'D', answer: 'Eb', isBlackKey: true },
+    { note: 'Eb', acc: 'flat', base: 'E', answer: 'D#', isBlackKey: true },
+    { note: 'F#', acc: 'sharp', base: 'F', answer: 'Gb', isBlackKey: true },
+    { note: 'Gb', acc: 'flat', base: 'G', answer: 'F#', isBlackKey: true },
+    { note: 'G#', acc: 'sharp', base: 'G', answer: 'Ab', isBlackKey: true },
+    { note: 'Ab', acc: 'flat', base: 'A', answer: 'G#', isBlackKey: true },
+    { note: 'A#', acc: 'sharp', base: 'A', answer: 'Bb', isBlackKey: true },
+    { note: 'Bb', acc: 'flat', base: 'B', answer: 'A#', isBlackKey: true },
+    { note: 'E', acc: 'natural', base: 'E', answer: 'Fb', isBlackKey: false },
+    { note: 'Fb', acc: 'flat', base: 'F', answer: 'E', isBlackKey: false },
+    { note: 'E#', acc: 'sharp', base: 'E', answer: 'F', isBlackKey: false },
+    { note: 'F', acc: 'natural', base: 'F', answer: 'E#', isBlackKey: false },
+    { note: 'B', acc: 'natural', base: 'B', answer: 'Cb', isBlackKey: false },
+    { note: 'Cb', acc: 'flat', base: 'C', answer: 'B', isBlackKey: false },
+    { note: 'B#', acc: 'sharp', base: 'B', answer: 'C', isBlackKey: false },
+    { note: 'C', acc: 'natural', base: 'C', answer: 'B#', isBlackKey: false }
+  ];
+
+  const allPossibleAnswers = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'Fb', 'E#', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'Cb', 'B#'];
+
+  function initEnApp() {
+    enStats = IntrvlCore.loadStats();
+    if (!enStats.highScoreDaily) enStats.highScoreDaily = 0;
+    if (!enStats.highScorePractice) enStats.highScorePractice = 0;
+    updateEnUIStats();
+    if (enStats.lastPlayedDate === IntrvlCore.todayStr()) {
+      showEnEndScreen(true, enStats.highScoreDaily);
+    }
+  }
+
+  function updateEnUIStats() {
+    document.getElementById('en-streak-count').textContent = enStats.currentStreak;
+    let accuracy = enStats.totalPlayed > 0 ? Math.round((enStats.totalCorrect / enStats.totalPlayed) * 100) : 0;
+    document.getElementById('en-accuracy-count').textContent = accuracy + "%";
+  }
+
+  function generateEnPool(useSeed) {
+    const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
+    const pool = [];
+    const activePairs = enharmonicPairs.filter(p => !useSeed ? p.isBlackKey : true);
+
+    for (let i = 0; i < 200; i++) {
+      const pair = activePairs[Math.floor(randomFunc() * activePairs.length)];
+      const clef = clefs[Math.floor(randomFunc() * clefs.length)];
+      const octaves = validOctaves[clef][pair.base];
+      const octave = octaves[Math.floor(randomFunc() * octaves.length)];
+      const imgUrl = `https://piapaul.github.io/music-theory-images/single/${clef}/single-${pair.base}${octave}-${pair.acc}-${clef}.png`;
+
+      const options = [pair.answer];
+      while (options.length < 4) {
+        const wrongNote = allPossibleAnswers[Math.floor(randomFunc() * allPossibleAnswers.length)];
+        if (!options.includes(wrongNote) && wrongNote !== pair.note) options.push(wrongNote);
+      }
+
+      for (let j = options.length - 1; j > 0; j--) {
+        const k = Math.floor(randomFunc() * (j + 1));
+        [options[j], options[k]] = [options[k], options[j]];
+      }
+
+      pool.push({ imgUrl: imgUrl, correctName: pair.answer, options: options, label: pair.note + ' = ' + pair.answer,
+                  alt: 'The note ' + pair.base + ' ' + pair.acc + ', octave ' + octave + ', written in the ' + clef + ' clef' });
+    }
+    return pool;
+  }
+
+  function startEnSprint(daily) {
+    enIsDailyMode = daily;
+    enScore = 0;
+    enCombo = 0;
+    enMaxCombo = 0;
+    enIsGameActive = true;
+
+    enPool = generateEnPool(enIsDailyMode);
+    currentLevel = 0;
+
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+
+    updateEnHUD();
+
+    enEndTime = Date.now() + 30000;
+    enTimerInterval = setInterval(enTick, 100);
+
+    nextEnQuestion();
+  }
+
+  function enTick() {
+    const remaining = Math.max(0, enEndTime - Date.now());
+    document.getElementById('ui-timer').textContent = Math.ceil(remaining / 1000);
+    if (remaining <= 0) {
+      clearInterval(enTimerInterval);
+      endEnSprint();
+    }
+  }
+
+  function updateEnHUD() {
+    document.getElementById('ui-score').textContent = enScore;
+    const badge = document.getElementById('ui-combo');
+    if (enCombo >= 3) {
+      const mult = 1 + Math.floor(enCombo / 3);
+      badge.textContent = `🔥 x${mult} COMBO`;
+      badge.classList.add('active');
+    } else {
+      badge.classList.remove('active');
+    }
+  }
+
+  function nextEnQuestion() {
+    if (!enIsGameActive) return;
+    enCurrentQ = enPool[currentLevel];
+    currentLevel++;
+
+    document.getElementById('main-target-image').src = enCurrentQ.imgUrl;
+    document.getElementById('main-target-image').alt = enCurrentQ.alt;
+
+    for (let i = 0; i < 4; i++) {
+      const btn = document.getElementById(`btn-en-${i}`);
+      btn.className = 'choice-btn';
+      btn.disabled = false;
+      btn.textContent = enCurrentQ.options[i];
+    }
+    IntrvlCore.refocus('btn-en-0');
+  }
+
+  function submitEnGuess(btnIndex) {
+    if (!enIsGameActive) return;
+    for (let i = 0; i < 4; i++) document.getElementById(`btn-en-${i}`).disabled = true;
+
+    const btn = document.getElementById(`btn-en-${btnIndex}`);
+    const isCorrect = enCurrentQ.options[btnIndex] === enCurrentQ.correctName;
+
+    enStats.totalPlayed++;
+    IntrvlCore.recordItem('enharmonic', enCurrentQ.label, isCorrect);
+    IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. The answer was ' + enCurrentQ.correctName);
+
+    if (isCorrect) {
+      enStats.totalCorrect++;
+      enCombo++;
+      if (enCombo > enMaxCombo) enMaxCombo = enCombo;
+      const multiplier = 1 + Math.floor(enCombo / 3);
+      enScore += (2 * multiplier);
+      btn.classList.add('correct');
+    } else {
+      enCombo = 0;
+      enScore = Math.max(0, enScore - 1);
+      btn.classList.add('incorrect');
+      const correctBtnIndex = enCurrentQ.options.indexOf(enCurrentQ.correctName);
+      document.getElementById(`btn-en-${correctBtnIndex}`).classList.add('correct');
+    }
+
+    updateEnHUD();
+    setTimeout(nextEnQuestion, 250);
+  }
+
+  function endEnSprint() {
+    enIsGameActive = false;
+    document.getElementById('screen-game').classList.add('hidden');
+
+    let isNewHigh = false;
+
+    if (enIsDailyMode) {
+      if (enStats.lastPlayedDate !== IntrvlCore.todayStr()) {
+        enStats.currentStreak++;
+        enStats.bestStreak = Math.max(enStats.bestStreak, enStats.currentStreak);
+        enStats.lastPlayedDate = IntrvlCore.todayStr();
+        IntrvlCore.recordDailyResult(enScore);
+      }
+      if (enScore > enStats.highScoreDaily) {
+        enStats.highScoreDaily = enScore;
+        enStats.dailyBest = { date: IntrvlCore.dailySeedDate(), score: enScore };
+        isNewHigh = true;
+      }
+    } else {
+      if (enScore > enStats.highScorePractice) {
+        enStats.highScorePractice = enScore;
+        isNewHigh = true;
+      }
+    }
+
+    IntrvlCore.saveStats(enStats);
+    updateEnUIStats();
+
+    if (isNewHigh) IntrvlCore.confetti('confetti-canvas-en');
+
+    IntrvlCore.announce('Time is up. You scored ' + enScore + '.');
+    showEnEndScreen(enIsDailyMode, enIsDailyMode ? enStats.highScoreDaily : enStats.highScorePractice, isNewHigh);
+  }
+
+  function showEnEndScreen(wasDaily, high, isNewHigh = false) {
+    document.getElementById('screen-done').classList.remove('hidden');
+
+    if (!enIsGameActive && enScore === 0 && wasDaily) {
+      document.getElementById('end-title').textContent = "Daily Complete!";
+      document.getElementById('end-score').textContent = `Best Score: ${enStats.highScoreDaily}`;
+      document.getElementById('end-high-score').style.display = 'none';
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: 'enharmonic', score: enStats.highScoreDaily, streak: enStats.currentStreak });
+
+      if (!document.getElementById('en-temp-prac')) {
+        const pracBtn = document.createElement('button');
+        pracBtn.id = 'en-temp-prac';
+        pracBtn.className = 'btn-practice';
+        pracBtn.textContent = 'Play Practice Sprint';
+        pracBtn.onclick = () => { document.getElementById('en-temp-prac').remove(); startEnSprint(false); };
+        document.getElementById('screen-done').appendChild(pracBtn);
+      }
+      return;
+    }
+
+    document.getElementById('end-title').textContent = isNewHigh ? "New High Score! 🎉" : "Time's Up!";
+    document.getElementById('end-score').textContent = `Score: ${enScore}`;
+    document.getElementById('end-high-score').style.display = 'block';
+    document.getElementById('end-high-score').textContent = `Personal High: ${high}`;
+
+    if (wasDaily) {
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: 'enharmonic', score: enScore, streak: enStats.currentStreak });
+
+      if (!document.getElementById('en-temp-prac')) {
+        const pracBtn = document.createElement('button');
+        pracBtn.id = 'en-temp-prac';
+        pracBtn.className = 'btn-practice';
+        pracBtn.textContent = 'Play Practice Sprint';
+        pracBtn.onclick = () => { document.getElementById('en-temp-prac').remove(); startEnSprint(false); };
+        document.getElementById('screen-done').appendChild(pracBtn);
+      }
+    } else {
+      document.getElementById('btn-share').classList.add('hidden');
+      document.getElementById('btn-try-again').classList.remove('hidden');
+    }
+  }
+
+  function resetEnToStart() {
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-start').classList.remove('hidden');
+    const tempPrac = document.getElementById('en-temp-prac');
+    if (tempPrac) tempPrac.remove();
+  }
+
+  function shareEnResults() {
+    let accuracy = enStats.totalPlayed > 0 ? Math.round((enStats.totalCorrect / enStats.totalPlayed) * 100) : 0;
+    const pageUrl = window.location.href.split('?')[0];
+    const textToShare = `I scored ${enScore} on the Intrvl Enharmonic Sprint! 🎼\n\nMax Combo: 🔥 x${enMaxCombo}\nStreak: ${enStats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you think faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Enharmonic Sprint');
+  }
+
+  // installed app: keep every picture this game can show, so it also works offline
+  IV.prefetch((function () {
+    const urls = [];
+    enharmonicPairs.forEach(pair => clefs.forEach(clef => (validOctaves[clef][pair.base] || []).forEach(octave => {
+      urls.push(`https://piapaul.github.io/music-theory-images/single/${clef}/single-${pair.base}${octave}-${pair.acc}-${clef}.png`);
+    })));
+    return urls;
+  })());
+  initEnApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away
+</script>
+

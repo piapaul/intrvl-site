@@ -1,0 +1,393 @@
+<!--@shared-css-->
+
+<style>
+  #csb-streak-count { color: var(--intrvl-accent-dark); }
+  #csb-accuracy-count { color: var(--intrvl-active-dark); }
+  #intrvl-app .csb-options-grid .choice-btn { font-family: var(--intrvl-font-body); font-size: 1.15rem; }
+
+  #csb-target-container {
+    background: var(--intrvl-panel-bg);
+    border: 2px solid var(--intrvl-border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 280px;
+    height: 100px;
+    margin: 0 auto 1.5rem auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 4px 15px rgba(0,0,0,0.02);
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  #csb-target-chord { font-family: var(--intrvl-font-head); font-size: 2.2rem; font-weight: 900; color: var(--intrvl-accent-dark); margin: 0; }
+</style>
+
+<canvas aria-hidden="true" id="confetti-canvas-csb" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; opacity:0; transition:opacity 1s ease;"></canvas>
+
+<div id="intrvl-app">
+
+  <div class="intrvl-header-v2">
+    <div class="stats-wrapper">
+      <div class="stat-box">
+        <span class="stat-label">Streak</span>
+        <div class="stat-display"><span aria-hidden="true">🔥</span> <span id="csb-streak-count">0</span></div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-display"><span aria-hidden="true">🎯</span> <span id="csb-accuracy-count">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="intrvl-game-area">
+
+    <div id="screen-start" class="button-stack">
+      <p style="color: var(--intrvl-ink-soft); line-height: 1.5; margin-bottom: 2rem;">
+        30 seconds. Spell the chord correctly.<br>Build your combo for massive points.
+      </p>
+      <button class="btn-primary" onclick="startCsbSprint(true)">Start Daily Sprint</button>
+      <button class="btn-practice" onclick="startCsbSprint(false)">Practice Sprint (Triads Only)</button>
+    </div>
+
+    <div id="screen-game" class="hidden" style="width: 100%;">
+      <div class="game-hud">
+        <div>Score: <span id="ui-score" class="score-highlight">0</span></div>
+        <div id="ui-combo" class="combo-badge" aria-hidden="true">🔥 x2 COMBO</div>
+        <div><span id="ui-timer" class="timer-highlight">30</span>s</div>
+      </div>
+
+      <p class="instruction-text">Spell the chord:</p>
+
+      <div id="csb-target-container">
+        <h2 id="csb-target-chord" aria-live="polite">Cmaj7</h2>
+      </div>
+
+      <div class="csb-options-grid" id="csb-buttons-container">
+        <button class="choice-btn" id="btn-csb-0" onclick="submitCsbGuess(0)">Opt 1</button>
+        <button class="choice-btn" id="btn-csb-1" onclick="submitCsbGuess(1)">Opt 2</button>
+        <button class="choice-btn" id="btn-csb-2" onclick="submitCsbGuess(2)">Opt 3</button>
+        <button class="choice-btn" id="btn-csb-3" onclick="submitCsbGuess(3)">Opt 4</button>
+      </div>
+    </div>
+
+    <div id="screen-done" class="hidden button-stack">
+      <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;" id="end-title">Time's Up!</h2>
+      <p style="font-size: 1.4rem; font-family: var(--intrvl-font-head); font-weight: 900; color: var(--intrvl-accent-dark); margin-bottom: 0.5rem;" id="end-score">Score: 0</p>
+      <p style="color: var(--intrvl-ink-soft); font-size: 0.9rem; margin-bottom: 2rem;" id="end-high-score">Personal High: 0</p>
+
+      <button class="btn-share hidden" id="btn-share" onclick="shareCsbResults()">Share Results 🚀</button>
+      <button class="btn-primary hidden" id="btn-try-again" onclick="resetCsbToStart()">Back to Menu</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.INTRVL_CONFIG = {
+    kind: 'game', id: 'spelling', gameId: 'spelling',
+    legacyStatsKeys: ['intrvlChordSpellingStatsV1'],
+    accentColors: ['#c79aa0', '#A9B9A2', '#bda569', '#9db0a8']
+  };
+</script>
+<!--@shared-js-->
+<script>
+  let csbPool = [];
+  let csbCurrentQ = null;
+  let csbScore = 0;
+  let csbCombo = 0;
+  let csbMaxCombo = 0;
+  let csbTimerInterval;
+  let csbEndTime;
+  let csbIsDailyMode = true;
+  let csbIsGameActive = false;
+  let currentLevel = 0;
+  let csbStats;
+
+  const chordLibrary = [
+    { sym: 'C Major', spell: 'C - E - G', level: 1 },
+    { sym: 'C minor', spell: 'C - Eb - G', level: 1 },
+    { sym: 'C7', spell: 'C - E - G - Bb', level: 2 },
+    { sym: 'Cmaj7', spell: 'C - E - G - B', level: 2 },
+    { sym: 'Cmin7', spell: 'C - Eb - G - Bb', level: 2 },
+    { sym: 'C dim', spell: 'C - Eb - Gb', level: 2 },
+    { sym: 'C aug', spell: 'C - E - G#', level: 2 },
+
+    { sym: 'D Major', spell: 'D - F# - A', level: 1 },
+    { sym: 'D minor', spell: 'D - F - A', level: 1 },
+    { sym: 'D7', spell: 'D - F# - A - C', level: 2 },
+    { sym: 'Dmaj7', spell: 'D - F# - A - C#', level: 2 },
+
+    { sym: 'Eb Major', spell: 'Eb - G - Bb', level: 1 },
+    { sym: 'Eb minor', spell: 'Eb - Gb - Bb', level: 1 },
+    { sym: 'Eb7', spell: 'Eb - G - Bb - Db', level: 2 },
+
+    { sym: 'E Major', spell: 'E - G# - B', level: 1 },
+    { sym: 'E minor', spell: 'E - G - B', level: 1 },
+    { sym: 'E7', spell: 'E - G# - B - D', level: 2 },
+
+    { sym: 'F Major', spell: 'F - A - C', level: 1 },
+    { sym: 'F minor', spell: 'F - Ab - C', level: 1 },
+    { sym: 'F7', spell: 'F - A - C - Eb', level: 2 },
+
+    { sym: 'F# minor', spell: 'F# - A - C#', level: 1 },
+
+    { sym: 'G Major', spell: 'G - B - D', level: 1 },
+    { sym: 'G minor', spell: 'G - Bb - D', level: 1 },
+    { sym: 'G7', spell: 'G - B - D - F', level: 2 },
+    { sym: 'Gmaj7', spell: 'G - B - D - F#', level: 2 },
+
+    { sym: 'Ab Major', spell: 'Ab - C - Eb', level: 1 },
+
+    { sym: 'A Major', spell: 'A - C# - E', level: 1 },
+    { sym: 'A minor', spell: 'A - C - E', level: 1 },
+    { sym: 'A7', spell: 'A - C# - E - G', level: 2 },
+
+    { sym: 'Bb Major', spell: 'Bb - D - F', level: 1 },
+    { sym: 'Bb minor', spell: 'Bb - Db - F', level: 1 },
+    { sym: 'Bb7', spell: 'Bb - D - F - Ab', level: 2 },
+
+    { sym: 'B Major', spell: 'B - D# - F#', level: 1 },
+    { sym: 'B minor', spell: 'B - D - F#', level: 1 },
+    { sym: 'B dim', spell: 'B - D - F', level: 2 }
+  ];
+
+  function initCsbApp() {
+    csbStats = IntrvlCore.loadStats();
+    if (!csbStats.highScoreDaily) csbStats.highScoreDaily = 0;
+    if (!csbStats.highScorePractice) csbStats.highScorePractice = 0;
+    updateCsbUIStats();
+    if (csbStats.lastPlayedDate === IntrvlCore.todayStr()) {
+      showCsbEndScreen(true, csbStats.highScoreDaily);
+    }
+  }
+
+  function updateCsbUIStats() {
+    document.getElementById('csb-streak-count').textContent = csbStats.currentStreak;
+    let accuracy = csbStats.totalPlayed > 0 ? Math.round((csbStats.totalCorrect / csbStats.totalPlayed) * 100) : 0;
+    document.getElementById('csb-accuracy-count').textContent = accuracy + "%";
+  }
+
+  function createPlausibleWrongSpelling(correctSpellStr, randomFunc) {
+    let notes = correctSpellStr.split(' - ');
+    const accidentals = ['', 'b', '#'];
+    let idxToMod = Math.floor(randomFunc() * (notes.length - 1)) + 1;
+    let baseNote = notes[idxToMod].replace(/[b#]/g, '');
+    let newAcc = accidentals[Math.floor(randomFunc() * accidentals.length)];
+    notes[idxToMod] = baseNote + newAcc;
+    return notes.join(' - ');
+  }
+
+  function generateCsbPool(useSeed) {
+    const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
+    const pool = [];
+    const activeChords = chordLibrary.filter(c => !useSeed ? c.level === 1 : true);
+
+    for (let i = 0; i < 200; i++) {
+      const targetChord = activeChords[Math.floor(randomFunc() * activeChords.length)];
+      const options = [targetChord.spell];
+
+      let failsafe = 0;
+      while (options.length < 4 && failsafe < 50) {
+        let wrongSpelling = createPlausibleWrongSpelling(targetChord.spell, randomFunc);
+        if (!options.includes(wrongSpelling)) options.push(wrongSpelling);
+        failsafe++;
+      }
+
+      for (let j = options.length - 1; j > 0; j--) {
+        const k = Math.floor(randomFunc() * (j + 1));
+        [options[j], options[k]] = [options[k], options[j]];
+      }
+
+      pool.push({ targetSymbol: targetChord.sym, correctSpell: targetChord.spell, options: options, label: targetChord.sym });
+    }
+    return pool;
+  }
+
+  function startCsbSprint(daily) {
+    csbIsDailyMode = daily;
+    csbScore = 0;
+    csbCombo = 0;
+    csbMaxCombo = 0;
+    csbIsGameActive = true;
+
+    csbPool = generateCsbPool(csbIsDailyMode);
+    currentLevel = 0;
+
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+
+    updateCsbHUD();
+
+    csbEndTime = Date.now() + 30000;
+    csbTimerInterval = setInterval(csbTick, 100);
+
+    nextCsbQuestion();
+  }
+
+  function csbTick() {
+    const remaining = Math.max(0, csbEndTime - Date.now());
+    document.getElementById('ui-timer').textContent = Math.ceil(remaining / 1000);
+    if (remaining <= 0) {
+      clearInterval(csbTimerInterval);
+      endCsbSprint();
+    }
+  }
+
+  function updateCsbHUD() {
+    document.getElementById('ui-score').textContent = csbScore;
+    const badge = document.getElementById('ui-combo');
+    if (csbCombo >= 3) {
+      const mult = 1 + Math.floor(csbCombo / 3);
+      badge.textContent = `🔥 x${mult} COMBO`;
+      badge.classList.add('active');
+    } else {
+      badge.classList.remove('active');
+    }
+  }
+
+  function nextCsbQuestion() {
+    if (!csbIsGameActive) return;
+    csbCurrentQ = csbPool[currentLevel];
+    currentLevel++;
+
+    document.getElementById('csb-target-chord').textContent = csbCurrentQ.targetSymbol;
+
+    for (let i = 0; i < 4; i++) {
+      const btn = document.getElementById(`btn-csb-${i}`);
+      btn.className = 'choice-btn';
+      btn.disabled = false;
+      btn.textContent = csbCurrentQ.options[i];
+    }
+    IntrvlCore.refocus('btn-csb-0');
+  }
+
+  function submitCsbGuess(btnIndex) {
+    if (!csbIsGameActive) return;
+    for (let i = 0; i < 4; i++) document.getElementById(`btn-csb-${i}`).disabled = true;
+
+    const btn = document.getElementById(`btn-csb-${btnIndex}`);
+    const isCorrect = csbCurrentQ.options[btnIndex] === csbCurrentQ.correctSpell;
+
+    csbStats.totalPlayed++;
+    IntrvlCore.recordItem('spelling', csbCurrentQ.label, isCorrect);
+    IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. ' + csbCurrentQ.targetSymbol + ' is spelled ' + csbCurrentQ.correctSpell);
+
+    if (isCorrect) {
+      csbStats.totalCorrect++;
+      csbCombo++;
+      if (csbCombo > csbMaxCombo) csbMaxCombo = csbCombo;
+      const multiplier = 1 + Math.floor(csbCombo / 3);
+      csbScore += (2 * multiplier);
+      btn.classList.add('correct');
+    } else {
+      csbCombo = 0;
+      csbScore = Math.max(0, csbScore - 1);
+      btn.classList.add('incorrect');
+      const correctBtnIndex = csbCurrentQ.options.indexOf(csbCurrentQ.correctSpell);
+      document.getElementById(`btn-csb-${correctBtnIndex}`).classList.add('correct');
+    }
+
+    updateCsbHUD();
+    setTimeout(nextCsbQuestion, 250);
+  }
+
+  function endCsbSprint() {
+    csbIsGameActive = false;
+    document.getElementById('screen-game').classList.add('hidden');
+
+    let isNewHigh = false;
+
+    if (csbIsDailyMode) {
+      if (csbStats.lastPlayedDate !== IntrvlCore.todayStr()) {
+        csbStats.currentStreak++;
+        csbStats.bestStreak = Math.max(csbStats.bestStreak, csbStats.currentStreak);
+        csbStats.lastPlayedDate = IntrvlCore.todayStr();
+        IntrvlCore.recordDailyResult(csbScore);
+      }
+      if (csbScore > csbStats.highScoreDaily) {
+        csbStats.highScoreDaily = csbScore;
+        csbStats.dailyBest = { date: IntrvlCore.dailySeedDate(), score: csbScore };
+        isNewHigh = true;
+      }
+    } else {
+      if (csbScore > csbStats.highScorePractice) {
+        csbStats.highScorePractice = csbScore;
+        isNewHigh = true;
+      }
+    }
+
+    IntrvlCore.saveStats(csbStats);
+    updateCsbUIStats();
+
+    if (isNewHigh) IntrvlCore.confetti('confetti-canvas-csb');
+
+    IntrvlCore.announce('Time is up. You scored ' + csbScore + '.');
+    showCsbEndScreen(csbIsDailyMode, csbIsDailyMode ? csbStats.highScoreDaily : csbStats.highScorePractice, isNewHigh);
+  }
+
+  function showCsbEndScreen(wasDaily, high, isNewHigh = false) {
+    document.getElementById('screen-done').classList.remove('hidden');
+
+    if (!csbIsGameActive && csbScore === 0 && wasDaily) {
+      document.getElementById('end-title').textContent = "Daily Complete!";
+      document.getElementById('end-score').textContent = `Best Score: ${csbStats.highScoreDaily}`;
+      document.getElementById('end-high-score').style.display = 'none';
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: 'spelling', score: csbStats.highScoreDaily, streak: csbStats.currentStreak });
+
+      if (!document.getElementById('csb-temp-prac')) {
+        const pracBtn = document.createElement('button');
+        pracBtn.id = 'csb-temp-prac';
+        pracBtn.className = 'btn-practice';
+        pracBtn.textContent = 'Play Practice Sprint';
+        pracBtn.onclick = () => { document.getElementById('csb-temp-prac').remove(); startCsbSprint(false); };
+        document.getElementById('screen-done').appendChild(pracBtn);
+      }
+      return;
+    }
+
+    document.getElementById('end-title').textContent = isNewHigh ? "New High Score! 🎉" : "Time's Up!";
+    document.getElementById('end-score').textContent = `Score: ${csbScore}`;
+    document.getElementById('end-high-score').style.display = 'block';
+    document.getElementById('end-high-score').textContent = `Personal High: ${high}`;
+
+    if (wasDaily) {
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: 'spelling', score: csbScore, streak: csbStats.currentStreak });
+
+      if (!document.getElementById('csb-temp-prac')) {
+        const pracBtn = document.createElement('button');
+        pracBtn.id = 'csb-temp-prac';
+        pracBtn.className = 'btn-practice';
+        pracBtn.textContent = 'Play Practice Sprint';
+        pracBtn.onclick = () => { document.getElementById('csb-temp-prac').remove(); startCsbSprint(false); };
+        document.getElementById('screen-done').appendChild(pracBtn);
+      }
+    } else {
+      document.getElementById('btn-share').classList.add('hidden');
+      document.getElementById('btn-try-again').classList.remove('hidden');
+    }
+  }
+
+  function resetCsbToStart() {
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-start').classList.remove('hidden');
+    const tempPrac = document.getElementById('csb-temp-prac');
+    if (tempPrac) tempPrac.remove();
+  }
+
+  function shareCsbResults() {
+    let accuracy = csbStats.totalPlayed > 0 ? Math.round((csbStats.totalCorrect / csbStats.totalPlayed) * 100) : 0;
+    const pageUrl = window.location.href.split('?')[0];
+    const textToShare = `I scored ${csbScore} on the Intrvl Chord Spelling Bee! 🐝\n\nMax Combo: 🔥 x${csbMaxCombo}\nStreak: ${csbStats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you spell faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Chord Spelling Bee');
+  }
+
+  initCsbApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away
+</script>
+

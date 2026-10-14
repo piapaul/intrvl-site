@@ -1,0 +1,163 @@
+<!--@shared-css-->
+<style>
+  .tn-note { font-family: var(--intrvl-font-head); font-size: 3.6rem; font-weight: 900; line-height: 1; text-align: center; min-height: 1em; }
+  .tn-note sub { font-size: 1.3rem; color: var(--intrvl-ink-soft); vertical-align: baseline; margin-left: 2px; }
+  .tn-track { position: relative; height: 54px; background: var(--intrvl-panel-bg); border: 2px solid var(--intrvl-border); border-radius: 12px; overflow: hidden; }
+  .tn-good { position: absolute; left: 45%; width: 10%; top: 0; bottom: 0; background: var(--intrvl-success-bg); }
+  .tn-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--intrvl-stone); }
+  .tn-needle { position: absolute; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--intrvl-accent-dark); left: 50%; transform: translateX(-50%); transition: left .08s ease, background .15s ease; }
+  .tn-needle.ok { background: var(--intrvl-success-fg); }
+  .tn-scale { display: flex; justify-content: space-between; font-size: .72rem; color: var(--intrvl-ink-soft); margin-top: .3rem; }
+  .tn-freq { text-align: center; font-weight: 600; color: var(--intrvl-ink-soft); font-size: .88rem; min-height: 1.3em; margin: .6rem 0 .2rem; }
+  #tn-toggle.running { background: var(--intrvl-error-fg); }
+  .tn-strings { display: flex; flex-wrap: wrap; gap: .45rem; }
+  .tn-str { flex: 1; min-width: 3.4rem; text-align: center; padding: .6rem .3rem; border-radius: 10px; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-stone); font: 800 1rem var(--intrvl-font-body); cursor: pointer; }
+  .tn-str small { display: block; font: 600 .62rem var(--intrvl-font-body); color: var(--intrvl-ink-soft); }
+  .tn-str.on { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); }
+</style>
+
+<div id="intrvl-app">
+  <div class="tn-note" aria-hidden="true"><span id="tn-note">–</span><sub id="tn-oct"></sub></div>
+  <div class="tn-freq" id="tn-freq"></div>
+  <div>
+    <div class="tn-track"><div class="tn-good"></div><div class="tn-mid"></div><div class="tn-needle" id="tn-needle"></div></div>
+    <div class="tn-scale"><span>−50¢ flat</span><span>in tune</span><span>sharp +50¢</span></div>
+  </div>
+  <p class="iv-center" id="tn-hint" style="margin:.8rem 0 1rem;min-height:1.3em;font-weight:600">Tap Start, allow the microphone, then play one steady note.</p>
+  <div class="button-stack"><button class="btn-start" id="tn-toggle">Start listening</button></div>
+
+  <h2 class="iv-h2">Tune by ear</h2>
+  <div class="iv-chips" id="tn-inst" style="margin-bottom:.7rem"></div>
+  <div class="tn-strings" id="tn-strings"></div>
+  <p class="iv-note" style="margin-top:.5rem">Tap a string to hear its pitch, then match it.</p>
+
+  <h2 class="iv-h2">Reference pitch (A4)</h2>
+  <div class="iv-row"><button class="iv-iconbtn" id="tn-a-" aria-label="Lower A">−</button><b id="tn-a" style="min-width:5rem;text-align:center">A = 440 Hz</b><button class="iv-iconbtn" id="tn-a+" aria-label="Raise A">+</button></div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'tool', id: 'tuner' };</script>
+<!--@shared-js-->
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  var A4 = 440, MIN = 50, MAX = 1600;
+  var actx = null, analyser = null, stream = null, raf = null, listening = false, buf = null, last = 0, recent = [];
+
+  var INSTRUMENTS = {
+    Guitar: [['E', 2, 40], ['A', 2, 45], ['D', 3, 50], ['G', 3, 55], ['B', 3, 59], ['E', 4, 64]],
+    Bass: [['E', 1, 28], ['A', 1, 33], ['D', 2, 38], ['G', 2, 43]],
+    Ukulele: [['G', 4, 67], ['C', 4, 60], ['E', 4, 64], ['A', 4, 69]],
+    Violin: [['G', 3, 55], ['D', 4, 62], ['A', 4, 69], ['E', 5, 76]],
+    Viola: [['C', 3, 48], ['G', 3, 55], ['D', 4, 62], ['A', 4, 69]],
+    Cello: [['C', 2, 36], ['G', 2, 43], ['D', 3, 50], ['A', 3, 57]],
+    Chromatic: [['C', 4, 60], ['D', 4, 62], ['E', 4, 64], ['F', 4, 65], ['G', 4, 67], ['A', 4, 69], ['B', 4, 71]]
+  };
+
+  // Autocorrelation pitch detector restricted to the lag range for MIN..MAX Hz.
+  function detect(b, sr) {
+    var n = b.length, rms = 0, i;
+    for (i = 0; i < n; i++) rms += b[i] * b[i];
+    rms = Math.sqrt(rms / n);
+    if (rms < 0.01) return -1;
+    var minLag = Math.max(2, Math.floor(sr / MAX)), maxLag = Math.min(n - 2, Math.floor(sr / MIN));
+    var c = new Float32Array(maxLag + 2), lag, j;
+    for (lag = minLag - 1; lag <= maxLag + 1 && lag < n; lag++) {
+      var s = 0; for (j = 0; j < n - lag; j++) s += b[j] * b[j + lag];
+      c[lag] = s;
+    }
+    // first strong peak (avoids picking an octave-below sub-harmonic)
+    var best = -1, bestV = 0;
+    for (lag = minLag; lag <= maxLag; lag++) if (c[lag] > bestV) { bestV = c[lag]; best = lag; }
+    if (best < 0) return -1;
+    var thresh = bestV * 0.9;
+    for (lag = minLag + 1; lag < maxLag; lag++) {
+      if (c[lag] > thresh && c[lag] >= c[lag - 1] && c[lag] >= c[lag + 1]) { best = lag; break; }
+    }
+    var t0 = best;
+    if (best > minLag && best < maxLag) {
+      var x1 = c[best - 1], x2 = c[best], x3 = c[best + 1], a = (x1 + x3 - 2 * x2) / 2, bb = (x3 - x1) / 2;
+      if (a) t0 = best - bb / (2 * a);
+    }
+    return t0 > 0 ? sr / t0 : -1;
+  }
+  window.IVTuner = { detect: detect };
+
+  function toNote(f) {
+    var midi = 69 + 12 * Math.log2(f / A4), r = Math.round(midi);
+    return { name: NAMES[((r % 12) + 12) % 12], oct: Math.floor(r / 12) - 1, cents: Math.round((midi - r) * 100) };
+  }
+
+  // Screen readers get a short, throttled spoken summary instead of every refresh of the display.
+  var saidText = '', saidAt = 0;
+  function say(msg) {
+    var now = Date.now();
+    if (msg !== saidText && now - saidAt > 1800) { saidText = msg; saidAt = now; IntrvlCore.announce(msg); }
+  }
+  function loop() {
+    if (!listening) return;
+    raf = requestAnimationFrame(loop);
+    var now = performance.now(); if (now - last < 60) return; last = now;
+    analyser.getFloatTimeDomainData(buf);
+    var f = detect(buf, actx.sampleRate);
+    if (f > MIN && f < MAX) {
+      recent.push(f); if (recent.length > 5) recent.shift();
+      var med = recent.slice().sort(function (a, b) { return a - b; })[Math.floor(recent.length / 2)];
+      var n = toNote(med);
+      $('tn-note').textContent = n.name; $('tn-oct').textContent = n.oct;
+      $('tn-freq').textContent = med.toFixed(1) + ' Hz · ' + (n.cents > 0 ? '+' : '') + n.cents + '¢';
+      $('tn-needle').style.left = (50 + Math.max(-50, Math.min(50, n.cents)) / 50 * 45) + '%';
+      var ok = Math.abs(n.cents) <= 5;
+      $('tn-needle').classList.toggle('ok', ok);
+      $('tn-hint').textContent = ok ? 'In tune ✓' : (n.cents > 0 ? 'A little sharp — tune down' : 'A little flat — tune up');
+      say(n.name + ' ' + n.oct + ', ' + (ok ? 'in tune' : (n.cents > 0 ? 'a little sharp' : 'a little flat')));
+    } else {
+      recent = [];
+      $('tn-hint').textContent = 'Listening… play one steady note';
+    }
+  }
+  function start() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('tn-hint').textContent = 'This browser can’t use the microphone here.'; return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (s) {
+      stream = s; actx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = actx.createAnalyser(); analyser.fftSize = 4096; buf = new Float32Array(analyser.fftSize);
+      actx.createMediaStreamSource(s).connect(analyser);
+      listening = true; $('tn-toggle').textContent = 'Stop listening'; $('tn-toggle').classList.add('running'); loop();
+    }).catch(function () { $('tn-hint').textContent = 'Couldn’t reach the microphone — check this site’s permissions.'; });
+  }
+  function stop() {
+    listening = false; if (raf) cancelAnimationFrame(raf);
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    if (actx) actx.close();
+    $('tn-toggle').textContent = 'Start listening'; $('tn-toggle').classList.remove('running');
+    $('tn-note').textContent = '–'; $('tn-oct').textContent = ''; $('tn-freq').textContent = '';
+    $('tn-needle').style.left = '50%'; $('tn-needle').classList.remove('ok');
+    $('tn-hint').textContent = 'Tap Start, allow the microphone, then play one steady note.';
+  }
+  $('tn-toggle').onclick = function () { listening ? stop() : start(); };
+
+  // ---- tune by ear ----
+  var inst = 'Guitar', toneCtx = null;
+  function drawInst() {
+    $('tn-inst').innerHTML = Object.keys(INSTRUMENTS).map(function (k) { return '<button class="iv-chip' + (k === inst ? ' on' : '') + '" data-k="' + k + '">' + k + '</button>'; }).join('');
+    $('tn-strings').innerHTML = INSTRUMENTS[inst].map(function (s) { return '<button class="tn-str" data-m="' + s[2] + '">' + s[0] + '<small>' + s[0] + s[1] + '</small></button>'; }).join('');
+  }
+  $('tn-inst').onclick = function (e) { var b = e.target.closest('.iv-chip'); if (b) { inst = b.getAttribute('data-k'); drawInst(); } };
+  $('tn-strings').onclick = function (e) {
+    var b = e.target.closest('.tn-str'); if (!b) return;
+    Array.prototype.forEach.call($('tn-strings').children, function (c) { c.classList.toggle('on', c === b); });
+    toneCtx = toneCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (toneCtx.state === 'suspended') toneCtx.resume();
+    var m = Number(b.getAttribute('data-m')), f = A4 * Math.pow(2, (m - 69) / 12), t = toneCtx.currentTime;
+    var o = toneCtx.createOscillator(), g = toneCtx.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.04); g.gain.setValueAtTime(0.5, t + 2.2); g.gain.linearRampToValueAtTime(0, t + 2.8);
+    o.connect(g); g.connect(toneCtx.destination); o.start(t); o.stop(t + 2.9);
+  };
+  function setA(v) { A4 = Math.max(415, Math.min(466, v)); $('tn-a').textContent = 'A = ' + A4 + ' Hz'; }
+  $('tn-a-').onclick = function () { setA(A4 - 1); };
+  $('tn-a+').onclick = function () { setA(A4 + 1); };
+  drawInst();
+})();
+</script>
+

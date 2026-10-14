@@ -1,0 +1,330 @@
+<!--@shared-css-->
+
+<style>
+  #btn-play-1 { background: #ada6b8; }
+  #btn-play-both { background: var(--intrvl-stone); width: 105px; height: 105px; font-size: 1.2rem; }
+  #btn-play-2 { background: var(--intrvl-accent); }
+  #interval-streak-count { color: var(--intrvl-accent-dark); }
+  #interval-accuracy-count { color: var(--intrvl-active-dark); }
+</style>
+
+<canvas aria-hidden="true" id="confetti-canvas-interval" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; opacity:0; transition:opacity 1s ease;"></canvas>
+
+<div id="intrvl-app">
+
+  <div class="intrvl-header-v2">
+    <div class="stats-wrapper">
+      <div class="stat-box">
+        <span class="stat-label">Streak</span>
+        <div class="stat-display"><span aria-hidden="true">🔥</span> <span id="interval-streak-count">0</span></div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-display"><span aria-hidden="true">🎯</span> <span id="interval-accuracy-count">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="intrvl-game-area">
+    <div id="screen-start">
+      <p style="margin-bottom: 1rem; color: var(--intrvl-ink-soft); line-height: 1.6; font-size: 1.1rem;">
+        Test your ears. Recognise the interval.<br>A new challenge every day.
+      </p>
+
+      <div class="mobile-warning">
+        🔔 Phone Users: Please ensure your device's physical Silent Switch is turned OFF.
+      </div>
+
+      <button class="btn-start" onclick="startGame(true)">Start Daily Puzzle</button>
+    </div>
+
+    <div id="screen-game" class="hidden">
+      <div class="level-title" id="ui-level-title" aria-live="polite">Level 1</div>
+      <p class="instruction-text" id="ui-question-text">Identify the <strong>INTERVAL</strong></p>
+
+      <div class="press-indicator" id="ui-indicator"><span aria-hidden="true">👇</span> Tap to listen</div>
+
+      <div class="audio-controls">
+        <button class="play-btn" id="btn-play-1" onclick="playCurrentInterval(1)">Note 1</button>
+        <button class="play-btn" id="btn-play-both" onclick="playCurrentInterval(3)">Together</button>
+        <button class="play-btn" id="btn-play-2" onclick="playCurrentInterval(2)">Note 2</button>
+      </div>
+
+      <div class="choice-wrapper">
+        <div class="choice-controls">
+          <button class="choice-btn" id="btn-choice-0" onclick="submitGuess(0)">Choice 1</button>
+          <button class="choice-btn" id="btn-choice-1" onclick="submitGuess(1)">Choice 2</button>
+          <button class="choice-btn" id="btn-choice-2" onclick="submitGuess(2)">Choice 3</button>
+        </div>
+      </div>
+
+      <div class="message" id="ui-message" role="status" aria-live="polite"></div>
+    </div>
+
+    <div id="screen-done" class="hidden">
+      <h2 style="font-size: 1.4rem; margin-bottom: 1rem; color: var(--intrvl-active-dark);" id="done-title">Puzzle Complete!</h2>
+      <p style="color: var(--intrvl-ink-soft); line-height: 1.6; margin-bottom: 2.5rem;">
+        You've secured your streak for today.<br>Come back tomorrow, or keep practicing.
+      </p>
+
+      <div class="button-stack">
+        <button class="btn-share hidden" id="btn-share" onclick="shareResults()">Share Results 🚀</button>
+        <button class="btn-practice" onclick="startGame(false)">Endless Practice Mode</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  window.INTRVL_CONFIG = {
+    kind: 'game', id: 'interval', gameId: 'interval',
+    legacyStatsKeys: ['intrvlIntervalStatsV1'],
+    accentColors: ['#c2a687', '#A9B9A2', '#bda569', '#b3a8c7']
+  };
+</script>
+<!--@shared-js-->
+<script>
+  let audioCtx;
+  let currentPuzzle = [];
+  let currentLevel = 0;
+  let isDailyMode = true;
+  let sessionResults = [];
+  let stats;
+
+  const intervalDict = [
+    { name: "Minor 2nd", semitones: 1 },
+    { name: "Major 2nd", semitones: 2 },
+    { name: "Minor 3rd", semitones: 3 },
+    { name: "Major 3rd", semitones: 4 },
+    { name: "Perfect 4th", semitones: 5 },
+    { name: "Tritone", semitones: 6 },
+    { name: "Perfect 5th", semitones: 7 },
+    { name: "Minor 6th", semitones: 8 },
+    { name: "Major 6th", semitones: 9 },
+    { name: "Minor 7th", semitones: 10 },
+    { name: "Major 7th", semitones: 11 },
+    { name: "Perfect Octave", semitones: 12 }
+  ];
+
+  function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function generatePuzzle(useSeed) {
+    const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
+    const puzzle = [];
+    const usedIntervalIndices = new Set();
+
+    for (let i = 0; i < 3; i++) {
+      const baseMidi = Math.floor(randomFunc() * 20) + 48;
+
+      let correctIntervalIndex;
+      do {
+        correctIntervalIndex = Math.floor(randomFunc() * intervalDict.length);
+      } while (usedIntervalIndices.has(correctIntervalIndex));
+
+      usedIntervalIndices.add(correctIntervalIndex);
+      const targetInterval = intervalDict[correctIntervalIndex];
+
+      let direction = randomFunc() < 0.5 ? 1 : -1;
+      if (baseMidi + (targetInterval.semitones * direction) < 40) direction = 1;
+
+      const pitch1Freq = midiToFreq(baseMidi);
+      const pitch2Freq = midiToFreq(baseMidi + (targetInterval.semitones * direction));
+
+      let wrong1, wrong2;
+      do { wrong1 = intervalDict[Math.floor(randomFunc() * intervalDict.length)]; }
+      while (wrong1.name === targetInterval.name);
+
+      do { wrong2 = intervalDict[Math.floor(randomFunc() * intervalDict.length)]; }
+      while (wrong2.name === targetInterval.name || wrong2.name === wrong1.name);
+
+      let options = [targetInterval.name, wrong1.name, wrong2.name];
+      for (let j = options.length - 1; j > 0; j--) {
+        const k = Math.floor(randomFunc() * (j + 1));
+        [options[j], options[k]] = [options[k], options[j]];
+      }
+
+      const correctIndex = options.indexOf(targetInterval.name);
+
+      puzzle.push({ pitch1: pitch1Freq, pitch2: pitch2Freq, options: options, answer: correctIndex, label: targetInterval.name });
+    }
+    return puzzle;
+  }
+
+  function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioCtx.createBuffer(1, 1, 22050);
+    source.connect(audioCtx.destination);
+    source.start(0);
+  }
+
+  function playTone(freq1, freq2 = null) {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    document.getElementById('ui-indicator').style.opacity = '0';
+
+    const createOsc = (freq) => {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      return osc;
+    };
+
+    const osc1 = createOsc(freq1);
+    osc1.start();
+    osc1.stop(audioCtx.currentTime + 1.5);
+
+    if (freq2) {
+      const osc2 = createOsc(freq2);
+      osc2.start();
+      osc2.stop(audioCtx.currentTime + 1.5);
+    }
+  }
+
+  function playCurrentInterval(mode) {
+    const data = currentPuzzle[currentLevel];
+    if (mode === 1) playTone(data.pitch1);
+    else if (mode === 2) playTone(data.pitch2);
+    else if (mode === 3) playTone(data.pitch1, data.pitch2);
+  }
+
+  function initApp() {
+    stats = IntrvlCore.loadStats();
+    updateStatsUI();
+    if (stats.lastPlayedDate === IntrvlCore.todayStr()) {
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('done-title').textContent = "Daily Complete!";
+      const todaysBlocks = IntrvlCore.loadDailyBlocks();
+      const todayKey = IntrvlCore.dailySeedDate();
+      if (todaysBlocks[todayKey]) {
+        document.getElementById('btn-share').classList.remove('hidden');
+        const correctCount = (todaysBlocks[todayKey].match(/✅/g) || []).length;
+        IntrvlLeaderboard.attachSubmitButton({ gameId: 'interval', score: correctCount, streak: stats.currentStreak });
+      }
+      document.getElementById('screen-done').classList.remove('hidden');
+    }
+  }
+
+  function updateStatsUI() {
+    document.getElementById('interval-streak-count').textContent = stats.currentStreak;
+    let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    document.getElementById('interval-accuracy-count').textContent = accuracy + "%";
+  }
+
+  function startGame(isDaily) {
+    initAudio();
+    isDailyMode = isDaily;
+    currentLevel = 0;
+    sessionResults = [];
+    currentPuzzle = generatePuzzle(isDailyMode);
+
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('ui-indicator').style.opacity = '1';
+
+    document.getElementById('ui-level-title').style.color = !isDailyMode ? 'var(--intrvl-active-dark)' : 'var(--intrvl-accent-dark)';
+    loadLevelUI();
+  }
+
+  function loadLevelUI() {
+    let modeText = isDailyMode ? "Level " : "Practice Round ";
+    document.getElementById('ui-level-title').textContent = modeText + (currentLevel + 1);
+
+    for (let i = 0; i < 3; i++) {
+      const btn = document.getElementById(`btn-choice-${i}`);
+      btn.textContent = currentPuzzle[currentLevel].options[i];
+    }
+
+    document.getElementById('ui-message').textContent = "";
+    document.getElementById('ui-message').className = "message";
+    IntrvlCore.refocus('btn-play-1');
+  }
+
+  function submitGuess(guessNum) {
+    const correctAnswer = currentPuzzle[currentLevel].answer;
+    const msgEl = document.getElementById('ui-message');
+
+    document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+    let wasCorrect = guessNum === correctAnswer;
+
+    if (wasCorrect) {
+      msgEl.textContent = "Correct!";
+      msgEl.className = "message msg-success";
+      sessionResults.push(true);
+      IntrvlCore.recordItem('interval', currentPuzzle[currentLevel].label, true);
+    } else {
+      msgEl.textContent = "Incorrect.";
+      msgEl.className = "message msg-error";
+      sessionResults.push(false);
+      IntrvlCore.recordItem('interval', currentPuzzle[currentLevel].label, false);
+      IntrvlCore.shake(document.getElementById('intrvl-game-area'));
+    }
+
+    setTimeout(() => {
+      document.querySelectorAll('.choice-btn').forEach(b => b.disabled = false);
+      currentLevel++;
+
+      if (currentLevel >= 3) {
+        if (isDailyMode && stats.lastPlayedDate !== IntrvlCore.todayStr()) {
+          const correctCount = sessionResults.filter(Boolean).length;
+          IntrvlCore.recordCompletion(stats, correctCount, 3);
+          IntrvlCore.recordDailyResult(correctCount);
+          IntrvlCore.saveDailyBlock(sessionResults);
+          updateStatsUI();
+          IntrvlCore.confetti('confetti-canvas-interval');
+        } else if (isDailyMode) {
+          const correctCount = sessionResults.filter(Boolean).length;
+          stats.totalPlayed += 3;
+          stats.totalCorrect += correctCount;
+          IntrvlCore.saveStats(stats);
+          updateStatsUI();
+        }
+
+        document.getElementById('screen-game').classList.add('hidden');
+        if (isDailyMode) {
+          document.getElementById('done-title').textContent = "Puzzle Complete!";
+          document.getElementById('btn-share').classList.remove('hidden');
+          IntrvlLeaderboard.attachSubmitButton({ gameId: 'interval', score: sessionResults.filter(Boolean).length, streak: stats.currentStreak });
+        } else {
+          document.getElementById('done-title').textContent = "Great Practice!";
+          document.getElementById('btn-share').classList.add('hidden');
+        }
+        document.getElementById('screen-done').classList.remove('hidden');
+      } else {
+        document.getElementById('ui-indicator').style.opacity = '1';
+        loadLevelUI();
+      }
+    }, 1200);
+  }
+
+  function shareResults() {
+    const correctAnswers = sessionResults.filter(Boolean).length;
+    let introPhrase = "";
+
+    if (correctAnswers === 3) introPhrase = "Perfect 3/3 on today's Interval game with Intrvl! 🎯";
+    else if (correctAnswers === 2) introPhrase = "2/3 on today's Interval game with Intrvl! 🎵 Almost perfect.";
+    else if (correctAnswers === 1) introPhrase = "1/3 on today's Interval game. Some tricky chords today! 👂";
+    else introPhrase = "Today's Interval game was tough! 😅 Can you do better?";
+
+    const accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    const blocks = sessionResults.map(res => res ? "🟩" : "🟥").join("");
+    const pageUrl = window.location.href.split('?')[0];
+
+    const textToShare = `${introPhrase}\n\nStreak: 🔥 ${stats.currentStreak} | Accuracy: 🎯 ${accuracy}%\n\n${blocks}\n\nTest your ears at:\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Daily Interval');
+  }
+
+  initApp();
+</script>
+

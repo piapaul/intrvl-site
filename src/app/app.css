@@ -1,0 +1,12 @@
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #FAFAFA;
+  color: #1C1C1C;
+  font-family: var(--intrvl-font-body, system-ui, sans-serif);
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
+}
+main { display: block; }
+#intrvl-app { margin-left: auto; margin-right: auto; }
+@media (max-width: 600px) { #intrvl-app { margin-top: 0; border-radius: 0; border-left: 0; border-right: 0; } }

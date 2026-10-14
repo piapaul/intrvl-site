@@ -1,0 +1,43 @@
+<!--@shared-css-->
+
+<div id="intrvl-app">
+  <div class="iv-row between">
+    <span class="iv-label" style="margin:0">Choose a game</span>
+    <span class="iv-note" id="games-count"></span>
+  </div>
+  <div class="iv-list" id="games-list" style="margin-top:.5rem"></div>
+
+  <h2 class="iv-h2">Your scores</h2>
+  <div class="iv-card" id="games-scores" style="padding-top:.4rem;padding-bottom:.4rem"></div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'games' };</script>
+<!--@shared-js-->
+<script>
+  (function () {
+    var Core = IntrvlCore, esc = Core.esc, today = Core.dailySeedDate(), done = 0;
+
+    document.getElementById('games-list').innerHTML = IV.GAMES.map(function (g) {
+      var st = Core.statsFor(g.id), played = st.lastPlayedDate === Core.todayStr();
+      if (played) done++;
+      return '<a class="iv-item" href="' + IV.href(g.url) + '" style="--item-accent:' + g.accent + '">' +
+        '<div class="iv-badge" aria-hidden="true">' + g.icon + '</div>' +
+        '<div><div class="iv-item-name">' + esc(g.name) + '</div><div class="iv-item-blurb">' + esc(g.blurb) + '</div></div>' +
+        '<div class="iv-item-end">' + (st.currentStreak > 0 ? '<span aria-hidden="true">🔥</span> ' + st.currentStreak + '<span class="iv-sr"> day streak</span>' : '') + (played ? '<span class="iv-done" aria-hidden="true">✓</span><span class="iv-sr">Done today</span>' : '<span class="iv-chev" aria-hidden="true">›</span>') + '</div></a>';
+    }).join('');
+    document.getElementById('games-count').textContent = done + ' of ' + IV.GAMES.length + ' done today';
+
+    var rows = IV.GAMES.map(function (g) {
+      var st = Core.statsFor(g.id), h = Core.getHistoryFor(g.id);
+      var played = Object.keys(h).length;
+      var sub = played ? ('🔥 ' + st.currentStreak + ' · best ' + st.bestStreak + ' · ' + played + ' day' + (played > 1 ? 's' : '') + ' played') : 'Not played yet';
+      var todays = h[today] != null ? '<b>' + esc(h[today]) + '</b> today' : '';
+      return '<div class="iv-scoreline"><div class="iv-grow"><div class="t">' + g.icon + ' ' + esc(g.name) + '</div><div class="s">' + sub + '</div></div>' +
+        '<span class="iv-note">' + todays + '</span><button class="iv-iconbtn" data-id="' + g.id + '" aria-label="History for ' + esc(g.name) + '">📅</button></div>';
+    });
+    var el = document.getElementById('games-scores');
+    el.innerHTML = rows.join('');
+    el.onclick = function (e) { var b = e.target.closest('button[data-id]'); if (b) IV.openHistory(b.getAttribute('data-id')); };
+  })();
+</script>
+

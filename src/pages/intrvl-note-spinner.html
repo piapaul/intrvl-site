@@ -1,0 +1,104 @@
+<!--@shared-css-->
+<style>
+  .sp-wrap { position: relative; width: 270px; max-width: 100%; aspect-ratio: 1; margin: .4rem auto 1.3rem; }
+  .sp-pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid var(--intrvl-ink); z-index: 3; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+  .sp-wheel { position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--intrvl-ink); box-shadow: 0 8px 20px rgba(28,28,28,.18); will-change: transform; }
+  .sp-hub { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--intrvl-ink); z-index: 2; }
+  .sp-letter { position: absolute; font: 800 1.05rem var(--intrvl-font-body); color: var(--intrvl-ink); transform-origin: center; user-select: none; }
+  .sp-result { text-align: center; margin-top: 1.2rem; }
+  .sp-big { font: 900 3.2rem/1 var(--intrvl-font-head); color: var(--intrvl-accent-dark); }
+  .sp-chip { display: inline-block; margin: .25rem; padding: .45rem .9rem; border-radius: 999px; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-stone); font-weight: 700; font-size: .92rem; }
+</style>
+
+<canvas aria-hidden="true" id="sp-confetti" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;opacity:0;transition:opacity 1s ease"></canvas>
+
+<div id="intrvl-app">
+  <p class="iv-center" style="color:var(--intrvl-ink-soft);margin-bottom:1rem">Spin for a letter, then borrow one of its moods to shape how you play.</p>
+  <div class="sp-wrap" aria-hidden="true">
+    <div class="sp-pointer"></div>
+    <div class="sp-wheel" id="sp-wheel"></div>
+    <div class="sp-hub"></div>
+  </div>
+  <div class="button-stack"><button class="btn-start" id="sp-btn">Spin</button></div>
+  <div class="sp-result hidden" id="sp-result">
+    <div class="sp-big" id="sp-letter"></div>
+    <div class="iv-label iv-center" style="margin:.5rem 0 .4rem">Try playing it…</div>
+    <div id="sp-words"></div>
+  </div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'tool', id: 'note-spinner', accentColors: ['#b0a3c7', '#A9B9A2', '#c79aa0', '#c2a687'] };</script>
+<!--@shared-js-->
+<script>
+(function () {
+  var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), SLICE = 360 / 26, SIZE = 270, C = SIZE / 2, R = 100;
+  var COLORS = ['#c79aa0', '#A9B9A2'];
+  // ~6-7 ways to play a piece per letter — adjectives, plus short "like a ___" similes where real adjectives are scarce.
+  var SUGGESTIONS = {
+    A: ['Airy', 'Aggressive', 'Anxious', 'Ancient', 'Autumnal', 'Arch', 'Angelic'],
+    B: ['Bold', 'Breezy', 'Bittersweet', 'Brooding', 'Bright', 'Broken', 'Bouncy'],
+    C: ['Cheeky', 'Cold', 'Cheerful', 'Cautious', 'Cinematic', 'Crunchy', 'Creeping'],
+    D: ['Dark', 'Dreamy', 'like a Dog', 'Dusty', 'Delicate', 'Defiant', 'Distant'],
+    E: ['Eerie', 'Elegant', 'Explosive', 'Exhausted', 'Earnest', 'Ethereal', 'Electric'],
+    F: ['Fierce', 'Fragile', 'Foggy', 'Frantic', 'Featherlight', 'Frosty', 'Fearless'],
+    G: ['Gentle', 'Growling', 'Golden', 'Gloomy', 'Glassy', 'Graceful', 'Gritty'],
+    H: ['Haunted', 'Hesitant', 'Heavy', 'Hopeful', 'Hushed', 'Hollow', 'Honest'],
+    I: ['Icy', 'Intimate', 'Impatient', 'Inevitable', 'Innocent', 'Intense', 'Impish'],
+    J: ['Jagged', 'Joyful', 'Jazzy', 'Jittery', 'like a Jellyfish', 'Jubilant', 'Jaded'],
+    K: ['Keening', 'Knotted', 'Kaleidoscopic', 'Kind', 'like a Kite', 'Kinetic', 'Kittenish'],
+    L: ['Lonely', 'Lush', 'Light-footed', 'Lurching', 'Loving', 'Lopsided', 'Longing'],
+    M: ['Melancholy', 'Menacing', 'Misty', 'Mischievous', 'Marching', 'Muted', 'Molten'],
+    N: ['Nervous', 'Nostalgic', 'Nocturnal', 'Numb', 'Noble', 'like a Ninja', 'Naive'],
+    O: ['Ominous', 'Overjoyed', 'Off-kilter', 'Opulent', 'Optimistic', 'Orbiting', 'Outraged'],
+    P: ['Playful', 'Pensive', 'Prickly', 'Proud', 'Patient', 'Powdery', 'Piercing'],
+    Q: ['Questioning', 'Quivering', 'Quiet', 'Quick', 'Queasy', 'Quixotic', 'Quaint'],
+    R: ['Restless', 'Radiant', 'Ragged', 'Reckless', 'Reverent', 'Rusty', 'Rolling'],
+    S: ['Sad', 'Soaring', 'Skittish', 'Solemn', 'Stormy', 'Sultry', 'like Sunlight'],
+    T: ['Tender', 'Tense', 'Twisted', 'Triumphant', 'Tired', 'Torn', 'Tumbling'],
+    U: ['Unhinged', 'Unsettled', 'Uneasy', 'Uplifting', 'Unruly', 'Unravelling', 'Urgent'],
+    V: ['Vulnerable', 'Vivid', 'Vengeful', 'Velvety', 'Vast', 'Volatile', 'Vibrant'],
+    W: ['Wistful', 'Wild', 'Weary', 'Weightless', 'Wounded', 'Whispered', 'Warped'],
+    X: ['Xenial', 'Xeric', 'Xanthic', 'like a Xylophone', 'like an X-ray', 'like Xanadu'],
+    Y: ['Yearning', 'Youthful', 'Yielding', 'Yawning', 'Yelping', 'like Yarn (tangled)'],
+    Z: ['Zealous', 'Zany', 'Zesty', 'Zen', 'Zephyr-like', 'Zigzagging', 'Zombie-like']
+  };
+  var wheel = document.getElementById('sp-wheel'), btn = document.getElementById('sp-btn'), res = document.getElementById('sp-result');
+  var rot = 0, spinning = false;
+
+  (function build() {
+    var stops = LETTERS.map(function (_, i) { return COLORS[i % 2] + ' ' + (i * SLICE).toFixed(3) + 'deg ' + ((i + 1) * SLICE).toFixed(3) + 'deg'; });
+    wheel.style.background = 'conic-gradient(' + stops.join(',') + ')';
+    var size = wheel.getBoundingClientRect().width || SIZE;
+    LETTERS.forEach(function (ch, i) {
+      var mid = (i + 0.5) * SLICE, rad = mid * Math.PI / 180;
+      var s = document.createElement('span'); s.className = 'sp-letter'; s.textContent = ch;
+      // percentages keep the labels correct if the wheel shrinks on a small phone
+      s.style.left = (50 + (R / SIZE * 100) * Math.sin(rad)) + '%';
+      s.style.top = (50 - (R / SIZE * 100) * Math.cos(rad)) + '%';
+      s.style.transform = 'translate(-50%,-50%) rotate(' + mid + 'deg)';
+      wheel.appendChild(s);
+    });
+  })();
+
+  function spin() {
+    if (spinning) return;
+    spinning = true; btn.disabled = true; res.classList.add('hidden');
+    var idx = Math.floor(Math.random() * 26);
+    var finalMod = (360 - (idx + 0.5) * SLICE) % 360, cur = ((rot % 360) + 360) % 360, d = finalMod - cur;
+    if (d <= 0) d += 360;
+    rot += d + (5 + Math.floor(Math.random() * 3)) * 360;
+    wheel.style.transition = 'transform 4s cubic-bezier(0.12,0.72,0.24,1)';
+    wheel.style.transform = 'rotate(' + rot + 'deg)';
+    setTimeout(function () {
+      spinning = false; btn.disabled = false;
+      document.getElementById('sp-letter').textContent = LETTERS[idx];
+      document.getElementById('sp-words').innerHTML = (SUGGESTIONS[LETTERS[idx]] || []).map(function (w) { return '<span class="sp-chip">' + w + '</span>'; }).join('');
+      res.classList.remove('hidden');
+      IntrvlCore.announce('The wheel landed on ' + LETTERS[idx] + '. Try playing it: ' + (SUGGESTIONS[LETTERS[idx]] || []).join(', ') + '.');
+      IntrvlCore.confetti('sp-confetti');
+    }, 4050);
+  }
+  btn.onclick = spin;
+})();
+</script>
+

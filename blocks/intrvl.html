@@ -1,6 +1,8 @@
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=Raleway:wght@400;500;600;700;800&display=swap');
 :root {
+--intrvl-font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
+--intrvl-font-body: 'Raleway', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 --intrvl-ink: #1c1c1c;
 --intrvl-ink-soft: #6b6b6b;
 --intrvl-card-bg: #f5f3ef;
@@ -12,10 +14,10 @@
 --intrvl-success-fg: #3a5535;
 --intrvl-error-bg: #f6e3e6;
 --intrvl-error-fg: #7a3f47;
---intrvl-active: #8a9e82;
---intrvl-active-dark: #5e7a56;
---intrvl-accent: #8a9e82;
---intrvl-accent-dark: #5e7a56;
+--intrvl-active: #A9B9A2;
+--intrvl-active-dark: #566B50;
+--intrvl-accent: #A9B9A2;
+--intrvl-accent-dark: #566B50;
 }
 #intrvl-app, #intrvl-app *, #intrvl-app *::before, #intrvl-app *::after { box-sizing: border-box; }
 #intrvl-app {
@@ -26,7 +28,9 @@ background: var(--intrvl-card-bg);
 color: var(--intrvl-ink);
 border: 1px solid var(--intrvl-border);
 border-radius: 14px;
-font-family: 'Raleway', sans-serif;
+font-family: var(--intrvl-font-body);
+font-weight: 500;
+font-variant-numeric: lining-nums;
 font-size: 15px;
 line-height: 1.5;
 text-align: left;
@@ -34,8 +38,8 @@ position: relative;
 -webkit-text-size-adjust: 100%;
 }
 #intrvl-app h1, #intrvl-app h2, #intrvl-app h3, #intrvl-app h4 {
-font-family: 'Fraunces', serif;
-font-weight: 700;
+font-family: var(--intrvl-font-head);
+font-weight: 900;
 line-height: 1.2;
 letter-spacing: 0;
 text-transform: none;
@@ -53,7 +57,7 @@ color: var(--intrvl-ink);
 .iv-badge { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; background: var(--intrvl-accent); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
 #intrvl-app .iv-title { font-size: 1.3rem; }
 .iv-sub { font-size: .85rem; color: var(--intrvl-ink-soft); margin-top: 2px; }
-#intrvl-app .iv-h2 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.02rem; margin: 1.3rem 0 .6rem; }
+#intrvl-app .iv-h2 { font-family: var(--intrvl-font-head); font-weight: 900; font-size: 1.02rem; margin: 1.3rem 0 .6rem; }
 .iv-label { display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--intrvl-ink-soft); margin: 0 0 .4rem; }
 .iv-note { font-size: .84rem; color: var(--intrvl-ink-soft); }
 .iv-empty { font-size: .9rem; color: var(--intrvl-ink-soft); font-style: italic; }
@@ -71,8 +75,8 @@ display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
 border: 1px solid transparent;
 padding: .7rem 1.4rem;
 border-radius: 999px;
-font-family: 'Fraunces', serif;
-font-weight: 700;
+font-family: var(--intrvl-font-body);
+font-weight: 800;
 font-size: .98rem;
 cursor: pointer;
 transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
@@ -86,19 +90,19 @@ line-height: 1.2;
 .iv-btn.block, .btn-start, .btn-primary, .btn-practice, .btn-share { width: 100%; max-width: 320px; }
 .iv-btn.ghost, .btn-practice { background: var(--intrvl-panel-bg); color: var(--intrvl-ink); border-color: var(--intrvl-stone); }
 .iv-btn.ghost:hover, .btn-practice:hover { border-color: var(--intrvl-accent); box-shadow: none; }
-.iv-btn.small { padding: .45rem .9rem; font-size: .82rem; }
+.iv-btn.small { padding: .45rem .9rem; font-size: .84rem; min-height: 40px; }
 .iv-btn.accent, .btn-share { background: var(--intrvl-accent); color: var(--intrvl-ink); }
 .iv-btn.danger { background: var(--intrvl-error-fg); color: #fff; }
-.iv-iconbtn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--intrvl-stone); background: var(--intrvl-panel-bg); cursor: pointer; font-size: 1.1rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.iv-iconbtn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--intrvl-stone); background: var(--intrvl-panel-bg); cursor: pointer; font-size: 1.1rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .iv-iconbtn:hover { border-color: var(--intrvl-accent); }
 .iv-linkbtn { background: none; border: none; padding: 0; color: var(--intrvl-accent-dark); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: inherit; }
 .button-stack { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
 .iv-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
-.iv-chip { border: 1px solid var(--intrvl-stone); background: var(--intrvl-panel-bg); color: var(--intrvl-ink); border-radius: 999px; padding: .38rem .8rem; font-weight: 700; font-size: .86rem; cursor: pointer; line-height: 1.2; }
+.iv-chip { min-height: 40px; border: 1px solid var(--intrvl-stone); background: var(--intrvl-panel-bg); color: var(--intrvl-ink); border-radius: 999px; padding: .38rem .8rem; font-weight: 700; font-size: .86rem; cursor: pointer; line-height: 1.2; }
 .iv-chip:hover { border-color: var(--intrvl-accent); }
 .iv-chip.on { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); color: var(--intrvl-ink); }
 .iv-seg { display: flex; background: var(--intrvl-border); border-radius: 999px; padding: 3px; gap: 2px; }
-.iv-seg button { flex: 1; border: none; background: transparent; border-radius: 999px; padding: .45rem .6rem; font-weight: 700; font-size: .84rem; cursor: pointer; color: var(--intrvl-ink-soft); }
+.iv-seg button { flex: 1; border: none; background: transparent; border-radius: 999px; padding: .45rem .6rem; font-weight: 700; font-size: .84rem; cursor: pointer; color: #4a4a4a; min-height: 36px; }
 .iv-seg button.on { background: var(--intrvl-panel-bg); color: var(--intrvl-ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .iv-select, .iv-input { width: 100%; padding: .6rem .75rem; border: 1px solid var(--intrvl-stone); border-radius: 10px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .95rem; }
 .iv-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236b6b6b' stroke-width='2'/></svg>"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
@@ -111,7 +115,7 @@ line-height: 1.2;
 .iv-item { display: flex; align-items: center; gap: .8rem; padding: .7rem .85rem; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-left: 4px solid var(--item-accent, var(--intrvl-accent)); border-radius: 12px; text-decoration: none; color: var(--intrvl-ink); }
 a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28,28,.08); }
 .iv-item .iv-badge { width: 38px; height: 38px; font-size: 1.15rem; background: var(--item-accent, var(--intrvl-accent)); }
-.iv-item-name { font-family: 'Fraunces', serif; font-weight: 700; font-size: .98rem; line-height: 1.2; }
+.iv-item-name { font-family: var(--intrvl-font-head); font-weight: 900; font-size: .98rem; line-height: 1.2; }
 .iv-item-blurb { font-size: .8rem; color: var(--intrvl-ink-soft); margin-top: 1px; }
 .iv-item-end { margin-left: auto; display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--intrvl-ink-soft); font-weight: 700; flex-shrink: 0; }
 .iv-done { width: 22px; height: 22px; border-radius: 50%; background: var(--intrvl-active-dark); color: #fff; font-size: .72rem; display: flex; align-items: center; justify-content: center; font-weight: 800; }
@@ -126,75 +130,75 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 .iv-hero a { display: flex; flex-direction: column; gap: .35rem; padding: 1rem; border-radius: 14px; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); }
 .iv-hero a:hover { box-shadow: 0 6px 16px rgba(28,28,28,.1); transform: translateY(-1px); }
 .iv-hero .iv-badge { margin-bottom: .2rem; }
-.iv-hero b { font-family: 'Fraunces', serif; font-size: 1.1rem; }
+.iv-hero b { font-family: var(--intrvl-font-head); font-weight: 900; font-size: 1.1rem; }
 .iv-hero small { color: var(--intrvl-ink-soft); font-size: .8rem; line-height: 1.35; }
 .iv-scoreline { display: flex; justify-content: space-between; align-items: center; padding: .55rem 0; border-bottom: 1px solid var(--intrvl-border); gap: .6rem; }
 .iv-scoreline:last-child { border-bottom: none; }
 .iv-scoreline .t { font-weight: 700; }
 .iv-scoreline .s { font-size: .8rem; color: var(--intrvl-ink-soft); }
-.iv-bigval { font-family: 'Fraunces', serif; font-weight: 700; font-size: 3rem; line-height: 1; text-align: center; font-variant-numeric: tabular-nums; }
+.iv-bigval { font-family: var(--intrvl-font-head); font-weight: 900; font-size: 3rem; line-height: 1; text-align: center; font-variant-numeric: tabular-nums; }
 .iv-unit { font-size: .72rem; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; color: var(--intrvl-ink-soft); text-align: center; }
 .iv-notechips { display: flex; flex-wrap: wrap; gap: .35rem; }
 .iv-n { min-width: 2.3rem; text-align: center; padding: .35rem .5rem; border-radius: 8px; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); font-weight: 700; font-size: .92rem; }
-.iv-n.root { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); }
+.iv-n.root { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); color: var(--intrvl-ink); }
 .iv-n small { display: block; font-size: .6rem; font-weight: 600; color: var(--intrvl-ink-soft); }
-#iv-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9000; display: flex; background: #fff; border-top: 1px solid var(--intrvl-border); padding-bottom: env(safe-area-inset-bottom, 0); box-shadow: 0 -4px 16px rgba(0,0,0,.06); font-family: 'Raleway', sans-serif; }
-#iv-tabbar .iv-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 8px 2px; background: none; border: none; color: var(--intrvl-ink-soft); font: 700 .62rem 'Raleway', sans-serif; text-transform: uppercase; letter-spacing: .4px; text-decoration: none; cursor: pointer; }
+#iv-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9000; display: flex; background: #fff; border-top: 1px solid var(--intrvl-border); padding-bottom: env(safe-area-inset-bottom, 0); box-shadow: 0 -4px 16px rgba(0,0,0,.06); font-family: var(--intrvl-font-body); }
+#iv-tabbar .iv-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 8px 2px; background: none; border: none; color: var(--intrvl-ink-soft); font: 700 .62rem var(--intrvl-font-body); text-transform: uppercase; letter-spacing: .2px; text-decoration: none; cursor: pointer; min-height: 52px; }
 #iv-tabbar .iv-tab .i { font-size: 1.25rem; line-height: 1.1; }
 #iv-tabbar .iv-tab.on { color: var(--intrvl-ink); }
 #iv-tabbar .iv-tab.on .l { border-bottom: 2px solid var(--intrvl-active-dark); }
 #iv-backdrop { position: fixed; inset: 0; background: rgba(28,28,28,.45); z-index: 9100; }
-#iv-sheet { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 560px; z-index: 9200; max-height: 86vh; overflow-y: auto; background: var(--intrvl-card-bg); border-radius: 20px 20px 0 0; padding: 1.4rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom, 0)); box-shadow: 0 -8px 30px rgba(0,0,0,.18); font-family: 'Raleway', sans-serif; font-size: 15px; line-height: 1.5; color: var(--intrvl-ink); text-align: left; box-sizing: border-box; }
+#iv-sheet { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 560px; z-index: 9200; max-height: 86vh; overflow-y: auto; background: var(--intrvl-card-bg); border-radius: 20px 20px 0 0; padding: 1.4rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom, 0)); box-shadow: 0 -8px 30px rgba(0,0,0,.18); font-family: var(--intrvl-font-body); font-size: 15px; line-height: 1.5; color: var(--intrvl-ink); text-align: left; box-sizing: border-box; }
 #iv-sheet *, #iv-sheet *::before, #iv-sheet *::after { box-sizing: border-box; }
 :where(#iv-sheet button, #iv-sheet input, #iv-sheet select, #iv-sheet textarea) { font-family: inherit; font-size: inherit; color: inherit; }
-#iv-sheet h3 { font-family: 'Fraunces', serif; font-size: 1.15rem; margin: 0 0 .8rem; font-weight: 700; color: var(--intrvl-ink); }
+#iv-sheet h3 { font-family: var(--intrvl-font-head); font-size: 1.15rem; margin: 0 0 .8rem; font-weight: 900; color: var(--intrvl-ink); }
 #iv-sheet p { margin: 0; }
-#iv-sheet .x { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 1.1rem; color: var(--intrvl-ink-soft); cursor: pointer; }
+#iv-sheet .x { position: absolute; top: 6px; right: 8px; width: 44px; height: 44px; background: none; border: none; font-size: 1.1rem; color: var(--intrvl-ink-soft); cursor: pointer; }
 .iv-hiddenx { display: none !important; }
 #iv-sheet .iv-sel-n { display: block; }
 .iv-code { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .7rem .85rem; background: #fff; border: 1px solid var(--intrvl-border); border-radius: 12px; margin-bottom: .9rem; }
-.iv-code b { font-family: 'Fraunces', serif; letter-spacing: 1.5px; font-size: 1.15rem; }
+.iv-code b { font-family: var(--intrvl-font-head); font-weight: 900; letter-spacing: 1.5px; font-size: 1.15rem; }
 .iv-addrow { display: flex; gap: .5rem; margin-bottom: .4rem; }
 .iv-status { font-size: .82rem; min-height: 1.2em; color: var(--intrvl-accent-dark); margin-bottom: .6rem; }
 .iv-boardrow { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .5rem .2rem; border-bottom: 1px solid var(--intrvl-border); }
 .iv-boardrow:last-child { border-bottom: none; }
 .iv-boardrow.me { font-weight: 700; color: var(--intrvl-active-dark); }
-.iv-boardrow .rk { width: 1.4rem; color: var(--intrvl-placeholder); font-size: .8rem; font-weight: 700; }
-.iv-boardrow .x2 { background: none; border: none; color: var(--intrvl-ink-soft); cursor: pointer; padding: 2px 6px; }
+.iv-boardrow .rk { width: 1.4rem; color: var(--intrvl-ink-soft); font-size: .8rem; font-weight: 700; }
+.iv-boardrow .x2 { background: none; border: none; color: var(--intrvl-ink-soft); cursor: pointer; padding: 2px 6px; min-width: 44px; min-height: 44px; }
 .iv-boardrow .x2:hover { color: var(--intrvl-error-fg); }
 .iv-avatars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: .8rem; }
 .iv-avatars button { aspect-ratio: 1; font-size: 1.35rem; background: #fff; border: 2px solid var(--intrvl-border); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .iv-avatars button.on { border-color: var(--intrvl-active-dark); background: var(--intrvl-success-bg); }
 .iv-share-status { margin-top: 1rem; font-size: .84rem; color: var(--intrvl-ink-soft); text-align: center; }
 .iv-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
-.iv-cal-nav button { width: 34px; height: 34px; border: 1px solid var(--intrvl-border); background: #fff; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+.iv-cal-nav button { width: 44px; height: 44px; border: 1px solid var(--intrvl-border); background: #fff; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
 .iv-cal-nav button:disabled { opacity: .35; cursor: not-allowed; }
 .iv-cal-wd, .iv-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .iv-cal-wd { text-align: center; font-size: .72rem; font-weight: 700; color: var(--intrvl-ink-soft); margin-bottom: 4px; }
 .iv-cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: .78rem; color: var(--intrvl-ink-soft); }
 .iv-cal-cell.e { visibility: hidden; }
 .iv-cal-cell.today { border: 2px solid var(--intrvl-active-dark); }
-.iv-cal-cell.played { background: var(--cal-accent, var(--intrvl-accent)); color: #fff; }
+.iv-cal-cell.played { background: var(--cal-accent, var(--intrvl-accent)); color: var(--intrvl-ink); }
 .iv-cal-cell b { font-size: .84rem; }
 .intrvl-header-v2 { display: flex; justify-content: center; margin: 0 0 1rem; padding-bottom: .9rem; border-bottom: 1px dashed var(--intrvl-border); }
 .stats-wrapper { display: flex; gap: 2.2rem; justify-content: center; }
 .stat-box { display: flex; flex-direction: column; align-items: center; }
-.stat-label { font: 700 .66rem 'Fraunces', serif; text-transform: uppercase; letter-spacing: 2px; color: var(--intrvl-ink-soft); margin-bottom: .25rem; }
-.stat-display { font: 700 1.5rem/1 'Fraunces', serif; display: flex; align-items: center; gap: 6px; color: var(--intrvl-ink); }
+.stat-label { font: 800 .66rem var(--intrvl-font-body); text-transform: uppercase; letter-spacing: 2px; color: var(--intrvl-ink-soft); margin-bottom: .25rem; }
+.stat-display { font: 900 1.5rem/1 var(--intrvl-font-head); display: flex; align-items: center; gap: 6px; color: var(--intrvl-ink); }
 #intrvl-game-area { min-height: 240px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; text-align: center; }
-.level-title { font: 700 .76rem 'Fraunces', serif; color: var(--intrvl-accent-dark); text-transform: uppercase; letter-spacing: 2px; margin-bottom: .4rem; }
+.level-title { font: 800 .76rem var(--intrvl-font-body); color: var(--intrvl-accent-dark); text-transform: uppercase; letter-spacing: 2px; margin-bottom: .4rem; }
 .instruction-text { font-size: 1.05rem; font-weight: 600; margin: 0 0 1rem; color: var(--intrvl-ink); }
-.instruction-text strong { color: var(--intrvl-accent-dark); font-family: 'Fraunces', serif; text-transform: uppercase; }
+.instruction-text strong { color: var(--intrvl-accent-dark); font-family: var(--intrvl-font-body); font-weight: 800; text-transform: uppercase; }
 .press-indicator { font-size: .78rem; color: var(--intrvl-ink-soft); margin-bottom: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; animation: iv-bounce 2s infinite ease-in-out; }
 @keyframes iv-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .audio-controls { display: flex; gap: 12px; margin-bottom: 1.6rem; justify-content: center; align-items: center; }
-.play-btn { width: 78px; height: 78px; border-radius: 50%; border: 2px solid var(--intrvl-border); background: #fff; color: var(--intrvl-ink); font: 700 .9rem 'Fraunces', serif; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 4px 12px rgba(28,28,28,.08); transition: transform .15s ease; }
+.play-btn { width: 78px; height: 78px; border-radius: 50%; border: 2px solid var(--intrvl-border); background: #fff; color: var(--intrvl-ink); font: 800 .9rem var(--intrvl-font-body); cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 4px 12px rgba(28,28,28,.08); transition: transform .15s ease; }
 .play-btn:hover { transform: scale(1.05); border-color: var(--intrvl-accent); }
 .play-btn:active { transform: scale(.95); }
 .choice-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .choice-controls { display: flex; gap: 10px; width: 100%; justify-content: center; flex-wrap: wrap; }
 .en-options-grid, .csb-options-grid, .clef-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 380px; }
-.choice-btn { flex: 1; min-width: 104px; max-width: 170px; padding: 12px 8px; background: #fff; border: 2px solid var(--intrvl-border); color: var(--intrvl-ink); border-radius: 12px; font: 700 .98rem 'Fraunces', serif; cursor: pointer; transition: all .15s ease; line-height: 1.2; }
+.choice-btn { flex: 1; min-width: 104px; max-width: 170px; padding: 12px 8px; background: #fff; border: 2px solid var(--intrvl-border); color: var(--intrvl-ink); border-radius: 12px; font: 800 .98rem var(--intrvl-font-body); cursor: pointer; transition: all .15s ease; line-height: 1.2; }
 .choice-btn:hover:not(:disabled) { border-color: var(--intrvl-accent); background: var(--intrvl-card-bg); }
 .choice-btn:disabled { opacity: .5; cursor: not-allowed; }
 .choice-btn:active:not(:disabled) { transform: scale(.96); }
@@ -202,26 +206,71 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 .choice-btn.incorrect { background: var(--intrvl-error-bg) !important; border-color: #c98b95 !important; color: var(--intrvl-error-fg) !important; animation: iv-shake .3s ease-in-out; }
 @keyframes iv-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .clef-btn-img { display: block; width: 100%; max-width: 100%; height: auto; max-height: 40px; object-fit: contain; transition: filter .1s ease; }
-.game-hud { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: .9rem; font: 600 1rem 'Fraunces', serif; color: var(--intrvl-ink-soft); position: relative; }
+.game-hud { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: .9rem; font: 700 1rem var(--intrvl-font-body); color: var(--intrvl-ink-soft); position: relative; }
 .score-highlight { color: var(--intrvl-accent-dark); font-weight: 800; font-size: 1.2rem; }
 .timer-highlight { color: var(--intrvl-ink); font-weight: 800; }
-.combo-badge { position: absolute; top: -4px; left: 50%; background: var(--intrvl-accent); color: #fff; padding: 5px 11px; border-radius: 20px; font-weight: 800; font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; transform: translateX(-50%) scale(0); transition: transform .2s cubic-bezier(.175, .885, .32, 1.275); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.combo-badge { position: absolute; top: -4px; left: 50%; background: var(--intrvl-accent); color: var(--intrvl-ink); padding: 5px 11px; border-radius: 20px; font-weight: 800; font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; transform: translateX(-50%) scale(0); transition: transform .2s cubic-bezier(.175, .885, .32, 1.275); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
 .combo-badge.active { transform: translateX(-50%) scale(1); }
-.message { margin-top: 1.1rem; font: 700 1rem 'Raleway', sans-serif; min-height: 26px; }
+.message { margin-top: 1.1rem; font: 700 1rem var(--intrvl-font-body); min-height: 26px; }
 .msg-success { color: var(--intrvl-success-fg); }
 .msg-error { color: var(--intrvl-error-fg); }
 .mobile-warning { display: none; font-size: .8rem; color: var(--intrvl-error-fg); margin-bottom: 1.1rem; font-weight: 700; padding: 0 .5rem; }
 @media (max-width: 600px) { .mobile-warning { display: block; } }
 .btn-start, .btn-primary { margin-bottom: 8px; }
-.game-title-sm { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; }
-.game-end-title { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700; margin-bottom: .4rem; }
-.game-end-score { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700; margin-bottom: .3rem; color: var(--intrvl-accent-dark); }
+.game-title-sm { font-family: var(--intrvl-font-head); font-size: 1.3rem; font-weight: 900; }
+.game-end-title { font-family: var(--intrvl-font-head); font-size: 1.4rem; font-weight: 900; margin-bottom: .4rem; }
+.game-end-score { font-family: var(--intrvl-font-head); font-size: 1.15rem; font-weight: 900; margin-bottom: .3rem; color: var(--intrvl-accent-dark); }
 #page .sqs-block-html:not(.sqs-block-website-component) h1 { font-size: clamp(1.7rem, 6.5vw, 2.4rem) !important; line-height: 1.05 !important; margin: 0 0 .15em !important; }
 #page .sqs-block-html:not(.sqs-block-website-component) h2 { font-size: clamp(1.05rem, 4vw, 1.4rem) !important; line-height: 1.15 !important; margin: 0 !important; }
+
+/* ---- accessibility ------------------------------------------------------------------------------ */
+.iv-sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+#intrvl-app :focus-visible, #iv-sheet :focus-visible, #iv-tabbar :focus-visible { outline: 3px solid var(--intrvl-ink); outline-offset: 2px; }
+#iv-sheet:focus { outline: none; }
+/* not just colour: right and wrong answers also get a tick or a cross */
+.choice-btn.correct::after { content: ' \2713'; }
+.choice-btn.incorrect::after { content: ' \2717'; }
+.msg-success::before { content: '\2713  '; }
+.msg-error::before { content: '\2717  '; }
+@media (prefers-reduced-motion: reduce) {
+  #intrvl-app *, #intrvl-app *::before, #intrvl-app *::after, #iv-sheet *, #iv-tabbar *, #iv-offline { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* ---- progress screen ---------------------------------------------------------------------------- */
+.iv-stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: 1.1rem; }
+.iv-stats3 > div { background: #fff; border: 1px solid var(--intrvl-border); border-radius: 12px; padding: .65rem .4rem; text-align: center; }
+.iv-stats3 b { display: block; font-family: var(--intrvl-font-head); font-weight: 900; font-size: 1.5rem; line-height: 1.1; }
+.iv-stats3 span { display: block; font-size: .72rem; font-weight: 700; color: var(--intrvl-ink-soft); margin-top: 2px; }
+.iv-heat { margin-bottom: .2rem; }
+.iv-heat-wd, .iv-heat-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.iv-heat-wd { font-size: .68rem; font-weight: 700; color: var(--intrvl-ink-soft); text-align: center; margin-bottom: 4px; }
+.iv-heat-cell { aspect-ratio: 1; border-radius: 6px; background: var(--intrvl-border); }
+.iv-heat-cell.e { visibility: hidden; }
+.iv-heat-cell.l1 { background: #cfdac9; }
+.iv-heat-cell.l2 { background: #A9B9A2; }
+.iv-heat-cell.l3 { background: #7f9578; }
+.iv-heat-cell.l4 { background: #566B50; }
+.iv-heat-cell.today { outline: 2px solid var(--intrvl-ink); outline-offset: 1px; }
+.iv-meter { display: block; height: 6px; border-radius: 999px; background: var(--intrvl-border); margin-top: .35rem; overflow: hidden; }
+.iv-meter i { display: block; height: 100%; border-radius: 999px; background: var(--intrvl-active-dark); }
+.iv-spot.weak .iv-meter i { background: #9b5a64; }
+.iv-tick { color: var(--intrvl-active-dark); font-weight: 800; }
+.iv-details { margin-top: 1.2rem; border-top: 1px solid var(--intrvl-border); padding-top: .8rem; }
+.iv-details summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.iv-details textarea { font-size: .8rem; resize: vertical; }
+
+/* ---- installed app ------------------------------------------------------------------------------- */
+#iv-offline { position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0)); transform: translateX(-50%); z-index: 9050; width: calc(100% - 24px); max-width: 520px; background: var(--intrvl-ink); color: #fff; font-family: var(--intrvl-font-body); font-size: .82rem; font-weight: 700; line-height: 1.35; padding: .6rem .9rem; border-radius: 12px; text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+#intrvl-app [tabindex="-1"]:focus { outline: none; }
+/* Raleway's default figures sit at x-height; the 'font' shorthand used by buttons and labels resets that, so set it for everything */
+#intrvl-app, #intrvl-app *, #iv-sheet, #iv-sheet *, #iv-tabbar, #iv-tabbar * { font-variant-numeric: lining-nums; }
+#intrvl-app .iv-bigval, #intrvl-app .tn-note, #intrvl-app .tn-freq { font-variant-numeric: lining-nums tabular-nums; }
 </style>
 
 <div id="intrvl-app">
   <div class="iv-hero" id="home-hero"></div>
+
+  <div class="iv-card iv-row between" id="home-progress" style="margin-top:1rem"></div>
 
   <div class="iv-row between" style="margin-top:1.3rem">
     <h2 class="iv-h2" style="margin:0">Today’s games</h2>
@@ -370,6 +419,132 @@ IV.find = function (id) {
     h[dailySeedDate()] = score;
     lsSet('intrvl.' + GAME_ID + '.history.v1', JSON.stringify(h));
   }
+
+  // ---- progress tracking ------------------------------------------------------------------------
+  // Every answer is remembered against a short label (e.g. "Minor 7th", "Treble", "Cmaj7") so the Progress
+  // screen can show which topics need the most work.  Stored per game as { label: { a: answered, c: correct,
+  // r: last 12 results as 1/0, d: date last seen } }.
+  function itemsKey(id) { return 'intrvl.' + id + '.items.v1'; }
+  function getItemsFor(id) {
+    try { var o = JSON.parse(lsGet(itemsKey(id)) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; }
+  }
+  function recordItem(id, label, correct) {
+    label = String(label == null ? '' : label).replace(/[<>]/g, '').trim().slice(0, 40);
+    if (!id || !label) return;
+    var all = getItemsFor(id), it = all[label] || { a: 0, c: 0, r: '', d: '' };
+    it.a += 1;
+    if (correct) it.c += 1;
+    it.r = (it.r + (correct ? '1' : '0')).slice(-12);
+    it.d = dailySeedDate();
+    all[label] = it;
+    lsSet(itemsKey(id), JSON.stringify(all));
+  }
+  function recentAccuracy(it) {
+    var r = it.r || '';
+    return r ? (r.split('1').length - 1) / r.length : (it.a ? it.c / it.a : 0);
+  }
+  function rankedItems(minAnswers) {
+    var out = [], games = (global.IV && global.IV.GAMES) || [];
+    games.forEach(function (g) {
+      var items = getItemsFor(g.id);
+      Object.keys(items).forEach(function (label) {
+        var it = items[label];
+        if (!it || it.a < minAnswers) return;
+        out.push({ game: g, label: label, answered: it.a, correct: it.c, recent: recentAccuracy(it), recentN: (it.r || '').length || it.a, overall: it.c / it.a });
+      });
+    });
+    return out;
+  }
+  // topics you get wrong most often lately (needs 3+ answers so one slip doesn't count)
+  function weakSpots(limit) {
+    return rankedItems(3).filter(function (x) { return x.recent < 0.85; })
+      .sort(function (a, b) { return a.recent - b.recent || b.answered - a.answered; }).slice(0, limit || 5);
+  }
+  function strongSpots(limit) {
+    return rankedItems(5).filter(function (x) { return x.recent >= 0.9; })
+      .sort(function (a, b) { return b.answered - a.answered; }).slice(0, limit || 3);
+  }
+  function addDays(dateStr, n) {
+    var d = new Date(dateStr + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return dailySeedDate(d);
+  }
+  // date -> how many of the daily games were completed that day
+  function allPlayedDates() {
+    var set = {}, games = (global.IV && global.IV.GAMES) || [];
+    games.forEach(function (g) {
+      var h = getHistoryFor(g.id);
+      Object.keys(h).forEach(function (d) { set[d] = (set[d] || 0) + 1; });
+    });
+    return set;
+  }
+  // days in a row on which at least one daily game was finished (today not played yet doesn't break it)
+  function practiceStreak() {
+    var set = allPlayedDates(), today = dailySeedDate(), d = set[today] ? today : addDays(today, -1), n = 0;
+    while (set[d]) { n += 1; d = addDays(d, -1); }
+    return n;
+  }
+
+  // ---- back up / move progress ------------------------------------------------------------------
+  // The website and the installed app are different addresses, so each keeps its own progress.  This turns
+  // everything into one block of text that can be pasted into the other.
+  var BACKUP_PREFIX = 'INTRVL1:';
+  function exportProgress() {
+    var data = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('intrvl.') === 0 && k.indexOf('intrvl.board.') !== 0 && k !== 'intrvl.reg') data[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* storage blocked */ }
+    return BACKUP_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  }
+  function importProgress(text) {
+    text = String(text || '').trim();
+    if (text.indexOf(BACKUP_PREFIX) !== 0) return { ok: false, error: 'That doesn’t look like an intrvl backup.' };
+    var data;
+    try { data = JSON.parse(decodeURIComponent(escape(atob(text.slice(BACKUP_PREFIX.length))))); } catch (e) { return { ok: false, error: 'That backup couldn’t be read — check you copied all of it.' }; }
+    if (!data || typeof data !== 'object') return { ok: false, error: 'That backup couldn’t be read.' };
+    var keys = Object.keys(data), n = 0;
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf('intrvl.') !== 0 || typeof data[keys[i]] !== 'string' || data[keys[i]].length > 200000) return { ok: false, error: 'That backup contains something unexpected, so it was not used.' };
+    }
+    keys.forEach(function (k) { lsSet(k, data[k]); n++; });
+    lsDel('intrvl.reg');   // re-register this player with the leaderboard on next visit
+    return { ok: true, count: n };
+  }
+
+  // ---- accessibility helpers --------------------------------------------------------------------
+  function reducedMotion() {
+    try { return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+  }
+  // Says something to screen-reader users without moving focus ("Correct", "Time's up", ...).
+  function announce(msg) {
+    var el = document.getElementById('iv-live');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'iv-live'; el.className = 'iv-sr';
+      el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); el.setAttribute('aria-atomic', 'true');
+      document.body.appendChild(el);
+    }
+    el.textContent = '';
+    setTimeout(function () { el.textContent = msg; }, 60);
+  }
+  // Puts keyboard focus back on a button after the game swaps questions (only if focus was already in the game).
+  function refocus(el) {
+    if (typeof el === 'string') el = document.getElementById(el);
+    if (!el || el.disabled) return;
+    var a = document.activeElement, area = document.getElementById('intrvl-game-area');
+    if (!a || a === document.body || (area && area.contains(a))) { try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  // The little "wrong answer" wobble - skipped for people who've asked their device for less motion.
+  function shake(el) {
+    if (!el || reducedMotion()) return;
+    el.style.transform = 'translateX(5px)';
+    setTimeout(function () { el.style.transform = 'translateX(-5px)'; }, 50);
+    setTimeout(function () { el.style.transform = 'translateX(5px)'; }, 100);
+    setTimeout(function () { el.style.transform = 'translateX(0)'; }, 150);
+  }
   function getDeviceId() {
     var id = lsGet('intrvl.deviceId');
     if (!id) {
@@ -417,7 +592,7 @@ IV.find = function (id) {
     });
   }
   function darken(hex, f) {
-    var h = String(hex || '#8a9e82').replace('#', '');
+    var h = String(hex || '#A9B9A2').replace('#', '');
     if (h.length === 3) h = h.replace(/(.)/g, '$1$1');
     var n = parseInt(h, 16);
     var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
@@ -430,12 +605,12 @@ IV.find = function (id) {
   }
   function confetti(canvasId) {
     var canvas = document.getElementById(canvasId);
-    if (!canvas) return;
+    if (!canvas || reducedMotion()) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     canvas.style.opacity = 1;
     var ctx = canvas.getContext('2d');
-    var cols = CFG.accentColors || ['#8a9e82', '#5e7a56', '#bda569', '#b3a8c7'];
+    var cols = CFG.accentColors || ['#A9B9A2', '#566B50', '#bda569', '#b3a8c7'];
     var conf = Array.from({ length: 120 }, function () {
       return { x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height, r: Math.random() * 6 + 4, c: cols[Math.floor(Math.random() * cols.length)], v: Math.random() * 4 + 3 };
     });
@@ -480,6 +655,10 @@ IV.find = function (id) {
     statsFor: statsFor, playedToday: playedToday,
     loadDailyBlocks: loadDailyBlocks, saveDailyBlock: saveDailyBlock,
     getHistory: getHistory, getHistoryFor: getHistoryFor, recordDailyResult: recordDailyResult,
+    recordItem: recordItem, getItemsFor: getItemsFor, weakSpots: weakSpots, strongSpots: strongSpots,
+    allPlayedDates: allPlayedDates, practiceStreak: practiceStreak, addDays: addDays,
+    exportProgress: exportProgress, importProgress: importProgress,
+    announce: announce, shake: shake, refocus: refocus, reducedMotion: reducedMotion,
     getDeviceId: getDeviceId, getPlayerCode: getPlayerCode, regeneratePlayerCode: regeneratePlayerCode,
     isNameSet: isNameSet, getDisplayName: getDisplayName, setDisplayName: setDisplayName,
     getAvatar: getAvatar, setAvatar: setAvatar,
@@ -603,6 +782,7 @@ IV.find = function (id) {
     });
     return rows.join('');
   }
+  var retryArmed = false;
   function attachSubmitButton(opts) {
     var host = document.getElementById('screen-done') || document.getElementById('intrvl-app');
     if (!host) return;
@@ -622,6 +802,11 @@ IV.find = function (id) {
         box.innerHTML = '<div class="iv-note iv-center">Couldn’t reach the leaderboard just now — your score is saved on this device. <button class="iv-linkbtn" id="iv-lb-retry">Try again</button></div>';
         var rb = document.getElementById('iv-lb-retry');
         if (rb) rb.onclick = function () { attachSubmitButton(opts); };
+        if (!retryArmed) {
+          retryArmed = true;
+          var again = function () { global.removeEventListener('online', again); retryArmed = false; if (document.getElementById('iv-lb')) attachSubmitButton(opts); };
+          global.addEventListener('online', again);
+        }
         return;
       }
       fetchBoard(opts.gameId, date).then(function (board) {
@@ -647,14 +832,19 @@ IV.find = function (id) {
   var CFG = global.INTRVL_CONFIG || {};
   var KIND = CFG.kind || 'home';
   var esc = Core.esc;
+  var STANDALONE = !!global.INTRVL_STANDALONE;     // true in the installable app, where pages are plain .html files
   var EXT = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) ? '.html' : '';
-  IV.href = function (url) { return url + EXT; };
+  IV.href = function (url) {
+    if (STANDALONE) return url === IV.SECTIONS.home.url ? 'index.html' : url.replace(/^\//, '') + '.html';
+    return url + EXT;
+  };
+  IV.fullUrl = function (url) { return STANDALONE ? new URL(IV.href(url), location.href).href : location.origin + IV.href(url); };
   var app = document.getElementById('intrvl-app');
   var item = (KIND === 'game' || KIND === 'tool') ? IV.find(CFG.id || CFG.gameId) : null;
-  var accent = item ? item.accent : (CFG.accent || '#8a9e82');
+  var accent = item ? item.accent : (CFG.accent || '#A9B9A2');
   if (app) {
     app.style.setProperty('--intrvl-accent', accent);
-    app.style.setProperty('--intrvl-accent-dark', Core.darken(accent, 0.62));
+    app.style.setProperty('--intrvl-accent-dark', Core.darken(accent, 0.55));
   }
   function buildHeader() {
     if (!app) return;
@@ -663,52 +853,86 @@ IV.find = function (id) {
     if (KIND === 'home') { title = S.home.title; sub = S.home.blurb; icon = S.home.icon; crumbs = ''; }
     else if (KIND === 'games' || KIND === 'tools') {
       var sec = S[KIND]; title = sec.title; sub = sec.blurb; icon = sec.icon;
-      crumbs = home + ' › <span>' + esc(sec.title) + '</span>';
+      crumbs = home + ' <span aria-hidden="true">›</span> <span aria-current="page">' + esc(sec.title) + '</span>';
     } else if (item) {
       var parent = KIND === 'game' ? S.games : S.tools;
       title = item.name; sub = item.blurb; icon = item.icon;
-      crumbs = home + ' › <a href="' + IV.href(parent.url) + '">' + esc(parent.title) + '</a> › <span>' + esc(item.name) + '</span>';
+      crumbs = home + ' <span aria-hidden="true">›</span> <a href="' + IV.href(parent.url) + '">' + esc(parent.title) + '</a> <span aria-hidden="true">›</span> <span aria-current="page">' + esc(item.name) + '</span>';
     } else { return; }
     var html = '';
-    if (crumbs) html += '<div class="iv-crumbs">' + crumbs + '</div>';
-    html += '<div class="iv-head"><div class="iv-badge">' + icon + '</div><div><h1 class="iv-title">' + esc(title) + '</h1><div class="iv-sub">' + esc(sub) + '</div></div></div>';
+    if (crumbs) html += '<nav class="iv-crumbs" aria-label="Breadcrumb">' + crumbs + '</nav>';
+    html += '<div class="iv-head"><div class="iv-badge" aria-hidden="true">' + icon + '</div><div><h1 class="iv-title">' + esc(title) + '</h1><div class="iv-sub">' + esc(sub) + '</div></div></div>';
     var wrap = document.createElement('div');
     wrap.innerHTML = html;
     while (wrap.lastChild) app.insertBefore(wrap.lastChild, app.firstChild);
   }
-  function closeSheet() {
+  // Sheets (Friends, You, Progress...) behave like proper dialogs: focus moves into them, Tab stays inside,
+  // Esc closes them, the page behind is switched off for screen readers, and focus goes back where it was.
+  var lastFocus = null;
+  function setBackgroundInert(on) {
+    ['intrvl-app', 'iv-tabbar'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+      else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+    });
+  }
+  function sheetKeys(e) {
+    var s = document.getElementById('iv-sheet');
+    if (!s) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeSheet(); return; }
+    if (e.key !== 'Tab') return;
+    var f = Array.prototype.filter.call(s.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])'), function (el) { return el.offsetParent !== null; });
+    if (!f.length) { e.preventDefault(); s.focus(); return; }
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === s)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  function closeSheet(keepFocus) {
     var b = document.getElementById('iv-backdrop'), s = document.getElementById('iv-sheet');
+    var wasOpen = !!s;
     if (b) b.remove();
     if (s) s.remove();
+    document.removeEventListener('keydown', sheetKeys, true);
+    setBackgroundInert(false);
     setTab(null);
+    if (wasOpen && keepFocus !== true && lastFocus && document.contains(lastFocus)) { try { lastFocus.focus(); } catch (e) { /* ignore */ } }
+    if (keepFocus !== true) lastFocus = null;
   }
   function openSheet(html, mount, tab) {
-    closeSheet();
-    var b = document.createElement('div'); b.id = 'iv-backdrop'; b.onclick = closeSheet;
+    if (!document.getElementById('iv-sheet')) lastFocus = document.activeElement;
+    closeSheet(true);
+    var b = document.createElement('div'); b.id = 'iv-backdrop'; b.onclick = function () { closeSheet(); };
     var s = document.createElement('div'); s.id = 'iv-sheet';
-    s.innerHTML = '<button class="x" aria-label="Close">✕</button>' + html;
-    s.querySelector('.x').onclick = closeSheet;
+    s.setAttribute('role', 'dialog'); s.setAttribute('aria-modal', 'true'); s.setAttribute('tabindex', '-1');
+    s.innerHTML = '<button class="x" aria-label="Close" title="Close"><span aria-hidden="true">✕</span></button>' + html;
+    var h = s.querySelector('h3');
+    if (h) { h.id = 'iv-sheet-title'; s.setAttribute('aria-labelledby', 'iv-sheet-title'); }
+    s.querySelector('.x').onclick = function () { closeSheet(); };
     document.body.appendChild(b); document.body.appendChild(s);
+    setBackgroundInert(true);
+    document.addEventListener('keydown', sheetKeys, true);
     if (tab) setTab(tab);
     if (mount) mount(s);
+    try { s.focus({ preventScroll: true }); } catch (e) { s.focus(); }
     return s;
   }
   IV.openSheet = openSheet; IV.closeSheet = closeSheet;
   function $(sel, root) { return (root || document).querySelector(sel); }
   function openFriends(gameId) {
     var gid = gameId || (KIND === 'game' ? (CFG.id || CFG.gameId) : IV.GAMES[0].id);
-    var inviteBase = location.origin + IV.href(IV.SECTIONS.home.url);
+    var inviteBase = IV.fullUrl(IV.SECTIONS.home.url);
     var s = openSheet(
       '<h3>Friends</h3>' +
       '<div class="iv-code"><div><div class="iv-label" style="margin:0">Your code</div><b>' + esc(Core.getPlayerCode()) + '</b></div>' +
       '<div class="iv-row"><button class="iv-btn small ghost" id="ivf-copy">Copy code</button><button class="iv-btn small" id="ivf-link">Invite link</button></div></div>' +
-      '<div id="ivf-note" class="iv-status"></div>' +
-      '<div class="iv-label">Add a friend by code</div>' +
+      '<div id="ivf-note" class="iv-status" role="status" aria-live="polite"></div>' +
+      '<label class="iv-label" for="ivf-code">Add a friend by code</label>' +
       '<div class="iv-addrow"><input class="iv-input" id="ivf-code" maxlength="12" placeholder="e.g. 7K2P9Q" autocapitalize="characters" autocomplete="off"><button class="iv-btn small" id="ivf-add">Add</button></div>' +
-      '<div id="ivf-status" class="iv-status"></div>' +
-      '<div class="iv-label" style="margin-top:.6rem">Leaderboard · today</div>' +
-      '<div class="iv-chips" id="ivf-games" style="margin-bottom:.6rem"></div>' +
-      '<div id="ivf-board"><div class="iv-note">Loading…</div></div>',
+      '<div id="ivf-status" class="iv-status" role="status" aria-live="polite"></div>' +
+      '<div class="iv-label" id="ivf-lbl" style="margin-top:.6rem">Leaderboard · today</div>' +
+      '<div class="iv-chips" id="ivf-games" role="group" aria-labelledby="ivf-lbl" style="margin-bottom:.6rem"></div>' +
+      '<div id="ivf-board" aria-live="polite"><div class="iv-note">Loading…</div></div>',
       null, 'friends');
     var note = $('#ivf-note', s), status = $('#ivf-status', s), codeIn = $('#ivf-code', s);
     function say(el, msg) { el.textContent = msg; }
@@ -718,11 +942,11 @@ IV.find = function (id) {
       Core.copyText(link).then(function (ok) { say(note, ok ? 'Invite link copied ✓ — send it to a friend' : link); });
     };
     var chips = $('#ivf-games', s);
-    chips.innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip' + (g.id === gid ? ' on' : '') + '" data-id="' + g.id + '">' + g.icon + ' ' + esc(g.name) + '</button>'; }).join('');
+    chips.innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip' + (g.id === gid ? ' on' : '') + '" data-id="' + g.id + '" aria-pressed="' + (g.id === gid) + '">' + g.icon + ' ' + esc(g.name) + '</button>'; }).join('');
     chips.onclick = function (e) {
       var b = e.target.closest('.iv-chip'); if (!b) return;
       gid = b.getAttribute('data-id');
-      Array.prototype.forEach.call(chips.children, function (c) { c.classList.toggle('on', c === b); });
+      Array.prototype.forEach.call(chips.children, function (c) { c.classList.toggle('on', c === b); c.setAttribute('aria-pressed', c === b ? 'true' : 'false'); });
       drawBoard();
     };
     var boardEl = $('#ivf-board', s), loadId = 0;
@@ -780,12 +1004,13 @@ IV.find = function (id) {
     var isPreset = Core.AVATARS.indexOf(cur) !== -1;
     var s = openSheet(
       '<h3>You</h3>' +
-      '<div class="iv-label">Your name</div>' +
+      '<label class="iv-label" for="ivp-name">Your name</label>' +
       '<div class="iv-addrow"><input class="iv-input" id="ivp-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"><button class="iv-btn small" id="ivp-save">Save</button></div>' +
-      '<div id="ivp-status" class="iv-status"></div>' +
-      '<div class="iv-label">Your avatar</div>' +
-      '<div class="iv-avatars" id="ivp-avatars"></div>' +
-      '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
+      '<div id="ivp-status" class="iv-status" role="status" aria-live="polite"></div>' +
+      '<div class="iv-label" id="ivp-av-lbl">Your avatar</div>' +
+      '<div class="iv-avatars" id="ivp-avatars" role="group" aria-labelledby="ivp-av-lbl"></div>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" aria-label="Or type your own emoji as an avatar" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
+      '<div class="iv-row" style="margin-top:1.1rem"><button class="iv-btn small" id="ivp-progress">📈 See your progress</button></div>' +
       '<div class="iv-label" style="margin-top:1.1rem">Your history</div>' +
       '<div id="ivp-hist" class="iv-chips"></div>' +
       '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
@@ -795,7 +1020,7 @@ IV.find = function (id) {
     function sync() { if (LB.isConfigured()) LB.register(true); }
     function drawAvatars() {
       var cur2 = Core.getAvatar();
-      $('#ivp-avatars', s).innerHTML = Core.AVATARS.map(function (a) { return '<button data-a="' + a + '"' + (a === cur2 ? ' class="on"' : '') + '>' + a + '</button>'; }).join('');
+      $('#ivp-avatars', s).innerHTML = Core.AVATARS.map(function (a) { return '<button data-a="' + a + '" aria-pressed="' + (a === cur2) + '"' + (a === cur2 ? ' class="on"' : '') + '>' + a + '</button>'; }).join('');
     }
     drawAvatars();
     $('#ivp-avatars', s).onclick = function (e) { var b = e.target.closest('button'); if (!b) return; Core.setAvatar(b.getAttribute('data-a')); $('#ivp-custom', s).value = ''; drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
@@ -803,6 +1028,7 @@ IV.find = function (id) {
     $('#ivp-save', s).onclick = function () { var n = Core.setDisplayName($('#ivp-name', s).value); $('#ivp-name', s).value = n; sync(); status.textContent = 'Name saved ✓'; };
     $('#ivp-hist', s).innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip" data-id="' + g.id + '">📅 ' + esc(g.name) + '</button>'; }).join('');
     $('#ivp-hist', s).onclick = function (e) { var b = e.target.closest('.iv-chip'); if (b) openHistory(b.getAttribute('data-id')); };
+    $('#ivp-progress', s).onclick = function () { openProgress(); };
     var conn = $('#ivp-conn', s);
     if (!LB.isConfigured()) conn.textContent = 'Not set up (src/config.js has no endpoint yet).';
     else LB.ping().then(function (r) {
@@ -823,7 +1049,7 @@ IV.find = function (id) {
       var y = view.getFullYear(), m = view.getMonth();
       var startDow = (new Date(y, m, 1).getDay() + 6) % 7; // Monday first
       var days = new Date(y, m + 1, 0).getDate();
-      var cells = '', i;
+      var cells = '', i, playedList = '';
       for (i = 0; i < startDow; i++) cells += '<div class="iv-cal-cell e"></div>';
       var today = Core.dailySeedDate();
       var total = 0, count = 0;
@@ -832,10 +1058,12 @@ IV.find = function (id) {
         var played = hist[key] != null;
         if (played) { total += Number(hist[key]) || 0; count++; }
         cells += '<div class="iv-cal-cell' + (played ? ' played' : '') + (key === today ? ' today' : '') + '"' + (played ? ' style="--cal-accent:' + g.accent + '"' : '') + '><span>' + i + '</span>' + (played ? '<b>' + esc(hist[key]) + '</b>' : '') + '</div>';
+        if (played) playedList += '<li>' + i + ' ' + MONTHS[m] + ': scored ' + esc(hist[key]) + '</li>';
       }
       $('#ivh-body', s).innerHTML =
-        '<div class="iv-cal-nav"><button id="ivh-prev"' + (view <= first ? ' disabled' : '') + '>‹</button><b>' + MONTHS[m] + ' ' + y + '</b><button id="ivh-next"' + (y === now.getFullYear() && m === now.getMonth() ? ' disabled' : '') + '>›</button></div>' +
-        '<div class="iv-cal-wd"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="iv-cal-grid">' + cells + '</div>' +
+        '<div class="iv-cal-nav"><button id="ivh-prev" aria-label="Previous month"' + (view <= first ? ' disabled' : '') + '>‹</button><b aria-live="polite">' + MONTHS[m] + ' ' + y + '</b><button id="ivh-next" aria-label="Next month"' + (y === now.getFullYear() && m === now.getMonth() ? ' disabled' : '') + '>›</button></div>' +
+        '<div aria-hidden="true"><div class="iv-cal-wd"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="iv-cal-grid">' + cells + '</div></div>' +
+        (playedList ? '<ul class="iv-sr">' + playedList + '</ul>' : '') +
         '<p class="iv-note iv-center" style="margin-top:.8rem">' + (count ? count + ' day' + (count > 1 ? 's' : '') + ' played this month · total ' + total : 'No games played this month.') + '</p>';
       $('#ivh-prev', s).onclick = function () { view = new Date(y, m - 1, 1); draw(); };
       $('#ivh-next', s).onclick = function () { view = new Date(y, m + 1, 1); draw(); };
@@ -843,10 +1071,112 @@ IV.find = function (id) {
     draw();
   }
   IV.openHistory = openHistory;
+  // ---- progress screen --------------------------------------------------------------------------
+  function pct(x) { return Math.round(x * 100); }
+  function openProgress() {
+    var games = IV.GAMES, played = Core.allPlayedDates(), streak = Core.practiceStreak();
+    var totalAns = 0, totalCor = 0, doneToday = 0;
+    games.forEach(function (g) {
+      var st = Core.statsFor(g.id);
+      totalAns += st.totalPlayed; totalCor += st.totalCorrect;
+      if (st.lastPlayedDate === Core.todayStr()) doneToday++;
+    });
+    var accuracy = totalAns ? pct(totalCor / totalAns) + '%' : '–';
+
+    // the last five weeks, Monday first; darker = more games finished that day
+    var today = Core.dailySeedDate(), dow = (new Date().getDay() + 6) % 7, start = Core.addDays(today, -(dow + 28));
+    var cells = '', activeDays = 0, daysShown = 0, n;
+    for (n = 0; n < 35; n++) {
+      var d = Core.addDays(start, n), c = played[d] || 0;
+      if (d > today) { cells += '<div class="iv-heat-cell e"></div>'; continue; }
+      daysShown++;
+      if (c) activeDays++;
+      cells += '<div class="iv-heat-cell' + (c ? ' l' + Math.min(c, 4) : '') + (d === today ? ' today' : '') + '"></div>';
+    }
+
+    function spotRow(x, tone) {
+      return '<div class="iv-scoreline iv-spot ' + tone + '"><div class="iv-grow"><div class="t"><span aria-hidden="true">' + x.game.icon + '</span> ' + esc(x.label) + '</div>' +
+        '<div class="s">' + esc(x.game.name) + ' · ' + pct(x.recent) + '% of your last ' + x.recentN + '</div>' +
+        '<span class="iv-meter" aria-hidden="true"><i style="width:' + pct(x.recent) + '%"></i></span></div>' +
+        '<a class="iv-linkbtn" href="' + IV.href(x.game.url) + '" aria-label="Practise ' + esc(x.game.name) + '">Practise</a></div>';
+    }
+    var weak = Core.weakSpots(5), strong = Core.strongSpots(3);
+    var weakHtml = weak.length ? weak.map(function (x) { return spotRow(x, 'weak'); }).join('')
+      : '<p class="iv-empty">Play a few rounds and the topics you find trickiest will show up here, so you know what to practise.</p>';
+    var strongHtml = strong.length ? '<div class="iv-label" style="margin-top:1.1rem">Your strongest</div>' + strong.map(function (x) { return spotRow(x, 'strong'); }).join('') : '';
+
+    var gameRows = games.map(function (g) {
+      var st = Core.statsFor(g.id), acc = st.totalPlayed ? pct(st.totalCorrect / st.totalPlayed) + '%' : '–';
+      var done = st.lastPlayedDate === Core.todayStr();
+      return '<div class="iv-scoreline"><div class="iv-grow"><div class="t"><span aria-hidden="true">' + g.icon + '</span> ' + esc(g.name) + (done ? ' <span class="iv-tick">✓<span class="iv-sr"> done today</span></span>' : '') + '</div>' +
+        '<div class="s">Best streak ' + st.bestStreak + ' · accuracy ' + acc + '</div></div>' +
+        '<button type="button" class="iv-btn small ghost" data-hist="' + g.id + '" aria-label="' + esc(g.name) + ' history calendar">History</button></div>';
+    }).join('');
+
+    var s = openSheet(
+      '<h3>Your progress</h3>' +
+      '<div class="iv-stats3">' +
+        '<div><b>' + streak + '</b><span>day' + (streak === 1 ? '' : 's') + ' in a row</span></div>' +
+        '<div><b>' + doneToday + '/' + games.length + '</b><span>games done today</span></div>' +
+        '<div><b>' + accuracy + '</b><span>answers right</span></div>' +
+      '</div>' +
+      '<div class="iv-label" id="ivpr-heat-lbl">Last five weeks</div>' +
+      '<div class="iv-heat" role="img" aria-labelledby="ivpr-heat-lbl ivpr-heat-sum"><div class="iv-heat-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="iv-heat-grid" aria-hidden="true">' + cells + '</div></div>' +
+      '<p class="iv-note" id="ivpr-heat-sum" style="margin:.4rem 0 1rem">You played on ' + activeDays + ' of the last ' + daysShown + ' days. Darker squares mean more games finished that day.</p>' +
+      '<div class="iv-label">What to practise next</div>' + weakHtml + strongHtml +
+      '<div class="iv-label" style="margin-top:1.2rem">By game</div>' + gameRows +
+      '<details class="iv-details"><summary>Back up or move your progress</summary>' +
+        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn small" id="ivb-copy">Copy backup</button></div>' +
+        '<label class="iv-label" for="ivb-text" style="margin-top:.8rem">Paste a backup to restore it</label>' +
+        '<textarea class="iv-input" id="ivb-text" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>' +
+        '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small ghost" id="ivb-restore">Restore</button></div>' +
+        '<div id="ivb-status" class="iv-status" role="status" aria-live="polite"></div>' +
+      '</details>',
+      null, 'progress');
+    Array.prototype.forEach.call(s.querySelectorAll('[data-hist]'), function (b) { b.onclick = function () { openHistory(b.getAttribute('data-hist')); }; });
+    var bs = $('#ivb-status', s);
+    $('#ivb-copy', s).onclick = function () {
+      Core.copyText(Core.exportProgress()).then(function (ok) { bs.textContent = ok ? 'Backup copied ✓ — paste it into the other one.' : 'Couldn’t copy automatically — please try again.'; });
+    };
+    $('#ivb-restore', s).onclick = function () {
+      var text = $('#ivb-text', s).value;
+      if (!text.trim()) { bs.textContent = 'Paste a backup first.'; return; }
+      if (!confirm('This replaces the progress on this device with the backup. Carry on?')) return;
+      var r = Core.importProgress(text);
+      if (!r.ok) { bs.textContent = r.error; return; }
+      bs.textContent = 'Restored ✓ — reloading…';
+      setTimeout(function () { location.reload(); }, 700);
+    };
+    return s;
+  }
+  IV.openProgress = openProgress;
+
+  // ---- installed app extras -----------------------------------------------------------------------
+  // Quietly keeps the stave pictures the games need on the phone, so they work with no signal.
+  IV.prefetch = function (urls) {
+    if (!STANDALONE || !urls || !urls.length || !('serviceWorker' in navigator)) return;
+    if (navigator.connection && navigator.connection.saveData) return;
+    navigator.serviceWorker.ready.then(function (reg) { if (reg.active) reg.active.postMessage({ type: 'prefetch', urls: urls }); }).catch(function () { /* ignore */ });
+  };
+  if (STANDALONE) {
+    var syncOnline = function () {
+      var el = document.getElementById('iv-offline');
+      if (!navigator.onLine) {
+        if (!el) {
+          el = document.createElement('div'); el.id = 'iv-offline'; el.setAttribute('role', 'status');
+          el.textContent = 'You’re offline — games and tools still work. Leaderboards catch up when you’re back online.';
+          document.body.appendChild(el);
+        }
+      } else if (el) el.remove();
+    };
+    global.addEventListener('online', syncOnline); global.addEventListener('offline', syncOnline); syncOnline();
+  }
   var TABS = [
     { id: 'home', icon: '🏠', label: 'Home' },
     { id: 'games', icon: '🎮', label: 'Games' },
     { id: 'tools', icon: '🧰', label: 'Tools' },
+    { id: 'progress', icon: '📈', label: 'Progress' },
     { id: 'friends', icon: '👥', label: 'Friends' },
     { id: 'you', icon: '🙂', label: 'You' }
   ];
@@ -854,27 +1184,104 @@ IV.find = function (id) {
   function setTab(sheetTab) {
     var bar = document.getElementById('iv-tabbar'); if (!bar) return;
     var on = sheetTab || pageTab();
-    Array.prototype.forEach.call(bar.children, function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === on); });
+    Array.prototype.forEach.call(bar.children, function (t) {
+      var isOn = t.getAttribute('data-tab') === on;
+      t.classList.toggle('on', isOn);
+      if (t.tagName === 'A') { if (isOn && !sheetTab) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
+      else t.setAttribute('aria-expanded', isOn && !!sheetTab ? 'true' : 'false');
+    });
   }
   function buildTabBar() {
     if (document.getElementById('iv-tabbar')) return;
-    var bar = document.createElement('nav'); bar.id = 'iv-tabbar';
+    var bar = document.createElement('nav'); bar.id = 'iv-tabbar'; bar.setAttribute('aria-label', 'Main');
     bar.innerHTML = TABS.map(function (t) {
-      var inner = '<span class="i">' + t.icon + '</span><span class="l">' + t.label + '</span>';
+      var inner = '<span class="i" aria-hidden="true">' + t.icon + '</span><span class="l">' + t.label + '</span>';
       if (IV.SECTIONS[t.id]) return '<a class="iv-tab" data-tab="' + t.id + '" href="' + IV.href(IV.SECTIONS[t.id].url) + '">' + inner + '</a>';
-      return '<button class="iv-tab" data-tab="' + t.id + '">' + inner + '</button>';
+      return '<button type="button" class="iv-tab" data-tab="' + t.id + '" aria-haspopup="dialog" aria-expanded="false">' + inner + '</button>';
     }).join('');
     document.body.appendChild(bar);
+    bar.querySelector('[data-tab="progress"]').onclick = function () { openProgress(); };
     bar.querySelector('[data-tab="friends"]').onclick = function () { openFriends(); };
     bar.querySelector('[data-tab="you"]').onclick = function () { openProfile(); };
     setTab(null);
   }
   buildHeader();
   buildTabBar();
+  // Several tools redraw their buttons when you press one. Without this, keyboard focus would fall to the top of
+  // the page each time; this puts it back on the matching new button.
+  (function keepFocus() {
+    var last = null, keyboard = false;
+    document.addEventListener('keydown', function () { keyboard = true; }, true);
+    document.addEventListener('pointerdown', function () { keyboard = false; }, true);
+    document.addEventListener('focusin', function (e) {
+      var el = e.target;
+      if (!el || el === document.body || el === document.documentElement || !el.closest || !el.closest('#intrvl-app, #iv-sheet')) { last = null; return; }
+      var host = el.parentElement;
+      while (host && !host.id) host = host.parentElement;
+      var attrs = [];
+      Array.prototype.forEach.call(el.attributes, function (a) { if (/^data-/.test(a.name)) attrs.push([a.name, a.value]); });
+      last = { el: el, id: el.id, hostId: host ? host.id : '', tag: el.tagName, attrs: attrs, text: (el.textContent || '').trim() };
+    });
+    function restore() {
+      if (!last || !keyboard || document.contains(last.el)) return;
+      var a = document.activeElement;
+      if (a && a !== document.body) return;
+      var found = last.id ? document.getElementById(last.id) : null;
+      if (!found) {
+        var host = last.hostId ? document.getElementById(last.hostId) : null;
+        var pool = host ? host.querySelectorAll(last.tag.toLowerCase()) : [];
+        for (var i = 0; i < pool.length && !found; i++) {
+          var ok = last.attrs.length > 0 && last.attrs.every(function (kv) { return pool[i].getAttribute(kv[0]) === kv[1]; });
+          if (ok) found = pool[i];
+        }
+        for (var j = 0; j < pool.length && !found; j++) if ((pool[j].textContent || '').trim() === last.text) found = pool[j];
+      }
+      if (found && !found.disabled) { try { found.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    }
+    var queued = false;
+    new MutationObserver(function () {
+      if (queued) return;
+      queued = true;
+      Promise.resolve().then(function () { queued = false; restore(); });
+    }).observe(document.body, { childList: true, subtree: true });
+  })();
+  // Toggle buttons (the chips and segmented controls that have an "on" one) tell screen readers which is selected.
+  (function syncPressed() {
+    function run() {
+      Array.prototype.forEach.call(document.querySelectorAll('#intrvl-app .iv-chips, #intrvl-app .iv-seg, #iv-sheet .iv-chips'), function (group) {
+        var buttons = group.querySelectorAll('button');
+        var hasOn = group.querySelector('button.on');
+        Array.prototype.forEach.call(buttons, function (b) {
+          if (hasOn) { var v = b.classList.contains('on') ? 'true' : 'false'; if (b.getAttribute('aria-pressed') !== v) b.setAttribute('aria-pressed', v); }
+        });
+      });
+    }
+    var scheduled = false;
+    function schedule() { if (scheduled) return; scheduled = true; (global.requestAnimationFrame || setTimeout)(function () { scheduled = false; run(); }); }
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    run();
+  })();
+  // When a game swaps screens (start -> game -> done), move keyboard/screen-reader focus to the new screen.
+  (function watchScreens() {
+    var area = document.getElementById('intrvl-game-area');
+    if (!area || !global.MutationObserver) return;
+    var interacted = false;
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, function () { interacted = true; }, { capture: true, once: true }); });
+    new MutationObserver(function (list) {
+      list.forEach(function (m) {
+        var el = m.target;
+        if (!interacted || !el.id || el.id.indexOf('screen-') !== 0 || el.classList.contains('hidden')) return;
+        if (m.oldValue && (' ' + m.oldValue + ' ').indexOf(' hidden ') === -1) return;   // it was already showing
+        var focusTarget = el.querySelector('[data-focus]') || (el.querySelector('.game-hud') && el.querySelector('.choice-btn:not(:disabled)')) || el.querySelector('h2,h3,.level-title') || el;
+        if (!focusTarget.hasAttribute('tabindex')) focusTarget.setAttribute('tabindex', '-1');
+        try { focusTarget.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      });
+    }).observe(area, { attributes: true, attributeFilter: ['class'], attributeOldValue: true, subtree: true });
+  })();
   if (LB.isConfigured()) setTimeout(function () { LB.register(); }, 2500);   // so friends can find your code
   function setupShortcut() {
     var base = (IV.CONFIG && IV.CONFIG.assets) || '';
-    if (!base) return;
+    if (!base || STANDALONE) return;
     var key = item ? item.id : KIND;
     var name = KIND === 'home' ? 'intrvl' : 'intrvl | ' + (item ? item.name : IV.SECTIONS[KIND].title);
     var head = document.head;
@@ -916,7 +1323,7 @@ IV.find = function (id) {
 
     document.getElementById('home-hero').innerHTML =
       ['games', 'tools'].map(function (k) {
-        return '<a href="' + IV.href(S[k].url) + '"><div class="iv-badge">' + S[k].icon + '</div><b>' + S[k].title + '</b><small>' + Core.esc(S[k].blurb) + '</small></a>';
+        return '<a href="' + IV.href(S[k].url) + '"><div class="iv-badge" aria-hidden="true">' + S[k].icon + '</div><b>' + S[k].title + '</b><small>' + Core.esc(S[k].blurb) + '</small></a>';
       }).join('');
 
     var done = 0;
@@ -924,12 +1331,19 @@ IV.find = function (id) {
       var played = isGame && Core.playedToday(it.id);
       if (played) done++;
       return '<a href="' + IV.href(it.url) + '" style="--item-accent:' + it.accent + '">' +
-        (played ? '<span class="iv-done">✓</span>' : '') +
-        '<div class="iv-badge">' + it.icon + '</div><span class="n">' + Core.esc(it.name) + '</span></a>';
+        (played ? '<span class="iv-done" aria-hidden="true">✓</span><span class="iv-sr">Done today. </span>' : '') +
+        '<div class="iv-badge" aria-hidden="true">' + it.icon + '</div><span class="n">' + Core.esc(it.name) + '</span></a>';
     }
     document.getElementById('home-games').innerHTML = IV.GAMES.map(function (g) { return tile(g, true); }).join('');
     document.getElementById('home-tools').innerHTML = IV.TOOLS.map(function (t) { return tile(t, false); }).join('');
     document.getElementById('home-count').textContent = done + ' of ' + IV.GAMES.length + ' done';
+
+    var streak = Core.practiceStreak();
+    document.getElementById('home-progress').innerHTML =
+      '<div><div class="iv-label" style="margin:0">Your streak</div><b class="iv-strong-accent" style="font-size:1.05rem">' +
+      (streak ? streak + (streak === 1 ? ' day' : ' days') + ' in a row' : 'Start your streak today') + '</b></div>' +
+      '<button type="button" class="iv-btn small ghost" id="home-progress-btn">📈 See progress</button>';
+    document.getElementById('home-progress-btn').onclick = function () { IV.openProgress(); };
   })();
 </script>
 
