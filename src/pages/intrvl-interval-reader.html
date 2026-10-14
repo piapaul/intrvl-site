@@ -1,0 +1,382 @@
+<!--@shared-css-->
+
+<style>
+  #ir-streak-count { color: var(--intrvl-accent-dark); }
+  #ir-accuracy-count { color: var(--intrvl-active-dark); }
+  #intrvl-app .csb-options-grid .choice-btn { font-family: var(--intrvl-font-body); font-size: 1.05rem; line-height: 1.25; min-height: 56px; }
+  #ir-target-container {
+    background: var(--intrvl-panel-bg);
+    border: 2px solid var(--intrvl-border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto 1.4rem auto;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    box-shadow: inset 0 4px 15px rgba(0,0,0,0.02);
+  }
+</style>
+
+<canvas aria-hidden="true" id="confetti-canvas-ir" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; opacity:0; transition:opacity 1s ease;"></canvas>
+
+<div id="intrvl-app">
+
+  <div class="intrvl-header-v2">
+    <div class="stats-wrapper">
+      <div class="stat-box">
+        <span class="stat-label">Streak</span>
+        <div class="stat-display"><span aria-hidden="true">🔥</span> <span id="ir-streak-count">0</span></div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-display"><span aria-hidden="true">🎯</span> <span id="ir-accuracy-count">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="intrvl-game-area">
+
+    <div id="screen-start" class="button-stack">
+      <p id="ir-intro" style="color: var(--intrvl-ink-soft); line-height: 1.5; margin-bottom: 2rem;">
+        30 seconds. Name the interval between the two notes, quality and all.<br>Build your combo for massive points.
+      </p>
+      <button class="btn-primary" onclick="startIrSprint(true)">Start Daily Sprint</button>
+      <button class="btn-practice" onclick="startIrSprint(false)">Practice Sprint</button>
+    </div>
+
+    <div id="screen-game" class="hidden" style="width: 100%;">
+      <div class="game-hud">
+        <div>Score: <span id="ui-score" class="score-highlight">0</span></div>
+        <div id="ui-combo" class="combo-badge" aria-hidden="true">🔥 x2 COMBO</div>
+        <div><span id="ui-timer" class="timer-highlight">30</span>s</div>
+      </div>
+
+      <p class="instruction-text" id="ir-question" aria-live="polite">What is the interval between these two notes?</p>
+
+      <div id="ir-target-container"></div>
+
+      <div class="csb-options-grid" id="ir-buttons-container">
+        <button class="choice-btn" id="btn-ir-0" onclick="submitIrGuess(0)">Opt 1</button>
+        <button class="choice-btn" id="btn-ir-1" onclick="submitIrGuess(1)">Opt 2</button>
+        <button class="choice-btn" id="btn-ir-2" onclick="submitIrGuess(2)">Opt 3</button>
+        <button class="choice-btn" id="btn-ir-3" onclick="submitIrGuess(3)">Opt 4</button>
+      </div>
+    </div>
+
+    <div id="screen-done" class="hidden button-stack">
+      <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;" id="end-title">Time's Up!</h2>
+      <p style="font-size: 1.4rem; font-family: var(--intrvl-font-head); font-weight: 900; color: var(--intrvl-accent-dark); margin-bottom: 0.5rem;" id="end-score">Score: 0</p>
+      <p style="color: var(--intrvl-ink-soft); font-size: 0.9rem; margin-bottom: 2rem;" id="end-high-score">Personal High: 0</p>
+
+      <button class="btn-share hidden" id="btn-share" onclick="shareIrResults()">Share Results 🚀</button>
+      <button class="btn-primary hidden" id="btn-try-again" onclick="resetIrToStart()">Back to Menu</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.INTRVL_CONFIG = {
+    startFn: 'startIrSprint',
+    kind: 'game', id: 'readinterval', gameId: 'readinterval',
+    easy: false, title: 'Interval Reader',
+    accentColors: ['#B7A7C9', '#A9B9A2', '#C1A45F', '#D9A5B3']
+  };
+</script>
+<!--@notation-js-->
+<!--@shared-js-->
+<script>
+  const PAGE_CFG = window.INTRVL_CONFIG;
+  const GAME_ID = PAGE_CFG.gameId;                 // 'readinterval' or 'readinterval-easy'
+  const EASY = !!PAGE_CFG.easy;
+  const TITLE = PAGE_CFG.title;
+
+  // ==== game specific: pitches, intervals, and the questions =================================
+  // A pitch is a stave step (C4 = 28, counting letters upwards) plus a sharp/flat (alter -1, 0, +1).
+  const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const PCS = [0, 2, 4, 5, 7, 9, 11];
+  const BASE_STEP = { treble: 30, bass: 18 };            // the bottom line is E4 in treble, G2 in bass
+  function semis(p) { return Math.floor(p.step / 7) * 12 + PCS[p.step % 7] + p.alter; }
+  function noteName(p) { return LETTERS[p.step % 7] + (p.alter === 1 ? ' sharp' : p.alter === -1 ? ' flat' : ''); }
+  function posOf(p, clef) { return p.step - BASE_STEP[clef]; }
+
+  // quality by simple interval number and semitones; compound intervals (9th-12th) reuse these a whole octave up
+  const QUALITY = {
+    2: { 1: 'Minor', 2: 'Major' }, 3: { 3: 'Minor', 4: 'Major' }, 4: { 5: 'Perfect', 6: 'Augmented' }, 5: { 6: 'Diminished', 7: 'Perfect' },
+    6: { 8: 'Minor', 9: 'Major' }, 7: { 10: 'Minor', 11: 'Major' }, 8: { 12: 'Perfect' }
+  };
+  const ORD = { 2: '2nd', 3: '3rd', 4: '4th', 5: '5th', 6: '6th', 7: '7th', 8: 'octave', 9: '9th', 10: '10th', 11: '11th', 12: '12th' };
+  const MAX_NUM = EASY ? 8 : 12;
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // lo, hi: pitches (lo is the lower one).  Returns { num, semis, label } or null when the pair isn't one we ask about.
+  function describeInterval(lo, hi) {
+    const num = hi.step - lo.step + 1, st = semis(hi) - semis(lo);
+    if (num < 2 || num > 12) return null;
+    const simple = num > 8 ? num - 7 : num, q = QUALITY[simple][num > 8 ? st - 12 : st];
+    if (!q) return null;
+    if (num === 11 && q !== 'Perfect') return null;           // augmented 11ths and diminished 12ths are a step too far
+    if (num === 12 && q !== 'Perfect') return null;
+    return { num: num, semis: st, quality: q, label: EASY ? cap(ORD[num]) : q + ' ' + ORD[num] };
+  }
+  // every answer that can appear in this version, with the numbers used to pick convincing wrong answers
+  function universe() {
+    const out = [];
+    for (let num = 2; num <= MAX_NUM; num++) {
+      const simple = num > 8 ? num - 7 : num, table = QUALITY[simple];
+      if (EASY) { out.push({ label: cap(ORD[num]), num: num, semis: 0 }); continue; }
+      Object.keys(table).forEach(k => {
+        const st = Number(k) + (num > 8 ? 12 : 0), q = table[k];
+        if ((num === 11 || num === 12) && q !== 'Perfect') return;
+        out.push({ label: q + ' ' + ORD[num], num: num, semis: st });
+      });
+    }
+    return out;
+  }
+  const UNIVERSE = universe();
+  // keep to a comfortable reading range: the lowest note no lower than the 2nd ledger line below, the highest no higher than the 2nd above
+  const POS_MIN = -3, POS_MAX = 11;
+
+  function makeQuestion(rand, wantLabels) {
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const clef = rand() < 0.5 ? 'treble' : 'bass', base = BASE_STEP[clef];
+      const targets = (wantLabels && wantLabels.length && rand() < 0.7) ? UNIVERSE.filter(u => wantLabels.indexOf(u.label) !== -1) : UNIVERSE;
+      const want = targets[Math.floor(rand() * targets.length)];
+      const loStep = base + POS_MIN + Math.floor(rand() * (POS_MAX - POS_MIN - (want.num - 1) + 1));
+      const hiStep = loStep + want.num - 1;
+      if (loStep - base < POS_MIN || hiStep - base > POS_MAX) continue;
+      const lo = { step: loStep, alter: 0 }, hi = { step: hiStep, alter: 0 };
+      if (!EASY) {
+        if (rand() < 0.35) lo.alter = rand() < 0.5 ? 1 : -1;
+        if (rand() < 0.35) hi.alter = rand() < 0.5 ? 1 : -1;
+      }
+      const d = describeInterval(lo, hi);
+      if (!d || d.label !== want.label) continue;           // the accidentals changed the answer: try again
+      const asc = rand() < 0.65, order = asc ? [lo, hi] : [hi, lo];
+      const near = UNIVERSE.filter(u => u.label !== d.label).map(u => ({ u: u, score: Math.abs(u.semis - d.semis) + 0.5 * Math.abs(u.num - d.num) + rand() * 0.4 }))
+        .sort((a, b) => a.score - b.score).slice(0, 5).map(x => x.u.label);
+      const picked = [];
+      while (picked.length < 3 && near.length) picked.push(near.splice(Math.floor(rand() * near.length), 1)[0]);
+      const options = [d.label].concat(picked);
+      for (let j = options.length - 1; j > 0; j--) { const k = Math.floor(rand() * (j + 1)); [options[j], options[k]] = [options[k], options[j]]; }
+      const notes = order.map(p => ({ pos: posOf(p, clef), acc: p.alter === 1 ? 'sharp' : p.alter === -1 ? 'flat' : null }));
+      const words = (clef === 'treble' ? 'Treble' : 'Bass') + ' clef: ' + noteName(order[0]) + ', then ' + noteName(order[1]) + '.';
+      return { clef: clef, notes: notes, correct: d.label, options: options, label: d.label, words: words, num: d.num, semis: d.semis, order: order };
+    }
+    throw new Error('could not make a question');
+  }
+
+  function generatePool(useSeed) {
+    const rand = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed() ^ (EASY ? 0x7a3d91c5 : 0x3c6ef372)) : () => Math.random();
+    const focus = IntrvlCore.takeFocus(GAME_ID);       // topics to lean towards in "practise my weak spots"
+    const pool = [];
+    for (let i = 0; i < 200; i++) pool.push(makeQuestion(rand, useSeed ? [] : focus));
+    return pool;
+  }
+  function drawQuestion(q) { return IVN.notesSvg({ clef: q.clef, notes: q.notes, label: q.words }); }
+  // ==== end game specific =====================================================================
+
+  let pool = [];
+  let currentQ = null;
+  let score = 0;
+  let combo = 0;
+  let maxCombo = 0;
+  let timerInterval;
+  let endTime;
+  let isDailyMode = true;
+  let isGameActive = false;
+  let qIndex = 0;
+  let stats;
+
+  function initIrApp() {
+    stats = IntrvlCore.loadStats();
+    if (!stats.highScoreDaily) stats.highScoreDaily = 0;
+    if (!stats.highScorePractice) stats.highScorePractice = 0;
+    if (EASY) document.getElementById('ir-intro').innerHTML = '30 seconds. Name the interval between the two notes: 2nd, 3rd, 4th, up to an octave.<br>Build your combo for massive points.';
+    updateIrUIStats();
+    if (stats.lastPlayedDate === IntrvlCore.todayStr()) showIrEndScreen(true, stats.highScoreDaily);
+  }
+
+  function updateIrUIStats() {
+    document.getElementById('ir-streak-count').textContent = stats.currentStreak;
+    const accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    document.getElementById('ir-accuracy-count').textContent = accuracy + '%';
+  }
+
+  function startIrSprint(daily) {
+    isDailyMode = daily;
+    score = 0;
+    combo = 0;
+    maxCombo = 0;
+    isGameActive = true;
+
+    pool = generatePool(isDailyMode);
+    qIndex = 0;
+
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+
+    updateIrHUD();
+
+    endTime = Date.now() + 30000;
+    timerInterval = setInterval(irTick, 100);
+
+    nextIrQuestion();
+  }
+
+  function irTick() {
+    const remaining = Math.max(0, endTime - Date.now());
+    document.getElementById('ui-timer').textContent = Math.ceil(remaining / 1000);
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      endIrSprint();
+    }
+  }
+
+  function updateIrHUD() {
+    document.getElementById('ui-score').textContent = score;
+    const badge = document.getElementById('ui-combo');
+    if (combo >= 3) {
+      badge.textContent = `🔥 x${1 + Math.floor(combo / 3)} COMBO`;
+      badge.classList.add('active');
+    } else {
+      badge.classList.remove('active');
+    }
+  }
+
+  function nextIrQuestion() {
+    if (!isGameActive) return;
+    currentQ = pool[qIndex];
+    qIndex++;
+
+    document.getElementById('ir-target-container').innerHTML = drawQuestion(currentQ);
+
+    for (let i = 0; i < 4; i++) {
+      const btn = document.getElementById(`btn-ir-${i}`);
+      btn.className = 'choice-btn';
+      btn.disabled = false;
+      btn.textContent = currentQ.options[i];
+    }
+    IntrvlCore.refocus('btn-ir-0');
+  }
+
+  function submitIrGuess(btnIndex) {
+    if (!isGameActive) return;
+    for (let i = 0; i < 4; i++) document.getElementById(`btn-ir-${i}`).disabled = true;
+
+    const btn = document.getElementById(`btn-ir-${btnIndex}`);
+    const isCorrect = currentQ.options[btnIndex] === currentQ.correct;
+
+    stats.totalPlayed++;
+    IntrvlCore.recordItem(GAME_ID, currentQ.label, isCorrect);
+    IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. The answer was ' + currentQ.correct);
+
+    if (isCorrect) {
+      stats.totalCorrect++;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+      score += 2 * (1 + Math.floor(combo / 3));
+      btn.classList.add('correct');
+    } else {
+      combo = 0;
+      score = Math.max(0, score - 1);
+      btn.classList.add('incorrect');
+      document.getElementById(`btn-ir-${currentQ.options.indexOf(currentQ.correct)}`).classList.add('correct');
+    }
+
+    updateIrHUD();
+    setTimeout(nextIrQuestion, 250);
+  }
+
+  function endIrSprint() {
+    isGameActive = false;
+    document.getElementById('screen-game').classList.add('hidden');
+
+    let isNewHigh = false;
+
+    if (isDailyMode) {
+      if (stats.lastPlayedDate !== IntrvlCore.todayStr()) {
+        stats.currentStreak++;
+        stats.bestStreak = Math.max(stats.bestStreak, stats.currentStreak);
+        stats.lastPlayedDate = IntrvlCore.todayStr();
+        IntrvlCore.recordDailyResult(score);
+      }
+      if (score > stats.highScoreDaily) {
+        stats.highScoreDaily = score;
+        stats.dailyBest = { date: IntrvlCore.dailySeedDate(), score: score };
+        isNewHigh = true;
+      }
+    } else if (score > stats.highScorePractice) {
+      stats.highScorePractice = score;
+      isNewHigh = true;
+    }
+
+    IntrvlCore.saveStats(stats);
+    updateIrUIStats();
+
+    if (isNewHigh) IntrvlCore.confetti('confetti-canvas-ir');
+
+    IntrvlCore.announce('Time is up. You scored ' + score + '.');
+    showIrEndScreen(isDailyMode, isDailyMode ? stats.highScoreDaily : stats.highScorePractice, isNewHigh);
+  }
+
+  function addPracticeButton() {
+    if (document.getElementById('ir-temp-prac')) return;
+    const pracBtn = document.createElement('button');
+    pracBtn.id = 'ir-temp-prac';
+    pracBtn.className = 'btn-practice';
+    pracBtn.textContent = 'Play Practice Sprint';
+    pracBtn.onclick = () => { document.getElementById('ir-temp-prac').remove(); startIrSprint(false); };
+    document.getElementById('screen-done').appendChild(pracBtn);
+  }
+
+  function showIrEndScreen(wasDaily, high, isNewHigh = false) {
+    document.getElementById('screen-done').classList.remove('hidden');
+
+    if (!isGameActive && score === 0 && wasDaily) {         // arrived back on the page after today's daily was done
+      document.getElementById('end-title').textContent = 'Daily Complete!';
+      document.getElementById('end-score').textContent = `Best Score: ${stats.highScoreDaily}`;
+      document.getElementById('end-high-score').style.display = 'none';
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: stats.highScoreDaily, streak: stats.currentStreak });
+      addPracticeButton();
+      return;
+    }
+
+    document.getElementById('end-title').textContent = isNewHigh ? 'New High Score! 🎉' : "Time's Up!";
+    document.getElementById('end-score').textContent = `Score: ${score}`;
+    document.getElementById('end-high-score').style.display = 'block';
+    document.getElementById('end-high-score').textContent = `Personal High: ${high}`;
+
+    if (wasDaily) {
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: score, streak: stats.currentStreak });
+      addPracticeButton();
+    } else {
+      document.getElementById('btn-share').classList.add('hidden');
+      document.getElementById('btn-try-again').classList.remove('hidden');
+    }
+  }
+
+  function resetIrToStart() {
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-start').classList.remove('hidden');
+    const tempPrac = document.getElementById('ir-temp-prac');
+    if (tempPrac) tempPrac.remove();
+  }
+
+  function shareIrResults() {
+    const accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    const pageUrl = window.location.href.split('?')[0];
+    const textToShare = `I scored ${score} on the Intrvl Daily ${TITLE}! 📏\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read intervals faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl ' + TITLE);
+  }
+
+  // for automated tests
+  window.IR = { makeQuestion: makeQuestion, generatePool: generatePool, describeInterval: describeInterval, UNIVERSE: UNIVERSE, semis: semis };
+
+  initIrApp();
+</script>

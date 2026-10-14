@@ -50,9 +50,42 @@ window.IVN = (function () {
             : '<line x1="' + (x - 5.8) + '" x2="' + (x - 5.8) + '" y1="' + (y + 1) + '" y2="' + (y + 3.4 * SP) + '" stroke="' + INK + '" stroke-width="1.4"/>';
     return '<svg class="ivn-svg" viewBox="0 -34 134 106" role="img" aria-label="' + (opts.label || 'A note on a stave') + '"><g fill="' + INK + '">' + g + '</g></svg>';
   }
+
+  function ledgerLines(x, pos, half) {
+    var g = '', i;
+    for (i = -2; i >= pos; i -= 2) g += '<line x1="' + (x - half) + '" x2="' + (x + half) + '" y1="' + (BOTTOM - i * SP / 2) + '" y2="' + (BOTTOM - i * SP / 2) + '" stroke="' + INK + '" stroke-width="1.2"/>';
+    for (i = 10; i <= pos; i += 2) g += '<line x1="' + (x - half) + '" x2="' + (x + half) + '" y1="' + (BOTTOM - i * SP / 2) + '" y2="' + (BOTTOM - i * SP / 2) + '" stroke="' + INK + '" stroke-width="1.2"/>';
+    return g;
+  }
+  // Two notes one after the other (an interval).  opts.notes: [{ pos, acc }, { pos, acc }] in the order they are played.
+  function notesSvg(opts) {
+    var g = lines(4, 150) + clefGlyph(opts.clef), xs = [80, 124];
+    opts.notes.forEach(function (n, k) {
+      var x = xs[k], y = BOTTOM - n.pos * SP / 2, up = n.pos < 4;
+      g += ledgerLines(x, n.pos, 11);
+      if (n.acc === 'sharp' || n.acc === 'flat') g += accidental(n.acc === 'sharp', x - 20, y);
+      g += '<ellipse cx="' + x + '" cy="' + y + '" rx="6.4" ry="4.6" transform="rotate(-20 ' + x + ' ' + y + ')" fill="' + INK + '"/>';
+      g += up ? '<line x1="' + (x + 5.8) + '" x2="' + (x + 5.8) + '" y1="' + (y - 1) + '" y2="' + (y - 3.4 * SP) + '" stroke="' + INK + '" stroke-width="1.4"/>'
+              : '<line x1="' + (x - 5.8) + '" x2="' + (x - 5.8) + '" y1="' + (y + 1) + '" y2="' + (y + 3.4 * SP) + '" stroke="' + INK + '" stroke-width="1.4"/>';
+    });
+    return '<svg class="ivn-svg" viewBox="0 -34 154 106" role="img" aria-label="' + (opts.label || 'Two notes on a stave') + '"><g fill="' + INK + '">' + g + '</g></svg>';
+  }
+  // A chord: whole notes stacked in thirds, accidentals staggered to the left so they never overlap.
+  function chordSvg(opts) {
+    var notes = opts.notes.slice().sort(function (a, b) { return b.pos - a.pos; }), x = 108, g = lines(4, 150) + clefGlyph(opts.clef), cols = [0, 1, 2, 0, 1];
+    notes.forEach(function (n, k) {
+      var y = BOTTOM - n.pos * SP / 2;
+      g += ledgerLines(x, n.pos, 12);
+      if (n.acc === 'sharp' || n.acc === 'flat') g += accidental(n.acc === 'sharp', x - 19 - cols[k] * 11, y);
+      g += '<ellipse cx="' + x + '" cy="' + y + '" rx="7" ry="4.9" fill="' + INK + '"/>' +
+           '<ellipse cx="' + x + '" cy="' + y + '" rx="3" ry="4.2" transform="rotate(-35 ' + x + ' ' + y + ')" style="fill:var(--intrvl-panel-bg,#fff)"/>';
+    });
+    return '<svg class="ivn-svg" viewBox="0 -34 154 106" role="img" aria-label="' + (opts.label || 'A chord on a stave') + '"><g fill="' + INK + '">' + g + '</g></svg>';
+  }
+
   // A small stave with just a clef on it - used on answer buttons.
   function clefIconSvg(clef) {
     return '<svg class="ivn-svg ivn-clef" viewBox="0 -22 52 78" aria-hidden="true" focusable="false"><g fill="' + INK + '">' + lines(2, 50) + clefGlyph(clef) + '</g></svg>';
   }
-  return { keySigSvg: keySigSvg, noteSvg: noteSvg, clefIconSvg: clefIconSvg, SIG_POS: SIG_POS, GLYPH: GLYPH, INK: INK };
+  return { keySigSvg: keySigSvg, noteSvg: noteSvg, notesSvg: notesSvg, chordSvg: chordSvg, clefIconSvg: clefIconSvg, SIG_POS: SIG_POS, GLYPH: GLYPH, INK: INK };
 })();

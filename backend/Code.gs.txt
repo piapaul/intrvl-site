@@ -4,6 +4,15 @@
  * Paste this whole file over the old Code.gs in your Sheet's Apps Script
  * project, then redeploy as a NEW VERSION (see docs/LEADERBOARD-SETUP.md).
  *
+ * What changed in version 6 (sync, league manager, more games):
+ *   - Tabs "sync" and "stats" are created for you; "league_members" gains two columns (share, managerName).
+ *   - Sync: a player can save their progress online and restore it on another phone / the website with their
+ *     friend code plus a recovery code. The recovery code never reaches the server, only a hash of it.
+ *   - League manager: a member can choose to share a small progress summary with the league owner, shown under
+ *     a First name + initial. Sharing can be turned off at any time, which also deletes the summary.
+ *   - deleteMyData: removes everything stored about a player (the owner must delete their leagues first).
+ *   - Score limits for Interval Reader (+Easy) and Chord Quality.
+ *
  * What changed in version 5 (Friends League):
  *   - Two new tabs, "leagues" and "league_members", are created for you.
  *   - A league is a named group with an owner and an invite link. Everyone's daily scores for the week are turned
@@ -39,24 +48,28 @@
  * read the `ok` field in the JSON.
  */
 
-var VERSION = 5;
-var FMT_VERSION = 2;   // bump only if the column formats need re-applying
+var VERSION = 6;
+var FMT_VERSION = 3;   // bump only if the column formats need re-applying
 
 var SCORES = 'scores';     // timestamp | gameId | deviceId | displayName | dailySeedDate | score | streak
 var PLAYERS = 'players';   // code | deviceId | displayName | avatar | updatedAt
 var FRIENDS = 'friends';   // codeA | codeB | createdAt   (one row per friendship, treated as two-way)
 var LEAGUES = 'leagues';   // leagueId | name | ownerCode | createdAt | inviteCode
-var MEMBERS = 'league_members';   // leagueId | playerCode | role (owner/member) | joinedAt
+var MEMBERS = 'league_members';   // leagueId | playerCode | role (owner/member) | joinedAt | share (1/0) | managerName
+var STATS = 'stats';       // code | updatedAt | json  (small progress summary, only for players who share with a league manager)
+var SYNC = 'sync';         // code | part ('key' or 0,1,2...) | data | updatedAt  (saved progress, in chunks)
 
 var HEADERS = {
   scores: ['timestamp', 'gameId', 'deviceId', 'displayName', 'dailySeedDate', 'score', 'streak'],
   players: ['code', 'deviceId', 'displayName', 'avatar', 'updatedAt'],
   friends: ['codeA', 'codeB', 'createdAt'],
   leagues: ['leagueId', 'name', 'ownerCode', 'createdAt', 'inviteCode'],
-  league_members: ['leagueId', 'playerCode', 'role', 'joinedAt']
+  league_members: ['leagueId', 'playerCode', 'role', 'joinedAt', 'share', 'managerName'],
+  stats: ['code', 'updatedAt', 'json'],
+  sync: ['code', 'part', 'data', 'updatedAt']
 };
 // 1-based columns that must stay plain text
-var TEXT_COLS = { scores: [1, 2, 3, 4, 5], players: [1, 2, 3, 4, 5], friends: [1, 2, 3], leagues: [1, 2, 3, 4, 5], league_members: [1, 2, 3, 4] };
+var TEXT_COLS = { scores: [1, 2, 3, 4, 5], players: [1, 2, 3, 4, 5], friends: [1, 2, 3], leagues: [1, 2, 3, 4, 5], league_members: [1, 2, 3, 4, 5, 6], stats: [1, 2, 3], sync: [1, 2, 3, 4] };
 
 var DEFAULT_AVATAR = '🎹';
 
@@ -69,7 +82,11 @@ var LIMITS = {
   maxStreak: 4000,
   maxLeaguesOwned: 5,
   maxLeaguesJoined: 10,
-  maxLeagueMembers: 50
+  maxLeagueMembers: 50,
+  syncChunk: 45000,
+  maxSyncChunks: 14,
+  maxSummaryChars: 3000,
+  maxRestoreTries: 5
 };
 
 // Plausible score ranges per game (rejects obviously spoofed submissions).
@@ -77,7 +94,8 @@ var SCORE_BOUNDS = {
   interval: [0, 3], pitch: [0, 3], seventh: [0, 3],
   enharmonic: [0, 150], spelling: [0, 150], clef: [0, 150], note: [0, 150],
   'note-easy': [0, 150], 'clef-easy': [0, 150], keysig: [0, 150], 'keysig-easy': [0, 150],
-  rhythm: [0, 100], 'rhythm-easy': [0, 100]                                  // rhythm: accuracy out of 100
+  rhythm: [0, 100], 'rhythm-easy': [0, 100],                                 // rhythm: accuracy out of 100
+  readinterval: [0, 150], 'readinterval-easy': [0, 150], chordq: [0, 150]
 };
 
 // ---------------------------------------------------------------- entry points
@@ -110,7 +128,7 @@ function doPost(e) {
     var secret = props.getProperty('SHARED_SECRET'), nextSecret = props.getProperty('SHARED_SECRET_NEXT');
     var okSecret = !!secret && (body.secret === secret || (!!nextSecret && body.secret === nextSecret));
     if (!okSecret) return json_({ ok: false, error: 'unauthorized' });
-    if (!validDevice_(body.deviceId) && body.action !== 'addFriend' && body.action !== 'removeFriend') return json_({ ok: false, error: 'invalid deviceId' });
+    if (!validDevice_(body.deviceId) && body.action !== 'addFriend' && body.action !== 'removeFriend' && body.action !== 'syncRestore') return json_({ ok: false, error: 'invalid deviceId' });
 
     lock.waitLock(15000);
     if (tooManyWrites_(body.deviceId || body.code)) return json_({ ok: false, error: 'slow down — too many requests' });
@@ -125,6 +143,14 @@ function doPost(e) {
       case 'renameLeague': return renameLeague_(body);
       case 'resetInvite': return resetInvite_(body);
       case 'deleteLeague': return deleteLeague_(body);
+      case 'setMemberPrefs': return setMemberPrefs_(body);
+      case 'statsPush': return statsPush_(body);
+      case 'leagueManage': return leagueManage_(body);
+      case 'syncEnable': return syncEnable_(body);
+      case 'syncPush': return syncPush_(body);
+      case 'syncPull': return syncPull_(body);
+      case 'syncRestore': return syncRestore_(body);
+      case 'deleteMyData': return deleteMyData_(body);
       default: return submitScore_(body);       // no action = a score submission
     }
   } catch (err) {
@@ -319,8 +345,12 @@ function findLeague_(rows, leagueId) {
 }
 function membersOf_(mrows, leagueId) {
   var out = [];
-  for (var i = 1; i < mrows.length; i++) if (String(mrows[i][0]) === String(leagueId)) out.push({ code: String(mrows[i][1]).toUpperCase(), role: String(mrows[i][2]), joinedAt: String(mrows[i][3]) });
+  for (var i = 1; i < mrows.length; i++) if (String(mrows[i][0]) === String(leagueId)) out.push({ code: String(mrows[i][1]).toUpperCase(), role: String(mrows[i][2]), joinedAt: String(mrows[i][3]), share: String(mrows[i][4]) !== '0', managerName: String(mrows[i][5] || ''), row: i + 1 });
   return out;
+}
+function flag_(v) { return (v === false || v === 0 || v === '0' || v === 'false') ? '0' : '1'; }
+function cleanManagerName_(n) {
+  return typeof n === 'string' ? n.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'’\- ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22) : '';
 }
 function leaguesOf_(mrows, code) {
   var out = [];
@@ -350,7 +380,7 @@ function createLeague_(b) {
   if (joined >= LIMITS.maxLeaguesJoined) return json_({ ok: false, error: 'you are in the maximum number of leagues' });
   var id = randomId_(8), invite = randomId_(8), now = new Date().toISOString();
   appendText_(sheet_(LEAGUES), 'leagues', [id, name, a.code, now, invite]);
-  appendText_(sheet_(MEMBERS), 'league_members', [id, a.code, 'owner', now]);
+  appendText_(sheet_(MEMBERS), 'league_members', [id, a.code, 'owner', now, flag_(b.share), cleanManagerName_(b.managerName)]);
   return json_({ ok: true, league: { leagueId: id, name: name, inviteCode: invite } });
 }
 
@@ -366,7 +396,7 @@ function joinLeague_(b) {
   if (isMember_(mrows, found.id, a.code)) return json_({ ok: true, alreadyMember: true, league: { leagueId: found.id, name: found.name } });
   if (membersOf_(mrows, found.id).length >= LIMITS.maxLeagueMembers) return json_({ ok: false, error: 'that league is full' });
   if (leaguesOf_(mrows, a.code).length >= LIMITS.maxLeaguesJoined) return json_({ ok: false, error: 'you are in the maximum number of leagues' });
-  appendText_(sheet_(MEMBERS), 'league_members', [found.id, a.code, 'member', new Date().toISOString()]);
+  appendText_(sheet_(MEMBERS), 'league_members', [found.id, a.code, 'member', new Date().toISOString(), flag_(b.share), cleanManagerName_(b.managerName)]);
   return json_({ ok: true, league: { leagueId: found.id, name: found.name } });
 }
 
@@ -446,7 +476,8 @@ function myLeagues_(p) {
     var lg = findLeague_(lrows, m.leagueId);
     if (!lg) return;
     var owner = players[lg.ownerCode];
-    out.push({ leagueId: lg.id, name: lg.name, role: m.role, members: membersOf_(mrows, lg.id).length, ownerName: owner ? owner.displayName : '' });
+    var mine = membersOf_(mrows, lg.id).filter(function (x) { return x.code === code; })[0];
+    out.push({ leagueId: lg.id, name: lg.name, role: m.role, members: membersOf_(mrows, lg.id).length, ownerName: owner ? owner.displayName : '', share: mine ? mine.share : true });
   });
   return json_({ ok: true, leagues: out });
 }
@@ -527,6 +558,166 @@ function leagueView_(p) {
   });
 }
 
+// ---------------------------------------------------------------- league manager (opt-in progress summaries)
+
+function myMembership_(leagueId, code) {
+  var ms = membersOf_(memberRows_(), leagueId);
+  for (var i = 0; i < ms.length; i++) if (ms[i].code === code) return ms[i];
+  return null;
+}
+
+// Any member can change their own sharing choice and their First name + initial for a league.
+function setMemberPrefs_(b) {
+  var a = authPlayer_(b.code, b.deviceId);
+  if (a.error) return json_({ ok: false, error: a.error });
+  var m = myMembership_(b.leagueId, a.code);
+  if (!m) return json_({ ok: false, error: 'you are not in this league' });
+  var sh = sheet_(MEMBERS), share = flag_(b.share), name = cleanManagerName_(b.managerName);
+  sh.getRange(m.row, 5).setValue(share);
+  sh.getRange(m.row, 6).setValue(name);
+  dropStatsIfNotSharing_(a.code);
+  return json_({ ok: true, share: share === '1', managerName: name });
+}
+
+function sharesAnywhere_(code) {
+  var rows = memberRows_();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]).toUpperCase() === code && String(rows[i][4]) !== '0' && String(rows[i][5] || '') !== '') return true;
+  }
+  return false;
+}
+function deleteRowsWhere_(sheetName, col, value) {       // col is 0-based
+  var sh = sheet_(sheetName), vals = sh.getDataRange().getValues();
+  for (var i = vals.length - 1; i >= 1; i--) if (String(vals[i][col]).toUpperCase() === String(value).toUpperCase()) sh.deleteRow(i + 1);
+}
+function dropStatsIfNotSharing_(code) { if (!sharesAnywhere_(code)) deleteRowsWhere_(STATS, 0, code); }
+
+// Keep only the fields the league manager is meant to see, whatever the page sent.
+function cleanSummary_(raw) {
+  var s;
+  try { s = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+  if (!s || typeof s !== 'object') return null;
+  function num(v, max) { v = Number(v); return isNaN(v) ? 0 : Math.max(0, Math.min(max, Math.round(v))); }
+  function txt(v, n) { return String(v == null ? '' : v).replace(/[<>]/g, '').slice(0, n); }
+  var weak = (Array.isArray(s.weak) ? s.weak : []).slice(0, 3).map(function (w) { return { g: txt(w && w.g, 30), l: txt(w && w.l, 30), p: num(w && w.p, 100) }; });
+  return {
+    v: 1, week: /^\d{4}-\d{2}-\d{2}$/.test(s.week || '') ? s.week : '', lastActive: /^\d{4}-\d{2}-\d{2}$/.test(s.lastActive || '') ? s.lastActive : '',
+    daysThisWeek: num(s.daysThisWeek, 7), gamesThisWeek: num(s.gamesThisWeek, 500), streak: num(s.streak, 5000),
+    accuracy: s.accuracy == null ? null : num(s.accuracy, 100), practiceMins: num(s.practiceMins, 10000), weak: weak
+  };
+}
+
+function statsPush_(b) {
+  var a = authPlayer_(b.code, b.deviceId);
+  if (a.error) return json_({ ok: false, error: a.error });
+  if (!sharesAnywhere_(a.code)) return json_({ ok: false, error: 'not sharing with any league' });
+  var clean = cleanSummary_(b.summary);
+  if (!clean) return json_({ ok: false, error: 'invalid summary' });
+  var text = JSON.stringify(clean);
+  if (text.length > LIMITS.maxSummaryChars) return json_({ ok: false, error: 'summary too large' });
+  var sh = sheet_(STATS), vals = sh.getDataRange().getValues(), now = new Date().toISOString();
+  for (var i = 1; i < vals.length; i++) {
+    if (String(vals[i][0]).toUpperCase() === a.code) { sh.getRange(i + 1, 2, 1, 2).setValues([[now, text]]); return json_({ ok: true }); }
+  }
+  appendText_(sh, 'stats', [a.code, now, text]);
+  return json_({ ok: true });
+}
+
+// League owner only: the members who chose to share, under First name + initial, with their summary.
+function leagueManage_(b) {
+  var o = ownerOnly_(b);
+  if (o.error) return json_({ ok: false, error: o.error });
+  var players = playersByCode_(), roster = membersOf_(memberRows_(), o.lg.id);
+  var statRows = sheet_(STATS).getDataRange().getValues(), byCode = {};
+  for (var i = 1; i < statRows.length; i++) {
+    try { byCode[String(statRows[i][0]).toUpperCase()] = { updatedAt: String(statRows[i][1]), summary: JSON.parse(String(statRows[i][2])) }; } catch (e) { /* skip */ }
+  }
+  var out = roster.map(function (m) {
+    var pl = players[m.code], shared = m.share && m.managerName, st = byCode[m.code];
+    var row = { code: m.code, role: m.role, sharing: !!shared, displayName: pl ? pl.displayName : m.code, avatar: pl ? pl.avatar : DEFAULT_AVATAR };
+    if (shared) { row.name = m.managerName; row.summary = st ? st.summary : null; row.updatedAt = st ? st.updatedAt : null; }
+    else row.reason = m.share ? 'name needed' : 'opted out';
+    return row;
+  });
+  return json_({ ok: true, league: { leagueId: o.lg.id, name: o.lg.name }, members: out, today: today_(), week: mondayOf_(today_()) });
+}
+
+// ---------------------------------------------------------------- sync (progress saved online)
+// The page makes a recovery code and sends only a hash of it. Saving needs the registered device;
+// restoring on a new device needs the friend code plus the recovery code.
+
+function keyRowIndex_(vals, code) {
+  for (var i = 1; i < vals.length; i++) if (String(vals[i][0]).toUpperCase() === code && String(vals[i][1]) === 'key') return i;
+  return -1;
+}
+function syncEnable_(b) {
+  var a = authPlayer_(b.code, b.deviceId);
+  if (a.error) return json_({ ok: false, error: a.error });
+  var hash = String(b.keyHash || '');
+  if (!/^[a-f0-9]{64}$/.test(hash)) return json_({ ok: false, error: 'invalid key' });
+  var sh = sheet_(SYNC), vals = sh.getDataRange().getValues(), idx = keyRowIndex_(vals, a.code), now = new Date().toISOString();
+  if (idx >= 0) sh.getRange(idx + 1, 3, 1, 2).setValues([[hash, now]]);
+  else appendText_(sh, 'sync', [a.code, 'key', hash, now]);
+  return json_({ ok: true });
+}
+function syncPush_(b) {
+  var a = authPlayer_(b.code, b.deviceId);
+  if (a.error) return json_({ ok: false, error: a.error });
+  var data = String(b.data || '');
+  if (!data || data.length > LIMITS.syncChunk * LIMITS.maxSyncChunks) return json_({ ok: false, error: 'saved progress is too large' });
+  var sh = sheet_(SYNC), vals = sh.getDataRange().getValues();
+  if (keyRowIndex_(vals, a.code) < 0) return json_({ ok: false, error: 'sync is not switched on' });
+  for (var i = vals.length - 1; i >= 1; i--) if (String(vals[i][0]).toUpperCase() === a.code && String(vals[i][1]) !== 'key') sh.deleteRow(i + 1);
+  var now = new Date().toISOString(), n = Math.ceil(data.length / LIMITS.syncChunk);
+  for (var c = 0; c < n; c++) appendText_(sh, 'sync', [a.code, String(c), data.slice(c * LIMITS.syncChunk, (c + 1) * LIMITS.syncChunk), now]);
+  return json_({ ok: true, updatedAt: now });
+}
+function readSnapshot_(code) {
+  var vals = sheet_(SYNC).getDataRange().getValues(), parts = [], updatedAt = '';
+  for (var i = 1; i < vals.length; i++) {
+    if (String(vals[i][0]).toUpperCase() === code && String(vals[i][1]) !== 'key') { parts.push({ n: Number(vals[i][1]), d: String(vals[i][2]) }); updatedAt = String(vals[i][3]); }
+  }
+  parts.sort(function (x, y) { return x.n - y.n; });
+  return { data: parts.map(function (p) { return p.d; }).join(''), updatedAt: updatedAt };
+}
+function syncPull_(b) {
+  var a = authPlayer_(b.code, b.deviceId);
+  if (a.error) return json_({ ok: false, error: a.error });
+  var snap = readSnapshot_(a.code);
+  return json_({ ok: true, data: snap.data || null, updatedAt: snap.updatedAt || null });
+}
+function syncRestore_(b) {
+  var code = cleanCode_(b.code), hash = String(b.keyHash || '');
+  if (!code || !/^[a-f0-9]{64}$/.test(hash)) return json_({ ok: false, error: 'check the codes and try again' });
+  var cache = CacheService.getScriptCache(), failKey = 'rf:' + code, fails = Number(cache.get(failKey)) || 0;
+  if (fails >= LIMITS.maxRestoreTries) return json_({ ok: false, error: 'too many tries — wait an hour and try again' });
+  var vals = sheet_(SYNC).getDataRange().getValues(), idx = keyRowIndex_(vals, code);
+  if (idx < 0 || String(vals[idx][2]) !== hash) {
+    cache.put(failKey, String(fails + 1), 3600);
+    return json_({ ok: false, error: 'those codes don’t match' });
+  }
+  var snap = readSnapshot_(code);
+  if (!snap.data) return json_({ ok: false, error: 'nothing has been saved for this code yet' });
+  return json_({ ok: true, data: snap.data, updatedAt: snap.updatedAt });
+}
+
+// Removes everything stored about a player. Leagues they own must be deleted (or the league left) first.
+function deleteMyData_(b) {
+  var a = authPlayer_(b.code, b.deviceId);
+  if (a.error) return json_({ ok: false, error: a.error });
+  var lrows = leagueRows_();
+  for (var i = 1; i < lrows.length; i++) if (String(lrows[i][2]).toUpperCase() === a.code) return json_({ ok: false, error: 'delete your leagues first (League → Manage)' });
+  deleteRowsWhere_(MEMBERS, 1, a.code);
+  deleteRowsWhere_(STATS, 0, a.code);
+  deleteRowsWhere_(SYNC, 0, a.code);
+  var fr = sheet_(FRIENDS), fv = fr.getDataRange().getValues();
+  for (var j = fv.length - 1; j >= 1; j--) if (String(fv[j][0]).toUpperCase() === a.code || String(fv[j][1]).toUpperCase() === a.code) fr.deleteRow(j + 1);
+  var sc = sheet_(SCORES), sv = sc.getDataRange().getValues();
+  for (var k = sv.length - 1; k >= 1; k--) if (String(sv[k][2]) === String(b.deviceId)) sc.deleteRow(k + 1);
+  deleteRowsWhere_(PLAYERS, 0, a.code);
+  return json_({ ok: true });
+}
+
 // ---------------------------------------------------------------- helpers
 
 function sheet_(name) {
@@ -536,6 +727,7 @@ function sheet_(name) {
   if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('FMT_' + name) !== String(FMT_VERSION)) {
+    sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');       // bring the header row up to date when columns are added
     TEXT_COLS[name].forEach(function (c) { sh.getRange(1, c, sh.getMaxRows(), 1).setNumberFormat('@'); });
     props.setProperty('FMT_' + name, String(FMT_VERSION));
   }

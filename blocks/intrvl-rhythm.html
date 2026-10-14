@@ -107,6 +107,10 @@ line-height: 1.2;
 .iv-select, .iv-input { width: 100%; padding: .6rem .75rem; border: 1px solid var(--intrvl-stone); border-radius: 10px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .95rem; }
 .iv-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236b6b6b' stroke-width='2'/></svg>"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
 .iv-input:focus, .iv-select:focus { outline: 2px solid var(--intrvl-accent); outline-offset: 1px; border-color: transparent; }
+.iv-check { display: flex; gap: .6rem; align-items: flex-start; min-height: 44px; margin: .5rem 0; font-size: .9rem; line-height: 1.35; cursor: pointer; }
+.iv-check input { width: 22px; height: 22px; min-width: 22px; margin-top: 1px; accent-color: var(--intrvl-accent-dark); }
+.iv-pad { display: block; width: 100%; max-width: 340px; height: 150px; margin: .6rem auto; border-radius: 26px; border: 3px solid var(--intrvl-ink); background: var(--intrvl-accent); color: var(--intrvl-ink); font: 900 2.2rem var(--intrvl-font-head); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 6px 0 var(--intrvl-ink); }
+.iv-pad.down { transform: translateY(5px); box-shadow: 0 1px 0 var(--intrvl-ink); }
 .iv-range { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--intrvl-stone); outline: none; margin: .6rem 0; }
 .iv-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
 .iv-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
@@ -334,6 +338,11 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
   .rt-list { text-align: left; font-size: .84rem; margin: .5rem 0 0; padding-left: 1.1rem; }
   .rt-offset { width: 100%; max-width: 340px; text-align: left; margin-top: 1rem; font-size: .85rem; }
   .rt-offset summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+  .rt-ready { width: 100%; max-width: 340px; margin: 0 auto; }
+  .rt-ready .btn-primary, .rt-ready .btn-practice { width: 100%; }
+  .rt-ready .iv-note { margin: .2rem 0 .7rem; }
+  .rt-sigs { margin: 0 0 1rem; }
+  .rt-today { font-weight: 800; margin: -.6rem 0 1rem; color: var(--intrvl-ink-soft); }
 </style>
 
 <div id="intrvl-app">
@@ -358,13 +367,14 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
         Read the rhythm, wait for the count-in, then tap it in time.<br>Accuracy is everything.
       </p>
       <div class="mobile-warning">🔔 Phone users: turn your device's silent switch OFF so you can hear the metronome.</div>
+      <p class="rt-today" id="rt-today"></p>
       <button class="btn-primary" onclick="startRhythm(true)">Start Daily Rhythm</button>
+      <div class="iv-label" id="rt-sig-lbl" style="margin-top:.4rem">Practice time signature</div>
+      <div class="iv-chips rt-sigs" id="rt-sigs" role="group" aria-labelledby="rt-sig-lbl"></div>
       <button class="btn-practice" onclick="startRhythm(false)">Practice Rhythm</button>
       <details class="rt-offset">
         <summary>Timing adjustment</summary>
-        <p class="iv-note" style="margin-bottom:.4rem">Bluetooth headphones and some phones play sound a little late. If the review shows you are always early or always late by the same amount, nudge this to match.</p>
-        <label class="iv-label" for="rt-offset">Adjust: <span id="rt-offset-val">0</span> ms</label>
-        <input type="range" class="iv-range" id="rt-offset" min="-150" max="150" step="5" value="0">
+        <div id="rt-timing"></div>
       </details>
     </div>
 
@@ -373,9 +383,15 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
       <p class="rt-tempo" id="rt-tempo"></p>
       <div class="rt-score-card" id="rt-score-card"></div>
       <div id="rt-status" role="status" aria-live="polite">Get ready…</div>
-      <div class="rt-dots" id="rt-dots" aria-hidden="true"><i class="accent"></i><i></i><i></i><i></i></div>
-      <button type="button" id="rt-tap" aria-label="Tap the rhythm">TAP</button>
-      <p class="iv-note" style="margin-top:.8rem">You can also tap the space bar or Enter.</p>
+      <div class="rt-dots" id="rt-dots" aria-hidden="true"></div>
+      <div class="rt-ready" id="rt-ready">
+        <p class="iv-note" id="rt-ready-hint">Have a look at the rhythm first. Then press <b>Test sound</b> to check your volume (you should hear a few clicks), and <b>Go</b> to start the count-in.</p>
+        <button type="button" class="btn-practice" id="rt-test">🔊 Test sound</button>
+        <button type="button" class="btn-primary" id="rt-go" disabled aria-describedby="rt-ready-hint">Go</button>
+        <button type="button" class="iv-btn ghost" id="rt-back" style="width:100%;margin-top:.4rem">Back</button>
+      </div>
+      <button type="button" id="rt-tap" class="hidden" aria-label="Tap the rhythm">TAP</button>
+      <p class="iv-note hidden" id="rt-tap-note" style="margin-top:.8rem">You can also tap the space bar or Enter.</p>
     </div>
 
     <div id="screen-done" class="hidden button-stack">
@@ -419,6 +435,9 @@ IV.GAMES = [
   { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats', variantOf: 'keysig' },
   { id: 'rhythm',      name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',       blurb: 'Tap the rhythm, then keep time on your own' },
   { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',     icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy',  blurb: 'Tap the rhythm with the metronome running', variantOf: 'rhythm' },
+  { id: 'readinterval',      name: 'Interval Reader',      icon: '📏', accent: '#B7A7C9', url: '/intrvl-interval-reader',      blurb: '30 seconds: name the interval on the stave' },
+  { id: 'readinterval-easy', name: 'Interval Reader (Easy)', icon: '📏', accent: '#B7A7C9', url: '/intrvl-interval-reader-easy', blurb: 'Just the number: 2nd, 3rd, 4th, up to an octave', variantOf: 'readinterval' },
+  { id: 'chordq',      name: 'Chord Quality',         icon: '🧱', accent: '#D9A5B3', url: '/intrvl-chord-quality',        blurb: '30 seconds: major, minor, diminished, augmented or 7th?' },
   { id: 'interval',    name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',    blurb: 'Name the interval you hear' },
   { id: 'enharmonic',  name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',   blurb: '30 seconds: find the enharmonic twin' },
   { id: 'pitch',       name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',          blurb: 'Which pitch is higher, which is lower?' },
@@ -465,7 +484,10 @@ IV.find = function (id) {
   var CFG = global.INTRVL_CONFIG || {};
   var GAME_ID = CFG.gameId || CFG.id || 'unknown';
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ } }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ }
+    if (global.IntrvlSync && global.IntrvlSync.noteChange) global.IntrvlSync.noteChange(k);
+  }
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   function getDailySeed() {
     var today = new Date();
@@ -834,7 +856,7 @@ IV.find = function (id) {
     getAvatar: getAvatar, setAvatar: setAvatar,
     esc: esc, darken: darken, copyText: copyText,
     showScreen: showScreen, confetti: confetti, share: share,
-    lsGet: lsGet, lsSet: lsSet
+    lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, generateCode: generateCode
   };
 })(window);
 (function (global) {
@@ -960,8 +982,55 @@ IV.find = function (id) {
       return post(payload);
     });
   }
-  function createLeague(name) { return leagueCall({ action: 'createLeague', name: name }); }
-  function joinLeague(invite) { return leagueCall({ action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() }); }
+  function createLeague(name, prefs) { return leagueCall({ action: 'createLeague', name: name, share: prefs ? !!prefs.share : false, managerName: prefs ? prefs.managerName || '' : '' }); }
+  function joinLeague(invite, prefs) {
+    var p = { action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() };
+    if (prefs) { p.share = !!prefs.share; p.managerName = prefs.managerName || ''; }
+    return leagueCall(p);
+  }
+  function setMemberPrefs(id, prefs) { return leagueCall({ action: 'setMemberPrefs', leagueId: id, share: !!prefs.share, managerName: prefs.managerName || '' }); }
+  function manageLeague(id) { return leagueCall({ action: 'leagueManage', leagueId: id }); }
+
+  // ---- the progress summary a league manager can see (only if the player has given a name and not opted out) ----
+  var MGR_NAME = 'intrvl.manager.name', MGR_OUT = 'intrvl.manager.optout', MGR_PUSHED = 'intrvl.manager.pushed';
+  function cleanManagerName(n) { return String(n == null ? '' : n).replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'\u2019\- ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22); }
+  function managerName() { return Core.lsGet(MGR_NAME) || ''; }
+  function managerOptOut() { return Core.lsGet(MGR_OUT) === '1'; }
+  function saveManagerDefaults(name, out) { Core.lsSet(MGR_NAME, cleanManagerName(name)); Core.lsSet(MGR_OUT, out ? '1' : '0'); }
+  function mondayOf(ds) { var d = new Date(ds + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Core.dailySeedDate(d); }
+  function buildSummary() {
+    var today = Core.dailySeedDate(), mon = mondayOf(today), played = Core.allPlayedDates(), days = {}, games = 0, last = '', mins = 0, IVg = (global.IV && global.IV.GAMES) || [];
+    Object.keys(played).forEach(function (d) {
+      if (d >= mon && d <= today) { days[d] = 1; games += played[d]; }
+      if (d > last) last = d;
+    });
+    try {
+      var log = JSON.parse(Core.lsGet('intrvl.practice.log.v1') || '{}');
+      (log.sessions || []).forEach(function (x) {
+        if (!x || !x.date) return;
+        if (x.date >= mon && x.date <= today) { days[x.date] = 1; Object.keys(x.secs || {}).forEach(function (k) { mins += (Number(x.secs[k]) || 0) / 60; }); }
+        if (x.date > last) last = x.date;
+      });
+    } catch (e) { /* no log yet */ }
+    var tp = 0, tc = 0;
+    IVg.forEach(function (g) { var st = Core.statsFor(g.id); tp += st.totalPlayed || 0; tc += st.totalCorrect || 0; });
+    return {
+      v: 1, week: mon, lastActive: last, daysThisWeek: Object.keys(days).length, gamesThisWeek: games, streak: Core.practiceStreak(),
+      accuracy: tp ? Math.round(tc / tp * 100) : null, practiceMins: Math.round(mins),
+      weak: Core.weakSpots(3).map(function (w) { return { g: w.game.name, l: w.label, p: Math.round(w.recent * 100) }; })
+    };
+  }
+  // Sends the summary if this player shares with at least one league.  minutes: don't resend more often than this.
+  function pushStats(minutes) {
+    if (!isConfigured() || !managerName() || managerOptOut()) return Promise.resolve({ ok: true, skipped: true });
+    var last = Number(Core.lsGet(MGR_PUSHED)) || 0;
+    if (Date.now() - last < (minutes == null ? 20 : minutes) * 60000) return Promise.resolve({ ok: true, skipped: true });
+    var known = cachedLeagues();
+    return (known ? Promise.resolve({ ok: true, leagues: known }) : myLeagues()).then(function (r) {
+      if (!r.ok || !r.leagues.some(function (l) { return l.share; })) return { ok: true, skipped: true };
+      return leagueCall({ action: 'statsPush', summary: buildSummary() }).then(function (res) { if (res.ok) Core.lsSet(MGR_PUSHED, String(Date.now())); return res; });
+    });
+  }
   function leaveLeague(id) { return leagueCall({ action: 'leaveLeague', leagueId: id }); }
   function removeMember(id, memberCode) { return leagueCall({ action: 'removeMember', leagueId: id, memberCode: memberCode }); }
   function renameLeague(id, name) { return leagueCall({ action: 'renameLeague', leagueId: id, name: name }); }
@@ -999,7 +1068,7 @@ IV.find = function (id) {
     box.innerHTML = '<div class="iv-note iv-center">Sending your score…</div>';
     var date = Core.dailySeedDate();
     var sentKey = 'intrvl.sent.' + opts.gameId + '.' + date;
-    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) Core.lsSet(sentKey, '1'); return r; });
+    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) { Core.lsSet(sentKey, '1'); pushStats(1); } return r; });
     send.then(function (res) {
       if (!res.ok) {
         box.innerHTML = '<div class="iv-note iv-center">Couldn’t reach the leaderboard just now — your score is saved on this device. <button class="iv-linkbtn" id="iv-lb-retry">Try again</button></div>';
@@ -1024,11 +1093,265 @@ IV.find = function (id) {
     });
   }
   global.IntrvlLeaderboard = {
-    isConfigured: isConfigured, ping: ping, register: register,
+    isConfigured: isConfigured, ping: ping, register: register, call: post,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
     createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
-    resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
+    resetInvite: resetInvite, deleteLeague: deleteLeague, setMemberPrefs: setMemberPrefs, manageLeague: manageLeague, pushStats: pushStats, buildSummary: buildSummary,
+    cleanManagerName: cleanManagerName, managerName: managerName, managerOptOut: managerOptOut, saveManagerDefaults: saveManagerDefaults, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
     submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
+  };
+})(window);
+// ---- progress sync -------------------------------------------------------------------------------
+// Optional.  Switching it on stores a copy of this player's progress on the leaderboard server, locked by a
+// recovery code that only the player has (the server keeps just a hash of it).  Entering the friend code +
+// recovery code on another device brings the progress across and keeps the two in step.
+(function (global) {
+  'use strict';
+  var Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
+  var K_ON = 'intrvl.sync.on', K_KEY = 'intrvl.sync.key', K_LAST = 'intrvl.sync.last', K_ERR = 'intrvl.sync.err';
+  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1|rhythm\.offset|manager\.pushed)/;
+  var applying = false, timer = null, busy = null, listeners = [];
+
+  function syncable(k) { return k && k.indexOf('intrvl.') === 0 && !SKIP.test(k); }
+  function isOn() { return Core.lsGet(K_ON) === '1' && !!Core.lsGet(K_KEY); }
+  function recoveryKey() { return Core.lsGet(K_KEY) || ''; }
+  function lastSync() { return Core.lsGet(K_LAST) || ''; }
+  function lastError() { return Core.lsGet(K_ERR) || ''; }
+  function onChange(fn) { listeners.push(fn); }
+  function fire() { listeners.forEach(function (f) { try { f(); } catch (e) { /* ignore */ } }); }
+  function canHash() { return !!(global.crypto && global.crypto.subtle && global.TextEncoder); }
+
+  function hex(buf) { var a = new Uint8Array(buf), s = ''; for (var i = 0; i < a.length; i++) s += (a[i] < 16 ? '0' : '') + a[i].toString(16); return s; }
+  function hashKey(code, key) {
+    if (!canHash()) return Promise.reject(new Error('no crypto'));
+    return global.crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code).toUpperCase() + ':' + String(key).toUpperCase().replace(/[^A-Z0-9]/g, ''))).then(hex);
+  }
+  function newRecoveryKey() { var c = Core.generateCode ? Core.generateCode(10) : ''; return c.slice(0, 5) + '-' + c.slice(5); }
+  function cleanKey(k) { var c = String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return c.length === 10 ? c.slice(0, 5) + '-' + c.slice(5) : c; }
+
+  // ---- snapshot (all syncable keys) --------------------------------------------------------------
+  function collect() {
+    var data = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (syncable(k)) data[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* storage blocked */ }
+    return data;
+  }
+  function parse(s, fallback) { try { var o = JSON.parse(s); return o == null ? fallback : o; } catch (e) { return fallback; } }
+  function dateNum(s) { var t = Date.parse(s || ''); return isNaN(t) ? 0 : t; }
+
+  // ---- merging: two copies of the same player's progress become one, never losing either ----------
+  function mergeStats(a, b) {
+    var x = parse(a, null), y = parse(b, null);
+    if (!x) return b; if (!y) return a;
+    var later = dateNum(y.lastPlayedDate) > dateNum(x.lastPlayedDate), base = later ? y : x, other = later ? x : y;
+    var bigger = (y.totalPlayed || 0) > (x.totalPlayed || 0) ? y : x, out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    out.totalPlayed = bigger.totalPlayed || 0; out.totalCorrect = bigger.totalCorrect || 0;
+    out.bestStreak = Math.max(x.bestStreak || 0, y.bestStreak || 0);
+    out.highScorePractice = Math.max(x.highScorePractice || 0, y.highScorePractice || 0);
+    var d1 = base.dailyBest, d2 = other.dailyBest;
+    out.dailyBest = (!d1 || (d2 && (d2.score || 0) > (d1.score || 0))) ? (d2 || d1 || null) : d1;
+    return JSON.stringify(out);
+  }
+  function mergeHistory(a, b) {
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    [x, y].forEach(function (o) { Object.keys(o).forEach(function (d) { out[d] = (d in out) ? Math.max(out[d], o[d]) : o[d]; }); });
+    return JSON.stringify(out);
+  }
+  function mergeUnion(a, b) {   // local wins on a clash
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    Object.keys(y).forEach(function (k) { out[k] = y[k]; });
+    Object.keys(x).forEach(function (k) { out[k] = x[k]; });
+    return JSON.stringify(out);
+  }
+  function mergeItems(a, b) {
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    Object.keys(y).forEach(function (k) { out[k] = y[k]; });
+    Object.keys(x).forEach(function (k) { if (!out[k] || (x[k].a || 0) >= (out[k].a || 0)) out[k] = x[k]; });
+    return JSON.stringify(out);
+  }
+  function mergeFriends(a, b) {
+    var x = parse(a, []), y = parse(b, []), out = x.slice();
+    y.forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); });
+    return JSON.stringify(out);
+  }
+  function mergePractice(a, b) {
+    var x = parse(a, { sessions: [] }), y = parse(b, { sessions: [] }), seen = {}, out = [];
+    (x.sessions || []).concat(y.sessions || []).forEach(function (s) { if (s && !seen[s.id]) { seen[s.id] = 1; out.push(s); } });
+    out.sort(function (p, q) { return (p.ts || 0) - (q.ts || 0); });
+    return JSON.stringify({ sessions: out });
+  }
+  // keys that describe "who this is": on a restore the saved copy wins, in everyday syncing this device's wins
+  var IDENTITY = /^intrvl\.(deviceId|playerCode|displayName|avatar)$/;
+  function mergeValue(k, local, remote, restoring) {
+    if (local == null) return remote;
+    if (remote == null) return local;
+    if (local === remote) return local;
+    if (IDENTITY.test(k)) return restoring ? remote : local;
+    if (/\.stats\.v1$/.test(k)) return mergeStats(local, remote);
+    if (/\.history\.v1$/.test(k)) return mergeHistory(local, remote);
+    if (/\.blocks\.v1$/.test(k)) return mergeUnion(local, remote);
+    if (/\.items\.v1$/.test(k)) return mergeItems(local, remote);
+    if (k === 'intrvl.friends') return mergeFriends(local, remote);
+    if (k === 'intrvl.practice.log.v1') return mergePractice(local, remote);
+    if (/^intrvl\.sent\./.test(k)) return '1';
+    return local;   // settings such as the rhythm timing adjustment: this device keeps its own
+  }
+  function merge(local, remote, restoring) {
+    var out = {}, keys = {};
+    Object.keys(local || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(remote || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(keys).forEach(function (k) {
+      if (!syncable(k) || (remote && remote[k] != null && (typeof remote[k] !== 'string' || remote[k].length > 200000))) return;
+      var v = mergeValue(k, local ? local[k] : null, remote ? remote[k] : null, !!restoring);
+      if (v != null) out[k] = v;
+    });
+    return out;
+  }
+  function sameData(a, b) {
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) if (a[ka[i]] !== b[ka[i]]) return false;
+    return true;
+  }
+
+  // ---- packing (gzip when the browser can, plain otherwise) ---------------------------------------
+  function toB64(bytes) { var s = ''; for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s); }
+  function fromB64(t) { var s = atob(t), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+  function streamBytes(stream, bytes) {
+    var w = stream.writable.getWriter(); w.write(bytes); w.close();
+    return new Response(stream.readable).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function pack(data) {
+    var text = JSON.stringify(data), bytes = new TextEncoder().encode(text);
+    if (typeof CompressionStream === 'function') {
+      try { return streamBytes(new CompressionStream('gzip'), bytes).then(function (z) { return 'g1:' + toB64(z); }); } catch (e) { /* fall through */ }
+    }
+    return Promise.resolve('j1:' + toB64(bytes));
+  }
+  function unpack(text) {
+    text = String(text || '');
+    var kind = text.slice(0, 3), bytes;
+    try { bytes = fromB64(text.slice(3)); } catch (e) { return Promise.reject(new Error('unreadable')); }
+    var p = kind === 'g1:'
+      ? (typeof DecompressionStream === 'function' ? streamBytes(new DecompressionStream('gzip'), bytes) : Promise.reject(new Error('This browser can’t open the saved copy.')))
+      : kind === 'j1:' ? Promise.resolve(bytes) : Promise.reject(new Error('unreadable'));
+    return p.then(function (b) {
+      var o = JSON.parse(new TextDecoder().decode(b));
+      if (!o || typeof o !== 'object') throw new Error('unreadable');
+      return o;
+    });
+  }
+
+  function apply(data) {
+    applying = true;
+    try { Object.keys(data).forEach(function (k) { if (syncable(k) && Core.lsGet(k) !== data[k]) Core.lsSet(k, data[k]); }); }
+    finally { applying = false; }
+  }
+  function stamp(ok, err) {
+    if (ok) { Core.lsSet(K_LAST, new Date().toISOString()); Core.lsDel ? Core.lsDel(K_ERR) : Core.lsSet(K_ERR, ''); } else Core.lsSet(K_ERR, err || 'couldn’t reach the server');
+    fire();
+  }
+  function friendlyErr(r) { return (r && r.error === 'network error') ? 'no connection — will try again later' : ((r && r.error) || 'something went wrong'); }
+
+  // pull the saved copy, merge it with this device, and push the result back if anything changed
+  function syncNow() {
+    if (!isOn()) return Promise.resolve({ ok: false, error: 'sync is off' });
+    if (busy) return busy;
+    busy = LB.register().then(function () {
+      return LB.call({ action: 'syncPull', code: Core.getPlayerCode(), deviceId: Core.getDeviceId() });
+    }).then(function (res) {
+      if (!res.ok) throw res;
+      return (res.data ? unpack(res.data) : Promise.resolve({})).then(function (remote) {
+        var local = collect(), merged = merge(local, remote, false);
+        if (!sameData(local, merged)) apply(merged);
+        if (res.data && sameData(remote, merged)) return { ok: true, unchanged: true };
+        return pack(merged).then(function (packed) {
+          return LB.call({ action: 'syncPush', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), data: packed });
+        }).then(function (r) { if (!r.ok) throw r; return { ok: true }; });
+      });
+    }).then(function (r) { stamp(true); busy = null; return r; }, function (e) {
+      busy = null;
+      var msg = e && e.error ? friendlyErr(e) : 'something went wrong';
+      stamp(false, msg);
+      return { ok: false, error: msg };
+    });
+    return busy;
+  }
+
+  function enable() {
+    if (!LB.isConfigured()) return Promise.resolve({ ok: false, error: 'The leaderboard isn’t set up yet.' });
+    if (!canHash()) return Promise.resolve({ ok: false, error: 'This browser can’t do secure sync.' });
+    var key = recoveryKey() || newRecoveryKey();
+    return LB.register().then(function (reg) {
+      if (!reg.ok) throw reg;
+      return hashKey(Core.getPlayerCode(), key);
+    }).then(function (h) {
+      return LB.call({ action: 'syncEnable', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), keyHash: h });
+    }).then(function (r) {
+      if (!r.ok) throw r;
+      Core.lsSet(K_KEY, key); Core.lsSet(K_ON, '1');
+      return syncNow().then(function (s) { return s.ok ? { ok: true, key: key } : { ok: true, key: key, warning: s.error }; });
+    }).catch(function (e) { return { ok: false, error: e && e.error ? friendlyErr(e) : 'Couldn’t switch sync on — please try again.' }; });
+  }
+  function disable() {   // stops syncing on this device; the saved copy stays until deleted
+    Core.lsSet(K_ON, '0'); fire();
+  }
+  function restore(friendCode, key) {
+    var code = String(friendCode || '').trim().toUpperCase(), k = cleanKey(key);
+    if (!code || k.length < 10) return Promise.resolve({ ok: false, error: 'Enter both codes.' });
+    if (!canHash()) return Promise.resolve({ ok: false, error: 'This browser can’t do secure sync.' });
+    return hashKey(code, k).then(function (h) {
+      return LB.call({ action: 'syncRestore', code: code, keyHash: h });
+    }).then(function (r) {
+      if (!r.ok) throw r;
+      return unpack(r.data);
+    }).then(function (remote) {
+      var local = collect(), merged = merge(local, remote, true);
+      merged['intrvl.playerCode'] = code;
+      applying = true;
+      try { Object.keys(merged).forEach(function (kk) { if (syncable(kk)) Core.lsSet(kk, merged[kk]); }); } finally { applying = false; }
+      Core.lsSet(K_KEY, k); Core.lsSet(K_ON, '1');
+      if (Core.lsDel) Core.lsDel('intrvl.reg');
+      stamp(true);
+      return { ok: true };
+    }).catch(function (e) { return { ok: false, error: (e && e.error) ? friendlyErr(e) : ((e && e.message) || 'Couldn’t restore — please try again.') }; });
+  }
+  function deleteOnlineData() {
+    return LB.register().then(function () {
+      return LB.call({ action: 'deleteMyData', code: Core.getPlayerCode(), deviceId: Core.getDeviceId() });
+    }).then(function (r) {
+      if (!r.ok) return { ok: false, error: friendlyErr(r) };
+      Core.lsSet(K_ON, '0'); Core.lsDel && Core.lsDel(K_KEY); Core.lsDel && Core.lsDel(K_LAST);
+      Core.lsDel && Core.lsDel('intrvl.reg'); Core.lsDel && Core.lsDel('intrvl.friends');
+      fire();
+      return { ok: true };
+    });
+  }
+
+  // changes made on this device are sent a little later (not on every tap)
+  function noteChange(k) {
+    if (applying || !isOn() || !syncable(k)) return;
+    if (timer) return;
+    timer = setTimeout(function () { timer = null; syncNow(); }, 20000);
+  }
+  function autoSync() {   // on page load: at most every 10 minutes
+    if (!isOn()) return;
+    var t = Date.parse(lastSync());
+    if (!isNaN(t) && Date.now() - t < 600000) return;
+    setTimeout(syncNow, 2500);
+  }
+  if (global.addEventListener) global.addEventListener('pagehide', function () { if (timer) { clearTimeout(timer); timer = null; if (isOn()) syncNow(); } });
+
+  global.IntrvlSync = {
+    isOn: isOn, recoveryKey: recoveryKey, lastSync: lastSync, lastError: lastError, onChange: onChange,
+    enable: enable, disable: disable, restore: restore, syncNow: syncNow, deleteOnlineData: deleteOnlineData,
+    noteChange: noteChange, autoSync: autoSync, canHash: canHash,
+    _merge: merge, _collect: collect, _pack: pack, _unpack: unpack
   };
 })(window);
 (function (global) {
@@ -1229,6 +1552,68 @@ IV.find = function (id) {
   }
   function inviteLink(code) { return IV.fullUrl(IV.SECTIONS.home.url) + '?league=' + code; }
 
+  // ---- "what does the league manager see?" fields (used when joining and in a league's own settings) ----
+  function shareFieldsHtml(pre, name, optedOut) {
+    return '<div class="iv-sharebox">' +
+      '<div class="iv-label" id="' + pre + '-lbl" style="margin-top:.8rem">Sharing with the league manager</div>' +
+      '<p class="iv-note">The person who runs this league can see a short summary of your progress: your first name and initial, days played this week, games, streak, accuracy, practice time and your three weakest topics. Nothing else, and never your full history.</p>' +
+      '<label class="iv-label" for="' + pre + '-name">First name and initial (like “Ben O”)</label>' +
+      '<input class="iv-input" id="' + pre + '-name" maxlength="22" autocomplete="off" value="' + esc(name || '') + '"' + (optedOut ? ' disabled' : '') + '>' +
+      '<label class="iv-check"><input type="checkbox" id="' + pre + '-out"' + (optedOut ? ' checked' : '') + '><span><b>Opt out</b> — don’t share my progress with the league manager</span></label>' +
+      '</div>';
+  }
+  function wireShareFields(s, pre) {
+    var out = $('#' + pre + '-out', s), name = $('#' + pre + '-name', s);
+    out.onchange = function () { name.disabled = out.checked; };
+  }
+  // -> { ok, share, managerName } or { ok: false, error }
+  function readShareFields(s, pre) {
+    var out = $('#' + pre + '-out', s).checked, name = LB.cleanManagerName($('#' + pre + '-name', s).value);
+    if (out) return { ok: true, share: false, managerName: '' };
+    if (name.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF]/g, '').length < 2) return { ok: false, error: 'Add your first name and initial (like “Ben O”), or tick Opt out.' };
+    return { ok: true, share: true, managerName: name };
+  }
+  function progressItems(x) {
+    var sharers = x.members.filter(function (m) { return m.sharing; }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+    var others = x.members.filter(function (m) { return !m.sharing; });
+    return { sharers: sharers, others: others };
+  }
+  function summaryLine(m, wk) {
+    var sm = m.summary, cur = sm && sm.week === wk;
+    if (!sm) return null;
+    return {
+      last: niceDay(sm.lastActive),
+      week: (cur ? sm.daysThisWeek : 0) + ' day' + ((cur ? sm.daysThisWeek : 0) === 1 ? '' : 's') + ' · ' + (cur ? sm.gamesThisWeek : 0) + ' game' + ((cur ? sm.gamesThisWeek : 0) === 1 ? '' : 's') + ' · ' + (cur ? sm.practiceMins : 0) + ' min practice',
+      streak: sm.streak, accuracy: sm.accuracy == null ? '–' : sm.accuracy + '%',
+      weak: (sm.weak || []).map(function (w) { return w.l + ' (' + w.g + ', ' + w.p + '%)'; })
+    };
+  }
+  function progressHtml(x) {
+    var it = progressItems(x), html = '';
+    if (!it.sharers.length) html += '<p class="iv-note">Nobody is sharing yet.</p>';
+    it.sharers.forEach(function (m) {
+      var l = summaryLine(m, x.week);
+      html += '<div class="iv-card"><div><b>' + esc(m.avatar || '') + ' ' + esc(m.name) + '</b>' + (m.updatedAt ? ' <span class="iv-note">· updated ' + esc(when(m.updatedAt)) + '</span>' : '') + '</div>' +
+        (l ? '<div class="iv-note" style="color:var(--intrvl-ink)">Last played: ' + esc(l.last) + '<br>This week: ' + esc(l.week) + '<br>Streak: ' + l.streak + ' · Accuracy: ' + esc(l.accuracy) + (l.weak.length ? '<br>Needs work: ' + esc(l.weak.join('; ')) : '') + '</div>' : '<div class="iv-note">No summary yet — it arrives the next time they open intrvl.</div>') + '</div>';
+    });
+    if (it.others.length) html += '<p class="iv-note" style="margin-top:.6rem">Not sharing: ' + it.others.map(function (m) { return esc(m.displayName) + ' (' + esc(m.reason) + ')'; }).join(', ') + '</p>';
+    if (it.sharers.length) html += '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small ghost" id="ivl-prog-copy">Copy as text</button></div>';
+    return html;
+  }
+  function progressText(x) {
+    var it = progressItems(x);
+    return 'intrvl — ' + x.league.name + ' (week of ' + shortDate(x.week) + ')\n' + it.sharers.map(function (m) {
+      var l = summaryLine(m, x.week);
+      return l ? m.name + ': last played ' + l.last + '; ' + l.week + '; streak ' + l.streak + '; accuracy ' + l.accuracy + (l.weak.length ? '; needs work: ' + l.weak.join(', ') : '') : m.name + ': no summary yet';
+    }).join('\n');
+  }
+  function when(ts) {
+    var t = Date.parse(ts || ''); if (isNaN(t)) return '';
+    var m = Math.round((Date.now() - t) / 60000);
+    return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  }
+  function niceDay(ds) { if (!ds) return 'never'; var d = new Date(ds + 'T12:00:00'); return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' ' + shortDate(ds); }
+
   function openLeague(preferId, opts) {
     opts = opts || {};
     var s = openSheet('<h3>Friends League</h3>' + viewSwitch('league') + '<div id="ivl-body" aria-live="polite"><div class="iv-note">Loading…</div></div>', null, 'friends');
@@ -1251,9 +1636,12 @@ IV.find = function (id) {
       html += '<label class="iv-label" for="ivl-new">Start a league</label>' +
         '<div class="iv-addrow"><input class="iv-input" id="ivl-new" maxlength="30" placeholder="e.g. Thursday piano group" autocomplete="off"><button type="button" class="iv-btn small" id="ivl-create">Create</button></div>' +
         '<label class="iv-label" for="ivl-join" style="margin-top:.8rem">Join with an invite code or link</label>' +
-        '<div class="iv-addrow"><input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
+        '<input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters">' +
+        shareFieldsHtml('ivj', LB.managerName() || '', LB.managerOptOut()) +
+        '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
         '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite"></div>' + privacyNote();
       body.innerHTML = html;
+      wireShareFields(s, 'ivj');
       Array.prototype.forEach.call(body.querySelectorAll('[data-id]'), function (b) { b.onclick = function () { showLeague(b.getAttribute('data-id')); }; });
       $('#ivl-create', s).onclick = function () {
         var name = $('#ivl-new', s).value.trim();
@@ -1267,23 +1655,30 @@ IV.find = function (id) {
       $('#ivl-joinbtn', s).onclick = function () {
         var raw = $('#ivl-join', s).value, m = /[?&]league=([A-Za-z0-9]+)/.exec(raw), code = (m ? m[1] : raw).trim();
         if (!code) { say('Paste an invite code or link first.'); return; }
+        var pf = readShareFields(s, 'ivj');
+        if (!pf.ok) { say(pf.error); return; }
         say('Joining…');
-        LB.joinLeague(code).then(function (r) {
+        LB.saveManagerDefaults(pf.managerName, !pf.share);
+        LB.joinLeague(code, pf).then(function (r) {
           if (!r.ok) { say(r.error === 'invite not found' ? 'That invite doesn’t work — ask for a fresh link.' : leagueError(r.error)); return; }
+          LB.myLeagues().then(function () { LB.pushStats(0); });
           showLeague(r.league.leagueId);
         });
       };
     }
     function privacyNote() {
-      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. Nothing else is shared.</p>';
+      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. The person who runs it can also see a short progress summary from members who choose to share it (first name and initial only). Nothing else is shared.</p>';
     }
 
     // ---- one league
     function showLeague(id, justCreated) {
       body.innerHTML = '<div class="iv-note">Loading…</div>';
-      var week = null;
+      var week = null, myShare = true;
       if (weekOffset) { var base = new Date(); base.setDate(base.getDate() + weekOffset * 7); week = Core.dailySeedDate(base); }
-      LB.getLeague(id, week).then(function (r) {
+      function shareOf(list) { var m = (list || []).filter(function (l) { return l.leagueId === id; })[0]; return m ? m.share !== false : true; }
+      Promise.all([LB.getLeague(id, week), LB.myLeagues()]).then(function (both) {
+        var r = both[0];
+        myShare = shareOf(both[1].ok ? both[1].leagues : LB.cachedLeagues());
         if (!r.ok) {
           var cached = !week && LB.cachedLeague(id);
           if (cached) { draw(cached, true); return; }
@@ -1305,10 +1700,20 @@ IV.find = function (id) {
           '<table class="iv-table"><caption class="iv-sr">League table for the week</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Games</th><th scope="col" class="num">Points</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           (r.lastWeekWinner && weekOffset === 0 ? '<p class="iv-note" style="margin-top:.6rem">Last week’s winner: ' + esc(r.lastWeekWinner.avatar || '') + ' <b>' + esc(r.lastWeekWinner.displayName) + '</b> with ' + r.lastWeekWinner.points + ' points 🏆</p>' : '') +
           '<details class="iv-details" style="margin-top:.8rem"><summary>How points work</summary><p class="iv-note">Each finished daily game earns <b>1 point</b>. The best score of the day in that game earns <b>+2</b>, second best <b>+1</b> (ties share). The table runs Monday to Sunday, then starts again.</p></details>';
+        var needsName = myShare && !LB.managerName();
+        html += '<details class="iv-details" id="ivq-wrap"' + (needsName ? ' open' : '') + '><summary>Your sharing with the league manager</summary>' +
+          (needsName ? '<p class="iv-note">You haven’t added a name yet, so nothing is being shared. Add one, or tick Opt out.</p>' : '') +
+          shareFieldsHtml('ivq', LB.managerName() || '', !myShare) +
+          '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small" id="ivq-save">Save</button></div>' +
+          '<div class="iv-status" id="ivq-msg" role="status" aria-live="polite"></div></details>';
         if (owner) {
           var link = inviteLink(L.inviteCode);
-          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>Manage this league</summary>' +
-            '<div class="iv-label">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
+          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>League manager</summary>' +
+            '<div class="iv-label">Member progress</div>' +
+            '<p class="iv-note">Members who choose to share appear here with a short progress summary. Anyone who has opted out, or hasn’t added a name, shows as not sharing.</p>' +
+            '<div class="iv-row" style="margin-bottom:.4rem"><button type="button" class="iv-btn small" id="ivl-prog-btn">View member progress</button></div>' +
+            '<div id="ivl-prog" aria-live="polite"></div>' +
+            '<div class="iv-label" style="margin-top:1rem">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
             '<div class="iv-row" style="margin:.2rem 0 .8rem"><button type="button" class="iv-btn small ghost" id="ivl-share">Share link…</button><button type="button" class="iv-btn small ghost" id="ivl-reset">Make a new link</button></div>' +
             '<label class="iv-label" for="ivl-rename">League name</label><div class="iv-addrow"><input class="iv-input" id="ivl-rename" maxlength="30" value="' + esc(L.name) + '"><button type="button" class="iv-btn small" id="ivl-rensave">Save</button></div>' +
             '<div class="iv-label" style="margin-top:.8rem">Members</div><div id="ivl-members">' + r.members.map(function (m) {
@@ -1321,9 +1726,31 @@ IV.find = function (id) {
         html += '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>' + privacyNote();
         body.innerHTML = html;
         $('#ivl-back', s).onclick = loadList;
+        wireShareFields(s, 'ivq');
+        $('#ivq-save', s).onclick = function () {
+          var pf = readShareFields(s, 'ivq'), m = $('#ivq-msg', s);
+          if (!pf.ok) { m.textContent = pf.error; return; }
+          m.textContent = 'Saving…';
+          LB.saveManagerDefaults(pf.managerName, !pf.share);
+          LB.setMemberPrefs(id, pf).then(function (x) {
+            if (!x.ok) { m.textContent = leagueError(x.error); return; }
+            myShare = pf.share;
+            m.textContent = pf.share ? 'Saved ✓ — the league manager can now see your summary.' : 'Saved ✓ — you’re not sharing, and any summary already sent has been removed.';
+            LB.myLeagues().then(function () { LB.pushStats(0); });
+          });
+        };
         $('#ivl-prev', s).onclick = function () { weekOffset--; showLeague(id); };
         $('#ivl-next', s).onclick = function () { if (weekOffset < 0) { weekOffset++; showLeague(id); } };
         if (owner) {
+          $('#ivl-prog-btn', s).onclick = function () {
+            var box = $('#ivl-prog', s); box.innerHTML = '<div class="iv-note">Loading…</div>';
+            LB.manageLeague(id).then(function (x) {
+              if (!x.ok) { box.innerHTML = '<div class="iv-status">' + esc(leagueError(x.error)) + '</div>'; return; }
+              box.innerHTML = progressHtml(x);
+              var cp = $('#ivl-prog-copy', s);
+              if (cp) cp.onclick = function () { Core.copyText(progressText(x)).then(function (ok) { say(ok ? 'Copied ✓ — paste it into your notes.' : 'Couldn’t copy automatically.'); }); };
+            });
+          };
           $('#ivl-copy', s).onclick = function () { Core.copyText(inviteLink(L.inviteCode)).then(function (ok) { say(ok ? 'Invite link copied ✓ — send it to your group.' : 'Couldn’t copy automatically — select the link and copy it.'); }); };
           $('#ivl-share', s).onclick = function () {
             var text = 'Join my intrvl league “' + L.name + '” — a little weekly music-game competition:';
@@ -1386,15 +1813,21 @@ IV.find = function (id) {
       body.innerHTML = '<p style="margin-bottom:.8rem"><b>' + esc(r.ownerName) + '</b> has invited you to join <b>' + esc(r.name) + '</b> (' + r.members + ' member' + (r.members === 1 ? '' : 's') + '), a weekly music-game league.</p>' +
         '<label class="iv-label" for="ivi-name">Your name in the league</label>' +
         '<div class="iv-addrow"><input class="iv-input" id="ivi-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"></div>' +
-        '<p class="iv-note" style="margin:.2rem 0 .8rem">Members can see each other’s name, avatar and daily scores.</p>' +
-        '<div class="iv-row"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
+        '<p class="iv-note" style="margin:.2rem 0 .4rem">Members can see each other’s name, avatar and daily scores.</p>' +
+        shareFieldsHtml('ivm', LB.managerName() || '', LB.managerOptOut()) +
+        '<div class="iv-row" style="margin-top:.8rem"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
         '<div class="iv-status" id="ivi-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>';
+      wireShareFields(s, 'ivm');
       $('#ivi-no', s).onclick = function () { closeSheet(); };
       $('#ivi-join', s).onclick = function () {
+        var pf = readShareFields(s, 'ivm');
+        if (!pf.ok) { $('#ivi-msg', s).textContent = pf.error; return; }
+        LB.saveManagerDefaults(pf.managerName, !pf.share);
         Core.setDisplayName($('#ivi-name', s).value);
         $('#ivi-msg', s).textContent = 'Joining…';
-        LB.register(true).then(function () { return LB.joinLeague(code); }).then(function (j) {
+        LB.register(true).then(function () { return LB.joinLeague(code, pf); }).then(function (j) {
           if (!j.ok) { $('#ivi-msg', s).textContent = leagueError(j.error); return; }
+          LB.myLeagues().then(function () { LB.pushStats(0); });
           try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
           openLeague(j.league.leagueId);
         });
@@ -1446,7 +1879,11 @@ IV.find = function (id) {
       '<div class="iv-avatars" id="ivp-avatars" role="group" aria-labelledby="ivp-av-lbl"></div>' +
       '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" aria-label="Or type your own emoji as an avatar" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
       '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
-      '<div id="ivp-conn" class="iv-note">Checking…</div>',
+      '<div id="ivp-conn" class="iv-note">Checking…</div>' +
+      '<div class="iv-label" id="ivp-sync-lbl" style="margin-top:1.1rem">Save your progress online</div>' +
+      '<div id="ivp-sync" aria-labelledby="ivp-sync-lbl"></div>' +
+      '<div class="iv-label" id="ivp-timing-lbl" style="margin-top:1.1rem">Rhythm Tap timing</div>' +
+      '<div id="ivp-timing" aria-labelledby="ivp-timing-lbl"></div>',
       null, 'you');
     var status = $('#ivp-status', s);
     function sync() { if (LB.isConfigured()) LB.register(true); }
@@ -1463,9 +1900,199 @@ IV.find = function (id) {
     else LB.ping().then(function (r) {
       conn.textContent = r.ok ? 'Connected ✓ (backend v' + r.version + ')' : 'Can’t reach the leaderboard (' + (r.error || 'error') + ').';
     });
+    drawSync($('#ivp-sync', s));
+    drawTiming($('#ivp-timing', s), 'ivp');
     return s;
   }
   IV.openProfile = openProfile;
+
+  // "Save your progress online": the optional sync (see IntrvlSync). Draws into any container.
+  function drawSync(box) {
+    var Sync = global.IntrvlSync;
+    if (!box || !Sync) return;
+    if (!LB.isConfigured()) { box.innerHTML = '<p class="iv-note">Not available until the leaderboard is switched on.</p>'; return; }
+    function when(iso) {
+      var t = Date.parse(iso || ''); if (isNaN(t)) return 'not yet';
+      var m = Math.round((Date.now() - t) / 60000);
+      return m < 1 ? 'just now' : m < 60 ? m + ' minute' + (m === 1 ? '' : 's') + ' ago' : m < 1440 ? Math.round(m / 60) + ' hour' + (Math.round(m / 60) === 1 ? '' : 's') + ' ago' : new Date(t).toLocaleDateString();
+    }
+    function draw(msg) {
+      if (Sync.isOn()) {
+        box.innerHTML =
+          '<p class="iv-note">Switched on. Your scores and practice history are kept in step across your devices. Last saved: <b>' + esc(when(Sync.lastSync())) + '</b>' + (Sync.lastError() ? ' (' + esc(Sync.lastError()) + ')' : '') + '.</p>' +
+          '<div class="iv-label">Your recovery code</div>' +
+          '<div class="iv-code"><div><b id="ivs-key">' + esc(Sync.recoveryKey()) + '</b></div><div class="iv-row"><button type="button" class="iv-btn small ghost" id="ivs-copy">Copy</button></div></div>' +
+          '<p class="iv-note">Keep this safe. To use your progress on another device you need it <b>and</b> your friend code (<b>' + esc(Core.getPlayerCode()) + '</b>). Nobody can recover it for you.</p>' +
+          '<div class="iv-row"><button type="button" class="iv-btn small" id="ivs-now">Save now</button><button type="button" class="iv-btn small ghost" id="ivs-off">Switch off on this device</button></div>' +
+          '<details class="iv-details"><summary>Delete my online data</summary>' +
+            '<p class="iv-note">Removes your name, avatar, scores, friends, league memberships and saved progress from the leaderboard. Progress on this device stays. If you run a league, delete it first.</p>' +
+            '<div class="iv-row"><button type="button" class="iv-btn small ghost" id="ivs-del">Delete my online data</button></div>' +
+          '</details>' +
+          '<div id="ivs-msg" class="iv-status" role="status" aria-live="polite">' + esc(msg || '') + '</div>';
+        var m = $('#ivs-msg', box);
+        $('#ivs-copy', box).onclick = function () { Core.copyText(Sync.recoveryKey()).then(function (ok) { m.textContent = ok ? 'Recovery code copied ✓' : 'Couldn’t copy — write it down instead.'; }); };
+        $('#ivs-now', box).onclick = function () { m.textContent = 'Saving…'; Sync.syncNow().then(function (r) { draw(r.ok ? 'Saved ✓' : 'Couldn’t save: ' + r.error); }); };
+        $('#ivs-off', box).onclick = function () { Sync.disable(); draw('Switched off on this device. Your saved copy is still online.'); };
+        $('#ivs-del', box).onclick = function () {
+          if (!confirm('Delete everything stored online about you? This can’t be undone.')) return;
+          m.textContent = 'Deleting…';
+          Sync.deleteOnlineData().then(function (r) { draw(r.ok ? 'Your online data has been deleted.' : 'Couldn’t delete: ' + r.error); });
+        };
+      } else {
+        box.innerHTML =
+          '<p class="iv-note">Keeps a copy of your scores and practice history on the leaderboard server, so a new phone or a different browser can pick up where you left off. Off unless you switch it on.</p>' +
+          '<div class="iv-row"><button type="button" class="iv-btn small" id="ivs-on">Switch on</button></div>' +
+          '<details class="iv-details"><summary>I already have a recovery code</summary>' +
+            '<label class="iv-label" for="ivs-fc">Friend code from your other device</label>' +
+            '<input class="iv-input" id="ivs-fc" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="e.g. 7K2P9Q">' +
+            '<label class="iv-label" for="ivs-rk" style="margin-top:.6rem">Recovery code</label>' +
+            '<input class="iv-input" id="ivs-rk" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="XXXXX-XXXXX">' +
+            '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small" id="ivs-restore">Restore on this device</button></div>' +
+          '</details>' +
+          '<div id="ivs-msg" class="iv-status" role="status" aria-live="polite">' + esc(msg || '') + '</div>';
+        var m2 = $('#ivs-msg', box);
+        $('#ivs-on', box).onclick = function () {
+          m2.textContent = 'Switching on…';
+          Sync.enable().then(function (r) { if (r.ok) draw(r.warning ? 'Switched on. First save didn’t finish: ' + r.warning : 'Switched on ✓ — write your recovery code down.'); else m2.textContent = r.error; });
+        };
+        $('#ivs-restore', box).onclick = function () {
+          if (!confirm('This joins this device to the saved progress. Anything already here is kept and merged in. Carry on?')) return;
+          m2.textContent = 'Restoring…';
+          Sync.restore($('#ivs-fc', box).value, $('#ivs-rk', box).value).then(function (r) {
+            if (!r.ok) { m2.textContent = r.error; return; }
+            m2.textContent = 'Restored ✓ — reloading…';
+            setTimeout(function () { location.reload(); }, 700);
+          });
+        };
+      }
+    }
+    draw();
+  }
+  IV.drawSync = drawSync;
+
+  // ---- rhythm timing: how late (or early) this device plays sound -----------------------------------
+  // Shared by the You tab and the Rhythm Tap start screen.  The number is added to where each note is expected,
+  // so a phone or Bluetooth speaker that plays sound 60 ms late gets +60.
+  var OFFSET_KEY = 'intrvl.rhythm.offset';
+  function timingOffset() { return Number(Core.lsGet(OFFSET_KEY)) || 0; }
+  function setTimingOffset(v) {
+    v = Math.max(-150, Math.min(150, Math.round(Number(v) || 0)));
+    Core.lsSet(OFFSET_KEY, String(v));
+    try { document.dispatchEvent(new CustomEvent('intrvl:timing')); } catch (e) { /* old browser */ }
+    return v;
+  }
+  function median(a) { var b = a.slice().sort(function (x, y) { return x - y; }), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : 0; }
+  // errors: for each tap, (tap time - the click it was aimed at) in ms.  Wild taps are ignored.
+  function calibrationResult(errors) {
+    var e = (errors || []).filter(function (x) { return isFinite(x); });
+    if (e.length < 6) return { ok: false, n: e.length, error: 'Not enough taps — tap along with each click.' };
+    var m1 = median(e), keep = e.filter(function (x) { return Math.abs(x - m1) <= 120; });
+    if (keep.length < 6) return { ok: false, n: keep.length, error: 'The taps were too uneven to measure — try again.' };
+    var m2 = median(keep), spread = median(keep.map(function (x) { return Math.abs(x - m2); }));
+    return { ok: true, n: keep.length, offset: Math.max(-150, Math.min(150, Math.round(m2))), spread: Math.round(spread) };
+  }
+  IV.calibrationResult = calibrationResult;
+  IV.timingOffset = timingOffset;
+
+  function drawTiming(box, pre) {
+    if (!box) return;
+    pre = pre || 'ivt';
+    function paint() {
+      var v = timingOffset();
+      box.innerHTML =
+        '<p class="iv-note">Bluetooth speakers and some phones play sound a little late, which makes your taps look early or late. <b>Calibrate</b> measures it for you; the slider is for fine-tuning.</p>' +
+        '<label class="iv-label" for="' + pre + '-range">Adjust: <span id="' + pre + '-val">' + v + '</span> ms</label>' +
+        '<input type="range" class="iv-range" id="' + pre + '-range" min="-150" max="150" step="5" value="' + v + '">' +
+        '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small" id="' + pre + '-cal">Calibrate</button><button type="button" class="iv-btn small ghost" id="' + pre + '-reset">Reset to 0</button></div>';
+      $('#' + pre + '-range', box).oninput = function () { Core.lsSet(OFFSET_KEY, this.value); $('#' + pre + '-val', box).textContent = this.value; };
+      $('#' + pre + '-range', box).onchange = function () { setTimingOffset(this.value); };
+      $('#' + pre + '-cal', box).onclick = function () { openCalibration(); };
+      $('#' + pre + '-reset', box).onclick = function () { setTimingOffset(0); };
+    }
+    paint();
+    document.addEventListener('intrvl:timing', function h() {
+      if (!document.body.contains(box)) { document.removeEventListener('intrvl:timing', h); return; }
+      var r = $('#' + pre + '-range', box), l = $('#' + pre + '-val', box), v = timingOffset();
+      if (r && Number(r.value) !== v) r.value = v;
+      if (l) l.textContent = v;
+    });
+  }
+  IV.drawTiming = drawTiming;
+
+  var calClicks = [];
+  function openCalibration() {
+    var s = openSheet('<h3>Calibrate rhythm timing</h3><div id="ivc-body" aria-live="polite"></div>', null, 'you');
+    var body = $('#ivc-body', s), actx = null, taps = [], timer = 0;
+    function stop() { clearTimeout(timer); try { if (actx) actx.close(); } catch (e) { /* ignore */ } actx = null; }
+    var closeBtn = s.querySelector('.x');
+    if (closeBtn) closeBtn.addEventListener('click', stop);
+    function intro(msg) {
+      stop();
+      body.innerHTML =
+        '<p class="iv-note">Turn your volume up (and the silent switch off). You’ll hear 12 clicks: tap the big pad right on each one. This works out how late or early this device plays sound, so Rhythm Tap can allow for it.</p>' +
+        (msg ? '<p class="iv-status" role="status">' + esc(msg) + '</p>' : '') +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivc-start">Start</button><button type="button" class="iv-btn ghost" id="ivc-cancel">Cancel</button></div>';
+      $('#ivc-start', s).onclick = run;
+      $('#ivc-cancel', s).onclick = function () { stop(); closeSheet(); };
+      $('#ivc-start', s).focus();
+    }
+    function run() {
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) { intro('This browser can’t play the clicks.'); return; }
+      actx = new AC(); if (actx.state === 'suspended') actx.resume();
+      taps = []; calClicks = [];
+      var N = 12, gap = 0.6, t0 = actx.currentTime + 0.9, latency = (actx.outputLatency || actx.baseLatency || 0) * 1000;
+      var perf0 = performance.now() - actx.currentTime * 1000 + latency;
+      for (var k = 0; k < N; k++) {
+        (function (time, accent) {
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = 'square'; o.frequency.value = accent ? 1760 : 1175;
+          g.gain.setValueAtTime(0.0001, time); g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.35, time + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
+          o.connect(g); g.connect(actx.destination); o.start(time); o.stop(time + 0.08);
+        })(t0 + k * gap, k % 4 === 0);
+        calClicks.push(perf0 + (t0 + k * gap) * 1000);
+      }
+      body.innerHTML = '<p class="iv-note" id="ivc-msg" role="status">Get ready… tap on every click.</p>' +
+        '<button type="button" id="ivc-pad" class="iv-pad" aria-label="Tap on each click">TAP</button>' +
+        '<p class="iv-note">You can also use the space bar.</p>';
+      var pad = $('#ivc-pad', s);
+      function tap(ts) { if (ts > 1e12) ts = performance.now(); taps.push(ts); pad.classList.add('down'); setTimeout(function () { pad.classList.remove('down'); }, 90); }
+      pad.addEventListener('pointerdown', function (e) { e.preventDefault(); tap(e.timeStamp); });
+      pad.addEventListener('keydown', function (e) { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); tap(e.timeStamp); } });
+      pad.addEventListener('click', function (e) { e.preventDefault(); });
+      pad.focus();
+      timer = setTimeout(finish, (0.9 + N * gap + 0.9) * 1000);
+    }
+    function finish() {
+      if (!document.body.contains(body)) { stop(); return; }
+      var errs = [], used = {};
+      taps.forEach(function (T) {
+        var best = -1, bd = 1e9;
+        calClicks.forEach(function (H, j) { var d = Math.abs(T - H); if (d < bd) { bd = d; best = j; } });
+        if (best < 2 || bd > 300) return;                    // the first two clicks are for finding the beat
+        if (used[best] != null && Math.abs(used[best]) <= bd) return;
+        used[best] = T - calClicks[best];
+      });
+      Object.keys(used).forEach(function (k) { errs.push(used[k]); });
+      stop();
+      var r = calibrationResult(errs);
+      if (!r.ok) { intro(r.error); return; }
+      var dir = r.offset === 0 ? 'right on the beat' : Math.abs(r.offset) + ' ms ' + (r.offset > 0 ? 'late' : 'early');
+      body.innerHTML = '<p><b>You tapped about ' + esc(dir) + '</b> on average' + (r.spread > 45 ? ', but your taps were quite uneven, so you may want to try again' : ' and fairly evenly') + '.</p>' +
+        '<p class="iv-note">Using this means Rhythm Tap will treat ' + (r.offset > 0 ? r.offset + ' ms late' : r.offset < 0 ? Math.abs(r.offset) + ' ms early' : 'the click itself') + ' as perfect timing on this device.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivc-use">Use this (' + (r.offset > 0 ? '+' : '') + r.offset + ' ms)</button><button type="button" class="iv-btn ghost" id="ivc-again">Try again</button></div>';
+      $('#ivc-use', s).onclick = function () { setTimingOffset(r.offset); body.innerHTML = '<p role="status">Saved ✓ — timing set to ' + (r.offset > 0 ? '+' : '') + r.offset + ' ms.</p><div class="iv-row"><button type="button" class="iv-btn" id="ivc-done">Done</button></div>'; $('#ivc-done', s).onclick = closeSheet; $('#ivc-done', s).focus(); };
+      $('#ivc-again', s).onclick = function () { intro(''); };
+      $('#ivc-use', s).focus();
+    }
+    intro('');
+    return s;
+  }
+  IV.openCalibration = openCalibration;
+  IV._calClicks = function () { return calClicks.slice(); };
+
+  if (global.IntrvlSync) global.IntrvlSync.autoSync();
+  if (LB.isConfigured()) setTimeout(function () { LB.pushStats(); }, 5000);
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function openHistory(gameId) {
     var g = IV.find(gameId) || IV.GAMES[0];
@@ -1555,7 +2182,7 @@ IV.find = function (id) {
       '<div class="iv-label">What to practise next</div>' + weakHtml + strongHtml +
       '<div class="iv-label" style="margin-top:1.2rem">By game</div>' + gameRows +
       '<details class="iv-details"><summary>Back up or move your progress</summary>' +
-        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone.</p>' +
+        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone. (Or switch on <b>Save your progress online</b> in the You tab and skip the copying.)</p>' +
         '<div class="iv-row"><button type="button" class="iv-btn small" id="ivb-copy">Copy backup</button></div>' +
         '<label class="iv-label" for="ivb-text" style="margin-top:.8rem">Paste a backup to restore it</label>' +
         '<textarea class="iv-input" id="ivb-text" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>' +
@@ -1787,10 +2414,24 @@ IV.find = function (id) {
   const TITLE = PAGE_CFG.title;
 
   // ------------------------------------------------------------------------------------------------
-  // 1. The rhythms.  Every pattern is two bars of 4/4 built from "cells" that fill one beat (or two).
-  //    d = length in beats; r = a rest.  cat = what to call these notes in "weak spots".
+  // 0. Time signatures.  Everything is measured in "pulses": a crotchet in 4/4 and 3/4, a dotted crotchet
+  //    in 6/8.  B = pulses in a bar; perBarClicks = metronome clicks in a bar (6/8 clicks every quaver).
   // ------------------------------------------------------------------------------------------------
-  const T3 = 1 / 3;
+  const SIGS = {
+    '4/4': { id: '4/4', top: 4, bottom: 4, B: 4, compound: false, perBarClicks: 4, clickDiv: 1, twoStarts: [0, 2], words: 'four four', pulse: '♩', label: null,
+             easy: { min: 6, max: 12 }, normal: { min: 8, max: 22 }, maxRest: 3 },
+    '3/4': { id: '3/4', top: 3, bottom: 4, B: 3, compound: false, perBarClicks: 3, clickDiv: 1, twoStarts: [0, 1], words: 'three four', pulse: '♩', label: 'Three-time (3/4)',
+             easy: { min: 5, max: 10 }, normal: { min: 6, max: 17 }, maxRest: 2 },
+    '6/8': { id: '6/8', top: 6, bottom: 8, B: 2, compound: true, perBarClicks: 6, clickDiv: 3, twoStarts: [0], words: 'six eight', pulse: '♩.', label: 'Compound time (6/8)',
+             easy: { min: 5, max: 12 }, normal: { min: 7, max: 22 }, maxRest: 2 }
+  };
+  const SIG_IDS = ['4/4', '3/4', '6/8'];
+
+  // ------------------------------------------------------------------------------------------------
+  // 1. The rhythms.  Every pattern is two bars built from "cells" that fill one pulse (or two).
+  //    d = length in pulses; r = a rest.  cat = what to call these notes in "weak spots".
+  // ------------------------------------------------------------------------------------------------
+  const T3 = 1 / 3, S6 = 1 / 6;
   const CELLS_EASY = [
     { id: 'crotchet', beats: 1, w: 3,   desc: 'crotchet',                   ev: [{ d: 1 }] },
     { id: 'quavers',  beats: 1, w: 3,   desc: 'two quavers',                ev: [{ d: .5 }, { d: .5 }] },
@@ -1818,23 +2459,43 @@ IV.find = function (id) {
     { id: 'minim',    beats: 2, w: 1.2, desc: 'minim',                                  ev: [{ d: 2 }] },
     { id: 'mrest',    beats: 2, w: .7,  desc: 'minim rest',                             ev: [{ d: 2, r: 1 }] }
   ]);
+  // 6/8: one pulse is a dotted crotchet = three quavers
+  const C68_EASY = [
+    { id: 'dc',       beats: 1, w: 3,   desc: 'dotted crotchet',                    ev: [{ d: 1 }] },
+    { id: 'q3',       beats: 1, w: 3,   desc: 'three quavers',                      ev: [{ d: T3 }, { d: T3 }, { d: T3 }] },
+    { id: 'c-q',      beats: 1, w: 2,   desc: 'crotchet and quaver',                ev: [{ d: 2 * T3 }, { d: T3 }] },
+    { id: 'q-c',      beats: 1, w: 2,   desc: 'quaver and crotchet',                ev: [{ d: T3 }, { d: 2 * T3 }] },
+    { id: 'qr-qq',    beats: 1, w: 1.6, desc: 'quaver rest then two quavers',       ev: [{ d: T3, r: 1 }, { d: T3 }, { d: T3 }] },
+    { id: 'qq-qr',    beats: 1, w: 1.6, desc: 'two quavers then quaver rest',       ev: [{ d: T3 }, { d: T3 }, { d: T3, r: 1 }] },
+    { id: 'dcr',      beats: 1, w: 1.2, desc: 'dotted crotchet rest',               ev: [{ d: 1, r: 1 }] }
+  ];
+  const C68_NORMAL = C68_EASY.map(c => Object.assign({}, c, { w: c.w * 0.8 })).concat([
+    { id: 'cr-q',     beats: 1, w: 1.2, desc: 'crotchet rest then quaver',          ev: [{ d: 2 * T3, r: 1 }, { d: T3 }] },
+    { id: 'q-qr-q',   beats: 1, w: 1.0, desc: 'quaver, quaver rest, quaver',        ev: [{ d: T3 }, { d: T3, r: 1 }, { d: T3 }] },
+    { id: 's6',       beats: 1, w: 2,   desc: 'six semiquavers',                    hard: 1, ev: [{ d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }] },
+    { id: 'q-4s',     beats: 1, w: 1.6, desc: 'quaver and four semiquavers',        hard: 1, ev: [{ d: T3 }, { d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }] },
+    { id: '4s-q',     beats: 1, w: 1.6, desc: 'four semiquavers and a quaver',      hard: 1, ev: [{ d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }, { d: T3 }] },
+    { id: 'sr-5s',    beats: 1, w: 1.0, desc: 'semiquaver rest then five semiquavers', hard: 1, ev: [{ d: S6, r: 1 }, { d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }, { d: S6 }] },
+    { id: 'dminim',   beats: 2, w: 1.4, desc: 'dotted minim',                       ev: [{ d: 2 }] },
+    { id: 'dmr',      beats: 2, w: .6,  desc: 'dotted minim rest',                  ev: [{ d: 2, r: 1 }] }
+  ]);
 
-  const CELLS = EASY ? CELLS_EASY : CELLS_NORMAL;
-  const WORDS = ['', 'one', 'two', 'three', 'four'];
+  const CELLS = EASY ? CELLS_EASY : CELLS_NORMAL;                 // (the 4/4 and 3/4 set)
+  function cellsFor(sig) { return sig.compound ? (EASY ? C68_EASY : C68_NORMAL) : CELLS; }
 
   // What to call a note when recording how you're doing on it (for the Progress screen)
   function categoryOf(note, prevWasRest) {
     if (note.t) return 'Triplets';
     if (prevWasRest) return 'Entries after a rest';
-    if (note.d === .75 || note.d === 1.5 || note.dotted) return 'Dotted rhythms';
+    if (note.dotted) return 'Dotted rhythms';
     if (note.sync) return 'Syncopation';
     if (note.d <= .25) return 'Semiquavers';
     if (note.d <= .5) return 'Quavers';
     return 'Crotchets and minims';
   }
-  function cellCategories(cell) {
-    const cats = new Set();
-    cell.ev.forEach((e, i) => { if (!e.r) cats.add(categoryOf(e, i > 0 && cell.ev[i - 1].r)); });
+  function cellCategories(cell, sig) {
+    const cats = new Set(), ev = flatten([{ cell: cell, start: 0 }], sig);
+    ev.forEach(e => { if (!e.r) cats.add(e.cat); });
     if (cell.id === 'sync') cats.add('Syncopation');
     return [...cats];
   }
@@ -1847,16 +2508,18 @@ IV.find = function (id) {
   }
 
   // Builds two bars.  rand: a random function (seeded for the daily puzzle); focus: categories to lean towards.
-  function makePattern(rand, focus) {
-    for (let attempt = 0; attempt < 60; attempt++) {
+  function makePattern(rand, focus, sig) {
+    sig = sig || SIGS['4/4'];
+    const CS = cellsFor(sig), B = sig.B, lim = EASY ? sig.easy : sig.normal;
+    for (let attempt = 0; attempt < 80; attempt++) {
       const cells = [];
       let beat = 0, ok = true;
-      while (beat < 8) {
-        const inBar = beat % 4;
-        let allowed = CELLS.filter(c => c.beats <= 4 - inBar && (c.beats === 1 || inBar === 0 || inBar === 2));
+      while (beat < 2 * B) {
+        const inBar = beat % B;
+        let allowed = CS.filter(c => c.beats <= B - inBar && (c.beats === 1 || sig.twoStarts.includes(inBar)));
         if (beat === 0) allowed = allowed.filter(c => !c.ev[0].r);                 // always start on a sounding note
         if (focus && focus.length && rand() < 0.7) {
-          const f = allowed.filter(c => cellCategories(c).some(k => focus.includes(k)));
+          const f = allowed.filter(c => cellCategories(c, sig).some(k => focus.includes(k)));
           if (f.length) allowed = f;
         }
         if (!allowed.length) { ok = false; break; }
@@ -1865,26 +2528,34 @@ IV.find = function (id) {
         beat += cell.beats;
       }
       if (!ok) continue;
-      const events = flatten(cells);
+      const events = flatten(cells, sig);
       const notes = events.filter(e => !e.r).length, rests = events.filter(e => e.r).length;
       const restBeats = events.filter(e => e.r).reduce((s, e) => s + e.d, 0);
-      if (notes < (EASY ? 6 : 8) || notes > (EASY ? 12 : 22) || restBeats > 3) continue;
+      if (notes < lim.min || notes > lim.max || restBeats > sig.maxRest) continue;
       if (rests < 1) continue;
-      if (!EASY && !cells.some(c => c.cell.ev.some(e => e.t || e.d <= .25))) continue;           // normal always has triplets or semiquavers
+      if (!EASY) {                                             // normal always has something tricky in it
+        const tricky = sig.compound ? cells.some(c => c.cell.hard) : cells.some(c => c.cell.ev.some(e => e.t || e.d <= .25));
+        if (!tricky) continue;
+      }
       if (cells.every(c => c.cell.id === cells[0].cell.id)) continue;
-      return { cells: cells, events: events };
+      return { cells: cells, events: events, sig: sig };
     }
     // fall back to something simple and valid
-    const simple = ['crotchet', 'quavers', 'qr-q', 'crotchet', 'quavers', 'crotchet', 'crest', 'crotchet'].map((id, i) => ({ cell: CELLS.find(c => c.id === id), start: i }));
-    return { cells: simple, events: flatten(simple) };
+    const ids = sig.id === '4/4' ? ['crotchet', 'quavers', 'qr-q', 'crotchet', 'quavers', 'crotchet', 'crest', 'crotchet']
+      : sig.id === '3/4' ? ['crotchet', 'quavers', 'crest', 'quavers', 'crotchet', 'qr-q']
+      : ['dc', 'q3', 'dcr', 'c-q'];
+    const simple = ids.map((id, i) => ({ cell: CS.find(c => c.id === id), start: i }));
+    return { cells: simple, events: flatten(simple, sig), sig: sig };
   }
 
-  function flatten(cells) {
+  function flatten(cells, sig) {
+    sig = sig || SIGS['4/4'];
     const events = [];
     cells.forEach(({ cell, start }) => {
       let t = start, prevRest = false;
       cell.ev.forEach((e, i) => {
-        const ev = { start: t, d: e.d, r: !!e.r, t: !!e.t, tripletOf: e.t ? cell : null, cellStart: start, cellBeats: cell.beats, idx: i, dotted: e.d === .75 || e.d === 1.5, sync: cell.id === 'sync' && i === 1 };
+        const dotted = sig.compound ? (Math.abs(e.d - 1) < 1e-9 || Math.abs(e.d - 2) < 1e-9) : (e.d === .75 || e.d === 1.5);
+        const ev = { start: t, d: e.d, r: !!e.r, t: !!e.t, tripletOf: e.t ? cell : null, cellStart: start, cellBeats: cell.beats, idx: i, dotted: dotted, sync: cell.id === 'sync' && i === 1 };
         ev.cat = ev.r ? null : categoryOf(ev, prevRest);
         events.push(ev);
         prevRest = !!e.r;
@@ -1897,33 +2568,38 @@ IV.find = function (id) {
   }
 
   function describePattern(p) {
-    const bars = [[], []];
-    p.cells.forEach(c => bars[Math.floor(c.start / 4)].push(c.cell.desc));
-    return 'Time signature four four. Bar 1: ' + bars[0].join(', ') + '. Bar 2: ' + bars[1].join(', ') + '.';
+    const sg = p.sig || SIGS['4/4'], bars = [[], []];
+    p.cells.forEach(c => bars[Math.floor(c.start / sg.B)].push(c.cell.desc));
+    return 'Time signature ' + sg.words + '. Bar 1: ' + bars[0].join(', ') + '. Bar 2: ' + bars[1].join(', ') + '.';
   }
 
   // ------------------------------------------------------------------------------------------------
   // 2. Drawing the rhythm (a one-line stave, two bars on two lines)
   // ------------------------------------------------------------------------------------------------
   const INK = '#1c1c1c';
-  const G = { w: 360, x0: 50, beatW: 72, rowH: 96, lineY: 56, stem: 30 };
-  G.xBar = G.x0 + 4 * G.beatW;
-  function xOf(beat) { return G.x0 + (beat % 4) * G.beatW + 6; }          // noteheads sit a little in from the left barline
-  function rowOf(beat) { return Math.min(1, Math.floor(beat / 4)); }
+  const G = { w: 360, x0: 50, barW: 288, rowH: 96, lineY: 56, stem: 30 };
+  G.xBar = G.x0 + G.barW;
+  function sigOf(p) { return (p && p.sig) || SIGS['4/4']; }
+  function beatW(sg) { return G.barW / sg.B; }
+  function xOf(beat, sg) { sg = sg || curSig; return G.x0 + (beat % sg.B) * beatW(sg) + 6; }   // noteheads sit a little in from the left barline
+  function rowOf(beat, sg) { sg = sg || curSig; return Math.min(1, Math.floor((beat + 1e-6) / sg.B)); }
   function rowTop(row) { return row * G.rowH; }
+  function flagsOf(e, sg) { return e.d < .3 ? 2 : (sg.compound ? (e.d < .5 ? 1 : 0) : (e.d < 1 ? 1 : 0)); }
 
-  function restSvg(e, x, y) {
+  function restSvg(e, x, y, sg) {
     const s = 'stroke="' + INK + '" stroke-linecap="round" stroke-linejoin="round" fill="none"';
-    if (e.d >= 2) return '<rect x="' + (x - 7) + '" y="' + (y - 4.5) + '" width="14" height="4.5" fill="' + INK + '"/>';
-    if (e.d >= 1) return '<g transform="translate(' + x + ',' + y + ')"><path d="M-2.5 -11 L2.5 -4.5 L-2 1 L2.5 6.5 C-3 5 -4.5 9 -1.5 12" stroke-width="2.4" ' + s + '/></g>';
-    if (e.d > .3) return '<g transform="translate(' + x + ',' + (y + 1) + ')"><circle cx="-2.6" cy="-4" r="2.2" fill="' + INK + '"/><path d="M-2.6 -2 C0 -2 2 -3.2 3 -6.5" stroke-width="1.6" ' + s + '/><path d="M3 -6.5 L-1.8 10" stroke-width="1.9" ' + s + '/></g>';
+    const kind = e.d >= 2 - 1e-9 ? 'long' : e.d >= 1 - 1e-9 ? 'crotchet' : (sg.compound ? (e.d > .5 ? 'crotchet' : e.d > .25 ? 'quaver' : 'semi') : (e.d > .3 ? 'quaver' : 'semi'));
+    const dot = e.dotted && kind !== 'long' ? '<circle cx="' + (x + 8) + '" cy="' + (y - 3) + '" r="1.9" fill="' + INK + '"/>' : '';
+    if (kind === 'long') return '<rect x="' + (x - 7) + '" y="' + (y - 4.5) + '" width="14" height="4.5" fill="' + INK + '"/>' + (e.dotted ? '<circle cx="' + (x + 12) + '" cy="' + (y - 7) + '" r="1.9" fill="' + INK + '"/>' : '');
+    if (kind === 'crotchet') return '<g transform="translate(' + x + ',' + y + ')"><path d="M-2.5 -11 L2.5 -4.5 L-2 1 L2.5 6.5 C-3 5 -4.5 9 -1.5 12" stroke-width="2.4" ' + s + '/></g>' + dot;
+    if (kind === 'quaver') return '<g transform="translate(' + x + ',' + (y + 1) + ')"><circle cx="-2.6" cy="-4" r="2.2" fill="' + INK + '"/><path d="M-2.6 -2 C0 -2 2 -3.2 3 -6.5" stroke-width="1.6" ' + s + '/><path d="M3 -6.5 L-1.8 10" stroke-width="1.9" ' + s + '/></g>';
     return '<g transform="translate(' + x + ',' + (y + 2) + ')"><circle cx="-1.8" cy="-7.5" r="2" fill="' + INK + '"/><circle cx="-3.5" cy="-1.5" r="2" fill="' + INK + '"/><path d="M-1.8 -5.6 C1 -5.6 2.5 -6.5 3.6 -9.5" stroke-width="1.5" ' + s + '/><path d="M-3.5 .4 C-.5 .4 1 -.6 2.2 -3.6" stroke-width="1.5" ' + s + '/><path d="M3.6 -9.5 L-2.6 11" stroke-width="1.8" ' + s + '/></g>';
   }
 
-  // returns the inner SVG for the staves; extra: optional function(row) -> more SVG drawn per row
+  // returns the inner SVG for the staves; opts.rowH: taller rows for the review picture
   function drawRhythm(pattern, opts) {
     opts = opts || {};
-    const RH = opts.rowH || G.rowH;
+    const sg = sigOf(pattern), RH = opts.rowH || G.rowH;
     const top0 = row => row * RH;
     let out = '';
     for (let row = 0; row < 2; row++) {
@@ -1931,41 +2607,47 @@ IV.find = function (id) {
       out += '<line x1="30" x2="' + G.xBar + '" y1="' + ly + '" y2="' + ly + '" stroke="' + INK + '" stroke-width="1.4"/>';
       out += '<line x1="30" x2="30" y1="' + (ly - 14) + '" y2="' + (ly + 14) + '" stroke="' + INK + '" stroke-width="1.6"/>';
       out += '<line x1="' + G.xBar + '" x2="' + G.xBar + '" y1="' + (ly - 14) + '" y2="' + (ly + 14) + '" stroke="' + INK + '" stroke-width="' + (row === 1 ? 3 : 1.6) + '"/>';
-      if (row === 0) out += '<text x="40" y="' + (ly - 2) + '" font-size="17" font-weight="800" text-anchor="middle" fill="' + INK + '" font-family="Georgia,serif">4</text><text x="40" y="' + (ly + 14) + '" font-size="17" font-weight="800" text-anchor="middle" fill="' + INK + '" font-family="Georgia,serif">4</text>';
-      if (!opts.noBeatNumbers) for (let b = 0; b < 4; b++) out += '<text x="' + xOf(row * 4 + b) + '" y="' + (y0 + G.lineY + 30) + '" font-size="10" font-weight="700" text-anchor="middle" fill="#6b6b6b">' + (b + 1) + '</text>';
+      if (row === 0) out += '<text x="40" y="' + (ly - 2) + '" font-size="17" font-weight="800" text-anchor="middle" fill="' + INK + '" font-family="Georgia,serif">' + sg.top + '</text><text x="40" y="' + (ly + 14) + '" font-size="17" font-weight="800" text-anchor="middle" fill="' + INK + '" font-family="Georgia,serif">' + sg.bottom + '</text>';
+      if (!opts.noBeatNumbers) {
+        const n = sg.compound ? 6 : sg.B;
+        for (let b = 0; b < n; b++) {
+          const pos = row * sg.B + b * sg.B / n, pulse = !sg.compound || b % 3 === 0;
+          out += '<text x="' + xOf(pos, sg) + '" y="' + (y0 + G.lineY + 30) + '" font-size="' + (pulse ? 10 : 8) + '" font-weight="' + (pulse ? 800 : 600) + '" text-anchor="middle" fill="#6b6b6b">' + (b + 1) + '</text>';
+        }
+      }
     }
     const ev = pattern.events;
     // notes and rests
     ev.forEach(e => {
-      const row = rowOf(e.start), x = xOf(e.start), ly = top0(row) + G.lineY;
-      if (e.r) { out += restSvg(e, x, ly); return; }
-      out += '<ellipse cx="' + x + '" cy="' + ly + '" rx="5.6" ry="4.1" transform="rotate(-20 ' + x + ' ' + ly + ')" fill="' + (e.d >= 2 ? 'none' : INK) + '" stroke="' + INK + '" stroke-width="' + (e.d >= 2 ? 1.6 : 0) + '"/>';
-      if (e.d < 4) out += '<line x1="' + (x + 5.2) + '" x2="' + (x + 5.2) + '" y1="' + (ly - 1.5) + '" y2="' + (ly - G.stem) + '" stroke="' + INK + '" stroke-width="1.4"/>';
+      const row = rowOf(e.start, sg), x = xOf(e.start, sg), ly = top0(row) + G.lineY;
+      if (e.r) { out += restSvg(e, x, ly, sg); return; }
+      out += '<ellipse cx="' + x + '" cy="' + ly + '" rx="5.6" ry="4.1" transform="rotate(-20 ' + x + ' ' + ly + ')" fill="' + (e.d >= 2 - 1e-9 ? 'none' : INK) + '" stroke="' + INK + '" stroke-width="' + (e.d >= 2 - 1e-9 ? 1.6 : 0) + '"/>';
+      out += '<line x1="' + (x + 5.2) + '" x2="' + (x + 5.2) + '" y1="' + (ly - 1.5) + '" y2="' + (ly - G.stem) + '" stroke="' + INK + '" stroke-width="1.4"/>';
       if (e.dotted) out += '<circle cx="' + (x + 11) + '" cy="' + (ly - 4) + '" r="1.9" fill="' + INK + '"/>';
     });
-    // beams (runs of notes inside one beat) and flags (single notes)
+    // beams (runs of notes inside one pulse) and flags (single notes)
     const runs = [];
     let run = [];
     ev.forEach(e => {
-      const beamable = !e.r && e.d < 1;
-      if (beamable && run.length && Math.floor(run[run.length - 1].start + 1e-6) === Math.floor(e.start + 1e-6) && rowOf(run[0].start) === rowOf(e.start)) run.push(e);
+      const beamable = !e.r && flagsOf(e, sg) > 0;
+      if (beamable && run.length && Math.floor(run[run.length - 1].start + 1e-6) === Math.floor(e.start + 1e-6) && rowOf(run[0].start, sg) === rowOf(e.start, sg)) run.push(e);
       else { if (run.length) runs.push(run); run = beamable ? [e] : []; }
     });
     if (run.length) runs.push(run);
     runs.forEach(r => {
-      const row = rowOf(r[0].start), top = top0(row) + G.lineY - G.stem;
+      const row = rowOf(r[0].start, sg), top = top0(row) + G.lineY - G.stem;
       if (r.length === 1) {
-        const x = xOf(r[0].start) + 5.2, flags = r[0].d <= .25 ? 2 : 1;
+        const x = xOf(r[0].start, sg) + 5.2, flags = flagsOf(r[0], sg);
         for (let f = 0; f < flags; f++) out += '<path d="M' + x + ' ' + (top + f * 6) + ' c0 7 9 9 8 19 c-1.5-6-5-8-8-9.5 z" fill="' + INK + '"/>';
         return;
       }
-      const xa = xOf(r[0].start) + 5.2, xb = xOf(r[r.length - 1].start) + 5.2;
+      const xa = xOf(r[0].start, sg) + 5.2, xb = xOf(r[r.length - 1].start, sg) + 5.2;
       out += '<rect x="' + (xa - .7) + '" y="' + top + '" width="' + (xb - xa + 1.4) + '" height="3.6" fill="' + INK + '"/>';
       r.forEach((e, i) => {
         if (e.d > .3) return;
-        const x = xOf(e.start) + 5.2, next = r[i + 1], prev = r[i - 1];
+        const x = xOf(e.start, sg) + 5.2, next = r[i + 1], prev = r[i - 1];
         const joinsNext = next && next.d <= .3, joinsPrev = prev && prev.d <= .3;
-        if (joinsNext) out += '<rect x="' + (x - .7) + '" y="' + (top + 6) + '" width="' + (xOf(next.start) - xOf(e.start) + 1.4) + '" height="3.6" fill="' + INK + '"/>';
+        if (joinsNext) out += '<rect x="' + (x - .7) + '" y="' + (top + 6) + '" width="' + (xOf(next.start, sg) - xOf(e.start, sg) + 1.4) + '" height="3.6" fill="' + INK + '"/>';
         else if (!joinsPrev) out += '<rect x="' + (x - (i === r.length - 1 ? 9 : 0)) + '" y="' + (top + 6) + '" width="9" height="3.6" fill="' + INK + '"/>';
       });
     });
@@ -1974,8 +2656,8 @@ IV.find = function (id) {
     ev.forEach(e => {
       if (!e.t || seenCells.has(e.cellStart)) return;
       seenCells.add(e.cellStart);
-      const cellEv = ev.filter(k => k.t && k.cellStart === e.cellStart), row = rowOf(e.start), top = top0(row) + G.lineY - G.stem;
-      const xa = xOf(cellEv[0].start), xb = xOf(cellEv[cellEv.length - 1].start) + 5.2, mid = (xa + xb) / 2;
+      const cellEv = ev.filter(k => k.t && k.cellStart === e.cellStart), row = rowOf(e.start, sg), top = top0(row) + G.lineY - G.stem;
+      const xa = xOf(cellEv[0].start, sg), xb = xOf(cellEv[cellEv.length - 1].start, sg) + 5.2, mid = (xa + xb) / 2;
       const beamed = cellEv.every(k => !k.r);
       if (!beamed) out += '<path d="M' + (xa - 2) + ' ' + (top - 3) + ' V' + (top - 9) + ' H' + (mid - 8) + ' M' + (mid + 8) + ' ' + (top - 9) + ' H' + (xb + 2) + ' V' + (top - 3) + '" fill="none" stroke="' + INK + '" stroke-width="1.1"/>';
       out += '<text x="' + mid + '" y="' + (top - (beamed ? 4 : 6)) + '" font-size="12" font-style="italic" font-weight="700" text-anchor="middle" fill="' + INK + '" font-family="Georgia,serif">3</text>';
@@ -2031,6 +2713,7 @@ IV.find = function (id) {
   // The picture: your written rhythm, then a lane showing how far each tap was from the beat (above the line = late)
   const REVIEW = { rowH: 172, laneY: 136, h: 344 };
   function reviewSvg(pattern, unused, result, beatMs, startMs) {
+    const sg = sigOf(pattern);
     let lanes = '';
     const noteEvents = pattern.events.filter(e => !e.r);
     for (let row = 0; row < 2; row++) {
@@ -2039,42 +2722,57 @@ IV.find = function (id) {
       lanes += '<text x="27" y="' + (ly - 14) + '" font-size="8" font-weight="700" text-anchor="end" fill="#6b6b6b">late</text><text x="27" y="' + (ly + 20) + '" font-size="8" font-weight="700" text-anchor="end" fill="#6b6b6b">early</text>';
     }
     noteEvents.forEach((e, k) => {
-      const n = result.notes[k], row = rowOf(e.start), ly = row * REVIEW.rowH + REVIEW.laneY, x = xOf(e.start), b = band(n.err, n.hit);
+      const n = result.notes[k], row = rowOf(e.start, sg), ly = row * REVIEW.rowH + REVIEW.laneY, x = xOf(e.start, sg), b = band(n.err, n.hit);
       if (!n.hit) { lanes += '<path d="M' + (x - 4) + ' ' + (ly - 4) + ' L' + (x + 4) + ' ' + (ly + 4) + ' M' + (x + 4) + ' ' + (ly - 4) + ' L' + (x - 4) + ' ' + (ly + 4) + '" stroke="' + b.colour + '" stroke-width="2.2" stroke-linecap="round"/>'; return; }
       const dy = -Math.max(-22, Math.min(22, n.err / 150 * 22));          // late = up
       lanes += '<line x1="' + x + '" x2="' + x + '" y1="' + ly + '" y2="' + (ly + dy) + '" stroke="' + b.colour + '" stroke-width="2"/><circle cx="' + x + '" cy="' + (ly + dy) + '" r="4.2" fill="' + b.colour + '"/>';
-      const roomy = noteEvents.every((o, m) => m === k || rowOf(o.start) !== row || Math.abs(xOf(o.start) - x) > 19);
+      const roomy = noteEvents.every((o, m) => m === k || rowOf(o.start, sg) !== row || Math.abs(xOf(o.start, sg) - x) > 19);
       if (roomy) lanes += '<text x="' + x + '" y="' + (ly + dy + (dy < 0 ? -8 : 15)) + '" font-size="8.5" font-weight="800" text-anchor="middle" fill="#1c1c1c">' + (n.err > 0 ? '+' : '') + Math.round(n.err) + '</text>';
     });
     result.extras.forEach(T => {
       const beat = (T - startMs) / beatMs;
-      if (beat < -.4 || beat > 8.3) return;
-      const bb = Math.max(0, Math.min(7.99, beat)), row = rowOf(bb), ly = row * REVIEW.rowH + REVIEW.laneY, x = G.x0 + (bb % 4) * G.beatW + 6;
+      if (beat < -.4 || beat > 2 * sg.B + .3) return;
+      const bb = Math.max(0, Math.min(2 * sg.B - .01, beat)), row = rowOf(bb, sg), ly = row * REVIEW.rowH + REVIEW.laneY, x = xOf(bb, sg);
       lanes += '<path d="M' + x + ' ' + (ly - 5) + ' L' + (x + 4.5) + ' ' + (ly + 4) + ' L' + (x - 4.5) + ' ' + (ly + 4) + ' Z" fill="none" stroke="#6b6b6b" stroke-width="1.6"/>';
     });
-    return '<svg viewBox="0 0 ' + G.w + ' ' + REVIEW.h + '" role="img" aria-label="Review of your taps: the written rhythm, with a dot under each note showing how early or late your tap was." xmlns="http://www.w3.org/2000/svg" font-family="Raleway,Arial,sans-serif"><rect width="100%" height="100%" fill="#ffffff"/>' +
+    return '<svg viewBox="0 0 ' + G.w + ' ' + REVIEW.h + '" role="img" aria-label="Review of your taps in ' + sg.id + ': the written rhythm, with a dot under each note showing how early or late your tap was." xmlns="http://www.w3.org/2000/svg" font-family="Raleway,Arial,sans-serif"><rect width="100%" height="100%" fill="#ffffff"/>' +
       drawRhythm(pattern, { rowH: REVIEW.rowH }) + lanes + '</svg>';
   }
 
   // ------------------------------------------------------------------------------------------------
-  // 4. Running a round
+  // 4. Running a round: look first -> check the sound -> Go -> count-in -> tap
   // ------------------------------------------------------------------------------------------------
-  let stats, isDaily = true, running = false;
-  let actx = null, pattern = null, bpm = 80, beatMs = 750, clickStartPerf = 0, patternStartPerf = 0, patternEndPerf = 0;
+  let stats, isDaily = true, running = false, armed = false, volumeChecked = false;
+  let curSig = SIGS['4/4'];
+  let actx = null, pattern = null, bpm = 80, beatMs = 750, clickMs = 750, clickStartPerf = 0, patternStartPerf = 0, patternEndPerf = 0;
   let taps = [], raf = 0, expectedAbs = [], lastShownBeat = -1, lastResult = null, lastMeta = null;
-  const OFFSET_KEY = 'intrvl.rhythm.offset';
+  const OFFSET_KEY = 'intrvl.rhythm.offset', SIG_KEY = 'intrvl.rhythm.sig';
   function offsetMs() { return Number(IntrvlCore.lsGet(OFFSET_KEY)) || 0; }
 
   function $(id) { return document.getElementById(id); }
+
+  function pickSigPref() { const v = IntrvlCore.lsGet(SIG_KEY); return SIGS[v] ? v : 'any'; }
+  function drawSigChips() {
+    const cur = pickSigPref(), opts = [['any', 'Mixed']].concat(SIG_IDS.map(id => [id, id]));
+    $('rt-sigs').innerHTML = opts.map(o => '<button type="button" class="iv-chip' + (o[0] === cur ? ' on' : '') + '" data-sig="' + o[0] + '" aria-pressed="' + (o[0] === cur) + '">' + o[1] + '</button>').join('');
+  }
 
   function initRhythm() {
     stats = IntrvlCore.loadStats();
     if (!stats.highScoreDaily) stats.highScoreDaily = 0;
     if (!stats.highScorePractice) stats.highScorePractice = 0;
-    if (EASY) $('rt-intro').innerHTML = 'Simple rhythms up to quavers.<br>The metronome keeps going the whole way. Tap in time.';
-    else $('rt-intro').innerHTML = 'Up to semiquavers, triplets and tricky rests.<br>You get a count-in, then the metronome stops: keep time yourself.';
-    $('rt-offset').value = offsetMs(); $('rt-offset-val').textContent = offsetMs();
-    $('rt-offset').oninput = function () { IntrvlCore.lsSet(OFFSET_KEY, this.value); $('rt-offset-val').textContent = this.value; };
+    if (EASY) $('rt-intro').innerHTML = 'Simple rhythms up to quavers, in 4/4, 3/4 and 6/8.<br>The metronome keeps going the whole way. Tap in time.';
+    else $('rt-intro').innerHTML = 'Up to semiquavers, triplets and tricky rests, in 4/4, 3/4 and 6/8.<br>You get a count-in, then the metronome stops: keep time yourself.';
+    $('rt-today').textContent = 'Today’s daily rhythm is in ' + dailySig().id + '.';
+    drawSigChips();
+    $('rt-sigs').onclick = function (e) {
+      const b = e.target.closest('button'); if (!b) return;
+      IntrvlCore.lsSet(SIG_KEY, b.getAttribute('data-sig')); drawSigChips();
+    };
+    if (window.IV && IV.drawTiming) IV.drawTiming($('rt-timing'), 'rt');
+    $('rt-test').onclick = testSound;
+    $('rt-go').onclick = go;
+    $('rt-back').onclick = backToStart;
     updateStats();
     if (stats.lastPlayedDate === IntrvlCore.todayStr()) {
       const saved = loadLast();
@@ -2087,87 +2785,149 @@ IV.find = function (id) {
   }
 
   function seededRand(daily) { return daily ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed() ^ (EASY ? 0x5bd1e995 : 0x1b873593)) : Math.random; }
-  function tempoFor(rand) { return EASY ? 72 + 4 * Math.floor(rand() * 4) : 80 + 4 * Math.floor(rand() * 5); }
+  // today's time signature (the same for Easy and Normal; drawn from its own seed so 4/4 days look just as they always did)
+  function dailySig() { const r = IntrvlCore.mulberry32(IntrvlCore.getDailySeed() ^ 0x2c1b3c6d)(); return r < .5 ? SIGS['4/4'] : r < .78 ? SIGS['3/4'] : SIGS['6/8']; }
+  function practiceSig(focus) {
+    const pref = pickSigPref();
+    if (SIGS[pref]) return SIGS[pref];
+    const hit = SIG_IDS.find(id => SIGS[id].label && focus && focus.includes(SIGS[id].label));
+    if (hit) return SIGS[hit];
+    const r = Math.random(); return r < .4 ? SIGS['4/4'] : r < .7 ? SIGS['3/4'] : SIGS['6/8'];
+  }
+  function tempoFor(rand, sg) {
+    if (sg.compound) return EASY ? 44 + 4 * Math.floor(rand() * 3) : 48 + 4 * Math.floor(rand() * 4);   // dotted crotchets per minute
+    return EASY ? 72 + 4 * Math.floor(rand() * 4) : 80 + 4 * Math.floor(rand() * 5);
+  }
 
   // the daily pattern is rebuilt from the date, so only your taps need saving
   function buildRound(daily, focus) {
-    const rand = seededRand(daily);
-    const p = makePattern(rand, daily ? [] : focus);
-    return { pattern: p, bpm: tempoFor(rand) };
+    const rand = seededRand(daily), sg = daily ? dailySig() : practiceSig(focus);
+    const p = makePattern(rand, daily ? [] : focus, sg);
+    return { pattern: p, bpm: tempoFor(rand, sg), sig: sg };
   }
 
-  function click(time, accent) {
+  // level: 2 = first beat of the bar, 1 = a beat, 0 = a quiet in-between quaver (6/8)
+  function click(time, level) {
     const o = actx.createOscillator(), g = actx.createGain();
-    o.type = 'square'; o.frequency.value = accent ? 1760 : 1175;
+    o.type = 'square'; o.frequency.value = level === 2 ? 1760 : level === 1 ? 1175 : 880;
+    const peak = level === 2 ? 0.5 : level === 1 ? 0.35 : 0.16;
     g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.35, time + 0.003);
+    g.gain.exponentialRampToValueAtTime(peak, time + 0.003);
     g.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
     o.connect(g); g.connect(actx.destination);
     o.start(time); o.stop(time + 0.08);
   }
+  function clickLevel(k, sg) { return sg.compound ? (k % 6 === 0 ? 2 : k % 3 === 0 ? 1 : 0) : (k % sg.perBarClicks === 0 ? 2 : 1); }
+  function ensureCtx() {
+    if (!actx || actx.state === 'closed') actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function closeCtx() { try { if (actx) actx.close(); } catch (e) { /* ignore */ } actx = null; }
 
+  function buildDots() {
+    $('rt-dots').innerHTML = Array.from({ length: curSig.perBarClicks }, (_, i) => '<i' + (clickLevel(i, curSig) === 2 || (curSig.compound && i === 3) ? ' class="accent"' : '') + '></i>').join('');
+  }
+
+  // Step 1: show the rhythm and wait.  Nothing plays and nothing is timed until Go.
   function startRhythm(daily) {
-    if (running) return;
+    if (running || armed) return;
     isDaily = daily;
     const focus = IntrvlCore.takeFocus(GAME_ID);
     const round = buildRound(daily, focus);
-    pattern = round.pattern; bpm = round.bpm; beatMs = 60000 / bpm;
-    taps = []; lastShownBeat = -1; running = true;
+    pattern = round.pattern; bpm = round.bpm; curSig = round.sig; beatMs = 60000 / bpm; clickMs = beatMs / curSig.clickDiv;
+    taps = []; lastShownBeat = -1; armed = true;
 
     $('screen-start').classList.add('hidden');
     $('screen-done').classList.add('hidden');
     $('screen-game').classList.remove('hidden');
     $('rt-level').textContent = daily ? 'Daily rhythm' : 'Practice rhythm';
-    $('rt-tempo').textContent = '♩ = ' + bpm + ' · 4/4' + (EASY ? ' · metronome stays on' : ' · count-in, then you keep time');
+    $('rt-tempo').textContent = curSig.pulse + ' = ' + bpm + ' · ' + curSig.id + (EASY ? ' · metronome stays on' : ' · count-in, then you keep time');
     $('rt-score-card').innerHTML = rhythmSvg(pattern, describePattern(pattern));
-    $('rt-status').textContent = 'Get ready…';
+    buildDots(); setDots(-1);
+    $('rt-ready').classList.remove('hidden');
+    $('rt-tap').classList.add('hidden'); $('rt-tap-note').classList.add('hidden');
+    $('rt-status').textContent = 'Look at the rhythm. Press Go when you’re ready.';
+    refreshGo();
+    IntrvlCore.announce('Rhythm in ' + curSig.words + '. ' + describePattern(pattern) + (volumeChecked ? ' Press Go when ready.' : ' Press Test sound, then Go.'));
+    (volumeChecked ? $('rt-go') : $('rt-test')).focus({ preventScroll: true });
+  }
+  function refreshGo() {
+    $('rt-go').disabled = !volumeChecked;
+    $('rt-ready-hint').innerHTML = volumeChecked
+      ? 'Sound check done. Take your time looking at the rhythm, then press <b>Go</b> for the count-in.'
+      : 'Have a look at the rhythm first. Then press <b>Test sound</b> to check your volume (you should hear a few clicks), and <b>Go</b> to start the count-in. On a phone, make sure the silent switch is off.';
+  }
+  // a few clicks at this rhythm's tempo, so the volume (and the tempo) can be checked before starting
+  function testSound() {
+    ensureCtx();
+    const t0 = actx.currentTime + 0.1, sec = clickMs / 1000;
+    for (let k = 0; k < curSig.perBarClicks; k++) click(t0 + k * sec, clickLevel(k, curSig));
+    volumeChecked = true; refreshGo();
+    $('rt-status').textContent = 'Heard the clicks? Press Go. If not, turn the volume up and test again.';
+    IntrvlCore.announce('Test clicks played. Press Go when ready.');
+    $('rt-go').focus({ preventScroll: true });
+  }
+  function backToStart() {
+    if (running) return;
+    armed = false; closeCtx();
+    $('screen-game').classList.add('hidden');
+    $('screen-start').classList.remove('hidden');
+    $('rt-status').textContent = '';
+  }
 
-    actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
-    const beatSec = beatMs / 1000, t0 = actx.currentTime + 0.7;
-    const totalClicks = EASY ? 12 : 4;                          // easy: the metronome runs through the whole pattern
-    for (let k = 0; k < totalClicks; k++) click(t0 + k * beatSec, k % 4 === 0);
+  // Step 2: Go -> count-in -> tap
+  function go() {
+    if (!armed || running || !volumeChecked) return;
+    armed = false; running = true;
+    $('rt-ready').classList.add('hidden');
+    $('rt-tap').classList.remove('hidden'); $('rt-tap-note').classList.remove('hidden');
+    $('rt-status').textContent = 'Get ready…';
+    ensureCtx();
+    const clickSec = clickMs / 1000, t0 = actx.currentTime + 0.6, per = curSig.perBarClicks;
+    const totalClicks = EASY ? 3 * per : per;                     // easy: the metronome runs through the whole pattern
+    for (let k = 0; k < totalClicks; k++) click(t0 + k * clickSec, clickLevel(k, curSig));
     const latency = (actx.outputLatency || actx.baseLatency || 0) * 1000;
     const perfOfCtx0 = performance.now() - actx.currentTime * 1000 + latency;     // when audio time 0 is actually heard
     clickStartPerf = perfOfCtx0 + t0 * 1000;
-    patternStartPerf = clickStartPerf + 4 * beatMs;
-    patternEndPerf = patternStartPerf + 8 * beatMs;
+    patternStartPerf = clickStartPerf + curSig.B * beatMs;
+    patternEndPerf = patternStartPerf + 2 * curSig.B * beatMs;
     expectedAbs = pattern.events.filter(e => !e.r).map(e => patternStartPerf + e.start * beatMs + offsetMs());
     raf = requestAnimationFrame(frame);
-    IntrvlCore.announce('Rhythm: ' + describePattern(pattern) + ' Count-in coming, then tap.');
+    IntrvlCore.announce('Count-in coming, then tap.');
     $('rt-tap').focus({ preventScroll: true });
   }
 
-  function setDots(beat) {
+  function setDots(idx) {
     const dots = $('rt-dots').children;
-    for (let i = 0; i < 4; i++) dots[i].classList.toggle('on', i === beat);
+    for (let i = 0; i < dots.length; i++) dots[i].classList.toggle('on', i === idx);
   }
 
   function frame() {
     if (!running) return;
     const now = performance.now();
-    const sinceClick = now - clickStartPerf;
+    const sinceClick = now - clickStartPerf, per = curSig.perBarClicks;
     if (sinceClick < 0) { setDots(-1); }
     else if (now < patternStartPerf) {
-      const k = Math.floor(sinceClick / beatMs);
-      if (k !== lastShownBeat) { lastShownBeat = k; setDots(k); $('rt-status').textContent = 'Count-in: ' + (k + 1); }
+      const k = Math.floor(sinceClick / clickMs);
+      if (k !== lastShownBeat) { lastShownBeat = k; setDots(k % per); $('rt-status').textContent = 'Count-in: ' + (k + 1); }
     } else if (now < patternEndPerf) {
-      const beat = (now - patternStartPerf) / beatMs, k = Math.floor(beat);
+      const beat = (now - patternStartPerf) / beatMs, k = Math.floor((now - patternStartPerf) / clickMs);
       if (k !== lastShownBeat) {
         lastShownBeat = k;
-        if (EASY) { setDots(k % 4); $('rt-status').textContent = 'Tap the rhythm'; }
+        if (EASY) { setDots(k % per); $('rt-status').textContent = 'Tap the rhythm'; }
         else { setDots(-1); $('rt-status').textContent = k === 0 ? 'Go! Keep your own pulse' : 'Keep going…'; }
       }
       if (EASY && !IntrvlCore.reducedMotion()) drawPlayhead(beat); else drawPlayhead(-1);
     } else if (now < patternEndPerf + 700) {
-      if (lastShownBeat !== 99) { lastShownBeat = 99; setDots(-1); drawPlayhead(-1); $('rt-status').textContent = 'Nicely done…'; }
+      if (lastShownBeat !== 999) { lastShownBeat = 999; setDots(-1); drawPlayhead(-1); $('rt-status').textContent = 'Nicely done…'; }
     } else { finishRound(); return; }
     raf = requestAnimationFrame(frame);
   }
   function drawPlayhead(beat) {
     const h = $('rt-playhead'); if (!h) return;
     if (beat < 0) { h.innerHTML = ''; return; }
-    const row = rowOf(beat), x = G.x0 + (beat % 4) * G.beatW + 6;
+    const row = rowOf(beat, curSig), x = xOf(beat, curSig);
     h.innerHTML = '<line x1="' + x + '" x2="' + x + '" y1="' + (rowTop(row) + 8) + '" y2="' + (rowTop(row) + G.rowH - 14) + '" stroke="#566B50" stroke-width="2.4" opacity=".75"/>';
   }
 
@@ -2188,12 +2948,12 @@ IV.find = function (id) {
   function finishRound() {
     running = false;
     cancelAnimationFrame(raf);
-    try { actx.close(); } catch (e) { /* ignore */ }
+    closeCtx();
     const valid = taps.filter(t => t >= patternStartPerf - 0.4 * beatMs && t <= patternEndPerf + 700);    // taps during the count-in are ignored
     const result = scoreTaps(expectedAbs, valid);
     const meta = { bpm: bpm, startMs: patternStartPerf + offsetMs(), beatMs: beatMs, offset: offsetMs() };
     // keep the daily taps (relative to the start) so the review can be shown again today
-    if (isDaily) IntrvlCore.lsSet('intrvl.' + GAME_ID + '.last.v1', JSON.stringify({ date: IntrvlCore.dailySeedDate(), taps: valid.map(t => Math.round(t - patternStartPerf)), offset: offsetMs() }));
+    if (isDaily) IntrvlCore.lsSet('intrvl.' + GAME_ID + '.last.v1', JSON.stringify({ date: IntrvlCore.dailySeedDate(), taps: valid.map(t => Math.round(t - patternStartPerf)), offset: offsetMs(), sig: curSig.id }));
     recordRound(result);
     showDone(isDaily, result, pattern, meta, false);
   }
@@ -2202,6 +2962,7 @@ IV.find = function (id) {
     let saved = null;
     try { saved = JSON.parse(IntrvlCore.lsGet('intrvl.' + GAME_ID + '.last.v1') || 'null'); } catch (e) { saved = null; }
     if (!saved || saved.date !== IntrvlCore.dailySeedDate()) return null;
+    if (saved.sig && saved.sig !== dailySig().id) return null;            // saved before today's pattern could be rebuilt identically
     const round = buildRound(true, []);
     const bms = 60000 / round.bpm, off = saved.offset || 0;
     const expected = round.pattern.events.filter(e => !e.r).map(e => e.start * bms + off);
@@ -2216,6 +2977,7 @@ IV.find = function (id) {
       const n = result.notes[i], good = n.hit && Math.abs(n.err) <= 75;
       if (good) stats.totalCorrect++;
       IntrvlCore.recordItem(GAME_ID, e.cat, good);
+      if (curSig.label) IntrvlCore.recordItem(GAME_ID, curSig.label, good);     // 3/4 and 6/8 are tracked as topics of their own
     });
     const score = Math.round(result.accuracy * 100);
     let isNewHigh = false;
@@ -2243,17 +3005,17 @@ IV.find = function (id) {
 
   let currentReview = null;
   function showDone(wasDaily, result, pat, meta, revisit) {
-    pattern = pat;
+    pattern = pat; curSig = sigOf(pat);
     currentReview = { result: result, pattern: pat, meta: meta, svg: reviewSvg(pat, null, result, meta.beatMs, meta.startMs) };
     const pct = Math.round(result.accuracy * 100), notes = pat.events.filter(e => !e.r);
     const list = notes.map((e, i) => {
-      const n = result.notes[i], b = band(n.err, n.hit), where = 'Bar ' + (rowOf(e.start) + 1) + ', beat ' + (Math.round((e.start % 4 + 1) * 100) / 100);
+      const n = result.notes[i], b = band(n.err, n.hit), where = 'Bar ' + (rowOf(e.start, curSig) + 1) + ', beat ' + (Math.round((e.start % curSig.B * (curSig.compound ? 3 : 1) + 1) * 100) / 100);
       return '<li>' + where + ': ' + (n.hit ? b.name + ' (' + (n.err > 0 ? '+' : '') + Math.round(n.err) + ' ms)' : 'missed') + '</li>';
     }).join('');
     $('rt-result').innerHTML =
       '<h2 style="font-size:1.4rem;margin-bottom:.3rem" id="end-title">' + (revisit ? 'Daily complete!' : 'Round complete') + '</h2>' +
       '<div class="rt-big" aria-label="Accuracy ' + pct + ' per cent">' + pct + '%</div>' +
-      '<div class="rt-verdict">' + verdictFor(result.accuracy) + '</div>' +
+      '<div class="rt-verdict">' + verdictFor(result.accuracy) + ' <span class="rt-sub" style="display:inline">· ' + curSig.id + '</span></div>' +
       '<div class="rt-sub">' + tendency(result.meanErr, result.meanAbs) + (result.missed ? ' Missed ' + result.missed + '.' : '') + (result.extras.length ? ' ' + result.extras.length + ' extra tap' + (result.extras.length > 1 ? 's' : '') + '.' : '') + '</div>' +
       '<div class="rt-score-card" id="rt-review">' + currentReview.svg + '</div>' +
       '<div class="rt-legend">Dot above the line = late, below = early. <b style="background:#566B50"></b>spot on <b style="background:#8a9e5a"></b>good <b style="background:#C1A45F"></b>a bit off <b style="background:#c0734a"></b>way off <b style="background:#9b5a64"></b>missed</div>' +
@@ -2283,7 +3045,7 @@ IV.find = function (id) {
     const r = currentReview.result, pct = Math.round(r.accuracy * 100);
     const blocks = r.notes.map(n => !n.hit ? '🟥' : Math.abs(n.err) <= 35 ? '🟩' : Math.abs(n.err) <= 75 ? '🟨' : '🟧').join('');
     const pageUrl = window.location.href.split('?')[0];
-    const text = `I tapped ${pct}% accurately on the Intrvl Daily ${TITLE}! 🥁\n\n${blocks}\n\nStreak: ${stats.currentStreak} Days\n\nCan you keep better time than me?\n${pageUrl}`;
+    const text = `I tapped ${pct}% accurately on the Intrvl Daily ${TITLE} (${curSig.id})! 🥁\n\n${blocks}\n\nStreak: ${stats.currentStreak} Days\n\nCan you keep better time than me?\n${pageUrl}`;
     IntrvlCore.share(text, $('btn-share'), 'Intrvl ' + TITLE);
   }
 
@@ -2313,7 +3075,8 @@ IV.find = function (id) {
   }
 
   // for automated tests
-  window.RT = { makePattern: makePattern, scoreTaps: scoreTaps, flatten: flatten, CELLS: CELLS, MARK: MARK, recordTap: recordTap, drawRhythm: drawRhythm, describePattern: describePattern, reviewSvg: reviewSvg, band: band, buildRound: buildRound, state: () => ({ running: running, taps: taps.slice(), expectedAbs: expectedAbs.slice(), clickStartPerf: clickStartPerf, patternStartPerf: patternStartPerf, beatMs: beatMs }) };
+  window.RT = { SIGS: SIGS, makePattern: makePattern, scoreTaps: scoreTaps, flatten: flatten, CELLS: CELLS, cellsFor: cellsFor, MARK: MARK, recordTap: recordTap, drawRhythm: drawRhythm, describePattern: describePattern, reviewSvg: reviewSvg, band: band, buildRound: buildRound, dailySig: dailySig,
+    state: () => ({ running: running, armed: armed, volumeChecked: volumeChecked, taps: taps.slice(), expectedAbs: expectedAbs.slice(), clickStartPerf: clickStartPerf, patternStartPerf: patternStartPerf, beatMs: beatMs, sig: curSig.id }) };
 
   initRhythm();
 </script>

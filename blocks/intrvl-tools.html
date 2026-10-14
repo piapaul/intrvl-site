@@ -107,6 +107,10 @@ line-height: 1.2;
 .iv-select, .iv-input { width: 100%; padding: .6rem .75rem; border: 1px solid var(--intrvl-stone); border-radius: 10px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .95rem; }
 .iv-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236b6b6b' stroke-width='2'/></svg>"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
 .iv-input:focus, .iv-select:focus { outline: 2px solid var(--intrvl-accent); outline-offset: 1px; border-color: transparent; }
+.iv-check { display: flex; gap: .6rem; align-items: flex-start; min-height: 44px; margin: .5rem 0; font-size: .9rem; line-height: 1.35; cursor: pointer; }
+.iv-check input { width: 22px; height: 22px; min-width: 22px; margin-top: 1px; accent-color: var(--intrvl-accent-dark); }
+.iv-pad { display: block; width: 100%; max-width: 340px; height: 150px; margin: .6rem auto; border-radius: 26px; border: 3px solid var(--intrvl-ink); background: var(--intrvl-accent); color: var(--intrvl-ink); font: 900 2.2rem var(--intrvl-font-head); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 6px 0 var(--intrvl-ink); }
+.iv-pad.down { transform: translateY(5px); box-shadow: 0 1px 0 var(--intrvl-ink); }
 .iv-range { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--intrvl-stone); outline: none; margin: .6rem 0; }
 .iv-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
 .iv-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
@@ -335,6 +339,9 @@ IV.GAMES = [
   { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats', variantOf: 'keysig' },
   { id: 'rhythm',      name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',       blurb: 'Tap the rhythm, then keep time on your own' },
   { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',     icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy',  blurb: 'Tap the rhythm with the metronome running', variantOf: 'rhythm' },
+  { id: 'readinterval',      name: 'Interval Reader',      icon: '📏', accent: '#B7A7C9', url: '/intrvl-interval-reader',      blurb: '30 seconds: name the interval on the stave' },
+  { id: 'readinterval-easy', name: 'Interval Reader (Easy)', icon: '📏', accent: '#B7A7C9', url: '/intrvl-interval-reader-easy', blurb: 'Just the number: 2nd, 3rd, 4th, up to an octave', variantOf: 'readinterval' },
+  { id: 'chordq',      name: 'Chord Quality',         icon: '🧱', accent: '#D9A5B3', url: '/intrvl-chord-quality',        blurb: '30 seconds: major, minor, diminished, augmented or 7th?' },
   { id: 'interval',    name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',    blurb: 'Name the interval you hear' },
   { id: 'enharmonic',  name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',   blurb: '30 seconds: find the enharmonic twin' },
   { id: 'pitch',       name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',          blurb: 'Which pitch is higher, which is lower?' },
@@ -381,7 +388,10 @@ IV.find = function (id) {
   var CFG = global.INTRVL_CONFIG || {};
   var GAME_ID = CFG.gameId || CFG.id || 'unknown';
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ } }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ }
+    if (global.IntrvlSync && global.IntrvlSync.noteChange) global.IntrvlSync.noteChange(k);
+  }
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   function getDailySeed() {
     var today = new Date();
@@ -750,7 +760,7 @@ IV.find = function (id) {
     getAvatar: getAvatar, setAvatar: setAvatar,
     esc: esc, darken: darken, copyText: copyText,
     showScreen: showScreen, confetti: confetti, share: share,
-    lsGet: lsGet, lsSet: lsSet
+    lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, generateCode: generateCode
   };
 })(window);
 (function (global) {
@@ -876,8 +886,55 @@ IV.find = function (id) {
       return post(payload);
     });
   }
-  function createLeague(name) { return leagueCall({ action: 'createLeague', name: name }); }
-  function joinLeague(invite) { return leagueCall({ action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() }); }
+  function createLeague(name, prefs) { return leagueCall({ action: 'createLeague', name: name, share: prefs ? !!prefs.share : false, managerName: prefs ? prefs.managerName || '' : '' }); }
+  function joinLeague(invite, prefs) {
+    var p = { action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() };
+    if (prefs) { p.share = !!prefs.share; p.managerName = prefs.managerName || ''; }
+    return leagueCall(p);
+  }
+  function setMemberPrefs(id, prefs) { return leagueCall({ action: 'setMemberPrefs', leagueId: id, share: !!prefs.share, managerName: prefs.managerName || '' }); }
+  function manageLeague(id) { return leagueCall({ action: 'leagueManage', leagueId: id }); }
+
+  // ---- the progress summary a league manager can see (only if the player has given a name and not opted out) ----
+  var MGR_NAME = 'intrvl.manager.name', MGR_OUT = 'intrvl.manager.optout', MGR_PUSHED = 'intrvl.manager.pushed';
+  function cleanManagerName(n) { return String(n == null ? '' : n).replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'\u2019\- ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22); }
+  function managerName() { return Core.lsGet(MGR_NAME) || ''; }
+  function managerOptOut() { return Core.lsGet(MGR_OUT) === '1'; }
+  function saveManagerDefaults(name, out) { Core.lsSet(MGR_NAME, cleanManagerName(name)); Core.lsSet(MGR_OUT, out ? '1' : '0'); }
+  function mondayOf(ds) { var d = new Date(ds + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Core.dailySeedDate(d); }
+  function buildSummary() {
+    var today = Core.dailySeedDate(), mon = mondayOf(today), played = Core.allPlayedDates(), days = {}, games = 0, last = '', mins = 0, IVg = (global.IV && global.IV.GAMES) || [];
+    Object.keys(played).forEach(function (d) {
+      if (d >= mon && d <= today) { days[d] = 1; games += played[d]; }
+      if (d > last) last = d;
+    });
+    try {
+      var log = JSON.parse(Core.lsGet('intrvl.practice.log.v1') || '{}');
+      (log.sessions || []).forEach(function (x) {
+        if (!x || !x.date) return;
+        if (x.date >= mon && x.date <= today) { days[x.date] = 1; Object.keys(x.secs || {}).forEach(function (k) { mins += (Number(x.secs[k]) || 0) / 60; }); }
+        if (x.date > last) last = x.date;
+      });
+    } catch (e) { /* no log yet */ }
+    var tp = 0, tc = 0;
+    IVg.forEach(function (g) { var st = Core.statsFor(g.id); tp += st.totalPlayed || 0; tc += st.totalCorrect || 0; });
+    return {
+      v: 1, week: mon, lastActive: last, daysThisWeek: Object.keys(days).length, gamesThisWeek: games, streak: Core.practiceStreak(),
+      accuracy: tp ? Math.round(tc / tp * 100) : null, practiceMins: Math.round(mins),
+      weak: Core.weakSpots(3).map(function (w) { return { g: w.game.name, l: w.label, p: Math.round(w.recent * 100) }; })
+    };
+  }
+  // Sends the summary if this player shares with at least one league.  minutes: don't resend more often than this.
+  function pushStats(minutes) {
+    if (!isConfigured() || !managerName() || managerOptOut()) return Promise.resolve({ ok: true, skipped: true });
+    var last = Number(Core.lsGet(MGR_PUSHED)) || 0;
+    if (Date.now() - last < (minutes == null ? 20 : minutes) * 60000) return Promise.resolve({ ok: true, skipped: true });
+    var known = cachedLeagues();
+    return (known ? Promise.resolve({ ok: true, leagues: known }) : myLeagues()).then(function (r) {
+      if (!r.ok || !r.leagues.some(function (l) { return l.share; })) return { ok: true, skipped: true };
+      return leagueCall({ action: 'statsPush', summary: buildSummary() }).then(function (res) { if (res.ok) Core.lsSet(MGR_PUSHED, String(Date.now())); return res; });
+    });
+  }
   function leaveLeague(id) { return leagueCall({ action: 'leaveLeague', leagueId: id }); }
   function removeMember(id, memberCode) { return leagueCall({ action: 'removeMember', leagueId: id, memberCode: memberCode }); }
   function renameLeague(id, name) { return leagueCall({ action: 'renameLeague', leagueId: id, name: name }); }
@@ -915,7 +972,7 @@ IV.find = function (id) {
     box.innerHTML = '<div class="iv-note iv-center">Sending your score…</div>';
     var date = Core.dailySeedDate();
     var sentKey = 'intrvl.sent.' + opts.gameId + '.' + date;
-    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) Core.lsSet(sentKey, '1'); return r; });
+    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) { Core.lsSet(sentKey, '1'); pushStats(1); } return r; });
     send.then(function (res) {
       if (!res.ok) {
         box.innerHTML = '<div class="iv-note iv-center">Couldn’t reach the leaderboard just now — your score is saved on this device. <button class="iv-linkbtn" id="iv-lb-retry">Try again</button></div>';
@@ -940,11 +997,265 @@ IV.find = function (id) {
     });
   }
   global.IntrvlLeaderboard = {
-    isConfigured: isConfigured, ping: ping, register: register,
+    isConfigured: isConfigured, ping: ping, register: register, call: post,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
     createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
-    resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
+    resetInvite: resetInvite, deleteLeague: deleteLeague, setMemberPrefs: setMemberPrefs, manageLeague: manageLeague, pushStats: pushStats, buildSummary: buildSummary,
+    cleanManagerName: cleanManagerName, managerName: managerName, managerOptOut: managerOptOut, saveManagerDefaults: saveManagerDefaults, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
     submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
+  };
+})(window);
+// ---- progress sync -------------------------------------------------------------------------------
+// Optional.  Switching it on stores a copy of this player's progress on the leaderboard server, locked by a
+// recovery code that only the player has (the server keeps just a hash of it).  Entering the friend code +
+// recovery code on another device brings the progress across and keeps the two in step.
+(function (global) {
+  'use strict';
+  var Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
+  var K_ON = 'intrvl.sync.on', K_KEY = 'intrvl.sync.key', K_LAST = 'intrvl.sync.last', K_ERR = 'intrvl.sync.err';
+  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1|rhythm\.offset|manager\.pushed)/;
+  var applying = false, timer = null, busy = null, listeners = [];
+
+  function syncable(k) { return k && k.indexOf('intrvl.') === 0 && !SKIP.test(k); }
+  function isOn() { return Core.lsGet(K_ON) === '1' && !!Core.lsGet(K_KEY); }
+  function recoveryKey() { return Core.lsGet(K_KEY) || ''; }
+  function lastSync() { return Core.lsGet(K_LAST) || ''; }
+  function lastError() { return Core.lsGet(K_ERR) || ''; }
+  function onChange(fn) { listeners.push(fn); }
+  function fire() { listeners.forEach(function (f) { try { f(); } catch (e) { /* ignore */ } }); }
+  function canHash() { return !!(global.crypto && global.crypto.subtle && global.TextEncoder); }
+
+  function hex(buf) { var a = new Uint8Array(buf), s = ''; for (var i = 0; i < a.length; i++) s += (a[i] < 16 ? '0' : '') + a[i].toString(16); return s; }
+  function hashKey(code, key) {
+    if (!canHash()) return Promise.reject(new Error('no crypto'));
+    return global.crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code).toUpperCase() + ':' + String(key).toUpperCase().replace(/[^A-Z0-9]/g, ''))).then(hex);
+  }
+  function newRecoveryKey() { var c = Core.generateCode ? Core.generateCode(10) : ''; return c.slice(0, 5) + '-' + c.slice(5); }
+  function cleanKey(k) { var c = String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return c.length === 10 ? c.slice(0, 5) + '-' + c.slice(5) : c; }
+
+  // ---- snapshot (all syncable keys) --------------------------------------------------------------
+  function collect() {
+    var data = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (syncable(k)) data[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* storage blocked */ }
+    return data;
+  }
+  function parse(s, fallback) { try { var o = JSON.parse(s); return o == null ? fallback : o; } catch (e) { return fallback; } }
+  function dateNum(s) { var t = Date.parse(s || ''); return isNaN(t) ? 0 : t; }
+
+  // ---- merging: two copies of the same player's progress become one, never losing either ----------
+  function mergeStats(a, b) {
+    var x = parse(a, null), y = parse(b, null);
+    if (!x) return b; if (!y) return a;
+    var later = dateNum(y.lastPlayedDate) > dateNum(x.lastPlayedDate), base = later ? y : x, other = later ? x : y;
+    var bigger = (y.totalPlayed || 0) > (x.totalPlayed || 0) ? y : x, out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    out.totalPlayed = bigger.totalPlayed || 0; out.totalCorrect = bigger.totalCorrect || 0;
+    out.bestStreak = Math.max(x.bestStreak || 0, y.bestStreak || 0);
+    out.highScorePractice = Math.max(x.highScorePractice || 0, y.highScorePractice || 0);
+    var d1 = base.dailyBest, d2 = other.dailyBest;
+    out.dailyBest = (!d1 || (d2 && (d2.score || 0) > (d1.score || 0))) ? (d2 || d1 || null) : d1;
+    return JSON.stringify(out);
+  }
+  function mergeHistory(a, b) {
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    [x, y].forEach(function (o) { Object.keys(o).forEach(function (d) { out[d] = (d in out) ? Math.max(out[d], o[d]) : o[d]; }); });
+    return JSON.stringify(out);
+  }
+  function mergeUnion(a, b) {   // local wins on a clash
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    Object.keys(y).forEach(function (k) { out[k] = y[k]; });
+    Object.keys(x).forEach(function (k) { out[k] = x[k]; });
+    return JSON.stringify(out);
+  }
+  function mergeItems(a, b) {
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    Object.keys(y).forEach(function (k) { out[k] = y[k]; });
+    Object.keys(x).forEach(function (k) { if (!out[k] || (x[k].a || 0) >= (out[k].a || 0)) out[k] = x[k]; });
+    return JSON.stringify(out);
+  }
+  function mergeFriends(a, b) {
+    var x = parse(a, []), y = parse(b, []), out = x.slice();
+    y.forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); });
+    return JSON.stringify(out);
+  }
+  function mergePractice(a, b) {
+    var x = parse(a, { sessions: [] }), y = parse(b, { sessions: [] }), seen = {}, out = [];
+    (x.sessions || []).concat(y.sessions || []).forEach(function (s) { if (s && !seen[s.id]) { seen[s.id] = 1; out.push(s); } });
+    out.sort(function (p, q) { return (p.ts || 0) - (q.ts || 0); });
+    return JSON.stringify({ sessions: out });
+  }
+  // keys that describe "who this is": on a restore the saved copy wins, in everyday syncing this device's wins
+  var IDENTITY = /^intrvl\.(deviceId|playerCode|displayName|avatar)$/;
+  function mergeValue(k, local, remote, restoring) {
+    if (local == null) return remote;
+    if (remote == null) return local;
+    if (local === remote) return local;
+    if (IDENTITY.test(k)) return restoring ? remote : local;
+    if (/\.stats\.v1$/.test(k)) return mergeStats(local, remote);
+    if (/\.history\.v1$/.test(k)) return mergeHistory(local, remote);
+    if (/\.blocks\.v1$/.test(k)) return mergeUnion(local, remote);
+    if (/\.items\.v1$/.test(k)) return mergeItems(local, remote);
+    if (k === 'intrvl.friends') return mergeFriends(local, remote);
+    if (k === 'intrvl.practice.log.v1') return mergePractice(local, remote);
+    if (/^intrvl\.sent\./.test(k)) return '1';
+    return local;   // settings such as the rhythm timing adjustment: this device keeps its own
+  }
+  function merge(local, remote, restoring) {
+    var out = {}, keys = {};
+    Object.keys(local || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(remote || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(keys).forEach(function (k) {
+      if (!syncable(k) || (remote && remote[k] != null && (typeof remote[k] !== 'string' || remote[k].length > 200000))) return;
+      var v = mergeValue(k, local ? local[k] : null, remote ? remote[k] : null, !!restoring);
+      if (v != null) out[k] = v;
+    });
+    return out;
+  }
+  function sameData(a, b) {
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) if (a[ka[i]] !== b[ka[i]]) return false;
+    return true;
+  }
+
+  // ---- packing (gzip when the browser can, plain otherwise) ---------------------------------------
+  function toB64(bytes) { var s = ''; for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s); }
+  function fromB64(t) { var s = atob(t), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+  function streamBytes(stream, bytes) {
+    var w = stream.writable.getWriter(); w.write(bytes); w.close();
+    return new Response(stream.readable).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function pack(data) {
+    var text = JSON.stringify(data), bytes = new TextEncoder().encode(text);
+    if (typeof CompressionStream === 'function') {
+      try { return streamBytes(new CompressionStream('gzip'), bytes).then(function (z) { return 'g1:' + toB64(z); }); } catch (e) { /* fall through */ }
+    }
+    return Promise.resolve('j1:' + toB64(bytes));
+  }
+  function unpack(text) {
+    text = String(text || '');
+    var kind = text.slice(0, 3), bytes;
+    try { bytes = fromB64(text.slice(3)); } catch (e) { return Promise.reject(new Error('unreadable')); }
+    var p = kind === 'g1:'
+      ? (typeof DecompressionStream === 'function' ? streamBytes(new DecompressionStream('gzip'), bytes) : Promise.reject(new Error('This browser can’t open the saved copy.')))
+      : kind === 'j1:' ? Promise.resolve(bytes) : Promise.reject(new Error('unreadable'));
+    return p.then(function (b) {
+      var o = JSON.parse(new TextDecoder().decode(b));
+      if (!o || typeof o !== 'object') throw new Error('unreadable');
+      return o;
+    });
+  }
+
+  function apply(data) {
+    applying = true;
+    try { Object.keys(data).forEach(function (k) { if (syncable(k) && Core.lsGet(k) !== data[k]) Core.lsSet(k, data[k]); }); }
+    finally { applying = false; }
+  }
+  function stamp(ok, err) {
+    if (ok) { Core.lsSet(K_LAST, new Date().toISOString()); Core.lsDel ? Core.lsDel(K_ERR) : Core.lsSet(K_ERR, ''); } else Core.lsSet(K_ERR, err || 'couldn’t reach the server');
+    fire();
+  }
+  function friendlyErr(r) { return (r && r.error === 'network error') ? 'no connection — will try again later' : ((r && r.error) || 'something went wrong'); }
+
+  // pull the saved copy, merge it with this device, and push the result back if anything changed
+  function syncNow() {
+    if (!isOn()) return Promise.resolve({ ok: false, error: 'sync is off' });
+    if (busy) return busy;
+    busy = LB.register().then(function () {
+      return LB.call({ action: 'syncPull', code: Core.getPlayerCode(), deviceId: Core.getDeviceId() });
+    }).then(function (res) {
+      if (!res.ok) throw res;
+      return (res.data ? unpack(res.data) : Promise.resolve({})).then(function (remote) {
+        var local = collect(), merged = merge(local, remote, false);
+        if (!sameData(local, merged)) apply(merged);
+        if (res.data && sameData(remote, merged)) return { ok: true, unchanged: true };
+        return pack(merged).then(function (packed) {
+          return LB.call({ action: 'syncPush', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), data: packed });
+        }).then(function (r) { if (!r.ok) throw r; return { ok: true }; });
+      });
+    }).then(function (r) { stamp(true); busy = null; return r; }, function (e) {
+      busy = null;
+      var msg = e && e.error ? friendlyErr(e) : 'something went wrong';
+      stamp(false, msg);
+      return { ok: false, error: msg };
+    });
+    return busy;
+  }
+
+  function enable() {
+    if (!LB.isConfigured()) return Promise.resolve({ ok: false, error: 'The leaderboard isn’t set up yet.' });
+    if (!canHash()) return Promise.resolve({ ok: false, error: 'This browser can’t do secure sync.' });
+    var key = recoveryKey() || newRecoveryKey();
+    return LB.register().then(function (reg) {
+      if (!reg.ok) throw reg;
+      return hashKey(Core.getPlayerCode(), key);
+    }).then(function (h) {
+      return LB.call({ action: 'syncEnable', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), keyHash: h });
+    }).then(function (r) {
+      if (!r.ok) throw r;
+      Core.lsSet(K_KEY, key); Core.lsSet(K_ON, '1');
+      return syncNow().then(function (s) { return s.ok ? { ok: true, key: key } : { ok: true, key: key, warning: s.error }; });
+    }).catch(function (e) { return { ok: false, error: e && e.error ? friendlyErr(e) : 'Couldn’t switch sync on — please try again.' }; });
+  }
+  function disable() {   // stops syncing on this device; the saved copy stays until deleted
+    Core.lsSet(K_ON, '0'); fire();
+  }
+  function restore(friendCode, key) {
+    var code = String(friendCode || '').trim().toUpperCase(), k = cleanKey(key);
+    if (!code || k.length < 10) return Promise.resolve({ ok: false, error: 'Enter both codes.' });
+    if (!canHash()) return Promise.resolve({ ok: false, error: 'This browser can’t do secure sync.' });
+    return hashKey(code, k).then(function (h) {
+      return LB.call({ action: 'syncRestore', code: code, keyHash: h });
+    }).then(function (r) {
+      if (!r.ok) throw r;
+      return unpack(r.data);
+    }).then(function (remote) {
+      var local = collect(), merged = merge(local, remote, true);
+      merged['intrvl.playerCode'] = code;
+      applying = true;
+      try { Object.keys(merged).forEach(function (kk) { if (syncable(kk)) Core.lsSet(kk, merged[kk]); }); } finally { applying = false; }
+      Core.lsSet(K_KEY, k); Core.lsSet(K_ON, '1');
+      if (Core.lsDel) Core.lsDel('intrvl.reg');
+      stamp(true);
+      return { ok: true };
+    }).catch(function (e) { return { ok: false, error: (e && e.error) ? friendlyErr(e) : ((e && e.message) || 'Couldn’t restore — please try again.') }; });
+  }
+  function deleteOnlineData() {
+    return LB.register().then(function () {
+      return LB.call({ action: 'deleteMyData', code: Core.getPlayerCode(), deviceId: Core.getDeviceId() });
+    }).then(function (r) {
+      if (!r.ok) return { ok: false, error: friendlyErr(r) };
+      Core.lsSet(K_ON, '0'); Core.lsDel && Core.lsDel(K_KEY); Core.lsDel && Core.lsDel(K_LAST);
+      Core.lsDel && Core.lsDel('intrvl.reg'); Core.lsDel && Core.lsDel('intrvl.friends');
+      fire();
+      return { ok: true };
+    });
+  }
+
+  // changes made on this device are sent a little later (not on every tap)
+  function noteChange(k) {
+    if (applying || !isOn() || !syncable(k)) return;
+    if (timer) return;
+    timer = setTimeout(function () { timer = null; syncNow(); }, 20000);
+  }
+  function autoSync() {   // on page load: at most every 10 minutes
+    if (!isOn()) return;
+    var t = Date.parse(lastSync());
+    if (!isNaN(t) && Date.now() - t < 600000) return;
+    setTimeout(syncNow, 2500);
+  }
+  if (global.addEventListener) global.addEventListener('pagehide', function () { if (timer) { clearTimeout(timer); timer = null; if (isOn()) syncNow(); } });
+
+  global.IntrvlSync = {
+    isOn: isOn, recoveryKey: recoveryKey, lastSync: lastSync, lastError: lastError, onChange: onChange,
+    enable: enable, disable: disable, restore: restore, syncNow: syncNow, deleteOnlineData: deleteOnlineData,
+    noteChange: noteChange, autoSync: autoSync, canHash: canHash,
+    _merge: merge, _collect: collect, _pack: pack, _unpack: unpack
   };
 })(window);
 (function (global) {
@@ -1145,6 +1456,68 @@ IV.find = function (id) {
   }
   function inviteLink(code) { return IV.fullUrl(IV.SECTIONS.home.url) + '?league=' + code; }
 
+  // ---- "what does the league manager see?" fields (used when joining and in a league's own settings) ----
+  function shareFieldsHtml(pre, name, optedOut) {
+    return '<div class="iv-sharebox">' +
+      '<div class="iv-label" id="' + pre + '-lbl" style="margin-top:.8rem">Sharing with the league manager</div>' +
+      '<p class="iv-note">The person who runs this league can see a short summary of your progress: your first name and initial, days played this week, games, streak, accuracy, practice time and your three weakest topics. Nothing else, and never your full history.</p>' +
+      '<label class="iv-label" for="' + pre + '-name">First name and initial (like “Ben O”)</label>' +
+      '<input class="iv-input" id="' + pre + '-name" maxlength="22" autocomplete="off" value="' + esc(name || '') + '"' + (optedOut ? ' disabled' : '') + '>' +
+      '<label class="iv-check"><input type="checkbox" id="' + pre + '-out"' + (optedOut ? ' checked' : '') + '><span><b>Opt out</b> — don’t share my progress with the league manager</span></label>' +
+      '</div>';
+  }
+  function wireShareFields(s, pre) {
+    var out = $('#' + pre + '-out', s), name = $('#' + pre + '-name', s);
+    out.onchange = function () { name.disabled = out.checked; };
+  }
+  // -> { ok, share, managerName } or { ok: false, error }
+  function readShareFields(s, pre) {
+    var out = $('#' + pre + '-out', s).checked, name = LB.cleanManagerName($('#' + pre + '-name', s).value);
+    if (out) return { ok: true, share: false, managerName: '' };
+    if (name.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF]/g, '').length < 2) return { ok: false, error: 'Add your first name and initial (like “Ben O”), or tick Opt out.' };
+    return { ok: true, share: true, managerName: name };
+  }
+  function progressItems(x) {
+    var sharers = x.members.filter(function (m) { return m.sharing; }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+    var others = x.members.filter(function (m) { return !m.sharing; });
+    return { sharers: sharers, others: others };
+  }
+  function summaryLine(m, wk) {
+    var sm = m.summary, cur = sm && sm.week === wk;
+    if (!sm) return null;
+    return {
+      last: niceDay(sm.lastActive),
+      week: (cur ? sm.daysThisWeek : 0) + ' day' + ((cur ? sm.daysThisWeek : 0) === 1 ? '' : 's') + ' · ' + (cur ? sm.gamesThisWeek : 0) + ' game' + ((cur ? sm.gamesThisWeek : 0) === 1 ? '' : 's') + ' · ' + (cur ? sm.practiceMins : 0) + ' min practice',
+      streak: sm.streak, accuracy: sm.accuracy == null ? '–' : sm.accuracy + '%',
+      weak: (sm.weak || []).map(function (w) { return w.l + ' (' + w.g + ', ' + w.p + '%)'; })
+    };
+  }
+  function progressHtml(x) {
+    var it = progressItems(x), html = '';
+    if (!it.sharers.length) html += '<p class="iv-note">Nobody is sharing yet.</p>';
+    it.sharers.forEach(function (m) {
+      var l = summaryLine(m, x.week);
+      html += '<div class="iv-card"><div><b>' + esc(m.avatar || '') + ' ' + esc(m.name) + '</b>' + (m.updatedAt ? ' <span class="iv-note">· updated ' + esc(when(m.updatedAt)) + '</span>' : '') + '</div>' +
+        (l ? '<div class="iv-note" style="color:var(--intrvl-ink)">Last played: ' + esc(l.last) + '<br>This week: ' + esc(l.week) + '<br>Streak: ' + l.streak + ' · Accuracy: ' + esc(l.accuracy) + (l.weak.length ? '<br>Needs work: ' + esc(l.weak.join('; ')) : '') + '</div>' : '<div class="iv-note">No summary yet — it arrives the next time they open intrvl.</div>') + '</div>';
+    });
+    if (it.others.length) html += '<p class="iv-note" style="margin-top:.6rem">Not sharing: ' + it.others.map(function (m) { return esc(m.displayName) + ' (' + esc(m.reason) + ')'; }).join(', ') + '</p>';
+    if (it.sharers.length) html += '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small ghost" id="ivl-prog-copy">Copy as text</button></div>';
+    return html;
+  }
+  function progressText(x) {
+    var it = progressItems(x);
+    return 'intrvl — ' + x.league.name + ' (week of ' + shortDate(x.week) + ')\n' + it.sharers.map(function (m) {
+      var l = summaryLine(m, x.week);
+      return l ? m.name + ': last played ' + l.last + '; ' + l.week + '; streak ' + l.streak + '; accuracy ' + l.accuracy + (l.weak.length ? '; needs work: ' + l.weak.join(', ') : '') : m.name + ': no summary yet';
+    }).join('\n');
+  }
+  function when(ts) {
+    var t = Date.parse(ts || ''); if (isNaN(t)) return '';
+    var m = Math.round((Date.now() - t) / 60000);
+    return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  }
+  function niceDay(ds) { if (!ds) return 'never'; var d = new Date(ds + 'T12:00:00'); return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' ' + shortDate(ds); }
+
   function openLeague(preferId, opts) {
     opts = opts || {};
     var s = openSheet('<h3>Friends League</h3>' + viewSwitch('league') + '<div id="ivl-body" aria-live="polite"><div class="iv-note">Loading…</div></div>', null, 'friends');
@@ -1167,9 +1540,12 @@ IV.find = function (id) {
       html += '<label class="iv-label" for="ivl-new">Start a league</label>' +
         '<div class="iv-addrow"><input class="iv-input" id="ivl-new" maxlength="30" placeholder="e.g. Thursday piano group" autocomplete="off"><button type="button" class="iv-btn small" id="ivl-create">Create</button></div>' +
         '<label class="iv-label" for="ivl-join" style="margin-top:.8rem">Join with an invite code or link</label>' +
-        '<div class="iv-addrow"><input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
+        '<input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters">' +
+        shareFieldsHtml('ivj', LB.managerName() || '', LB.managerOptOut()) +
+        '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
         '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite"></div>' + privacyNote();
       body.innerHTML = html;
+      wireShareFields(s, 'ivj');
       Array.prototype.forEach.call(body.querySelectorAll('[data-id]'), function (b) { b.onclick = function () { showLeague(b.getAttribute('data-id')); }; });
       $('#ivl-create', s).onclick = function () {
         var name = $('#ivl-new', s).value.trim();
@@ -1183,23 +1559,30 @@ IV.find = function (id) {
       $('#ivl-joinbtn', s).onclick = function () {
         var raw = $('#ivl-join', s).value, m = /[?&]league=([A-Za-z0-9]+)/.exec(raw), code = (m ? m[1] : raw).trim();
         if (!code) { say('Paste an invite code or link first.'); return; }
+        var pf = readShareFields(s, 'ivj');
+        if (!pf.ok) { say(pf.error); return; }
         say('Joining…');
-        LB.joinLeague(code).then(function (r) {
+        LB.saveManagerDefaults(pf.managerName, !pf.share);
+        LB.joinLeague(code, pf).then(function (r) {
           if (!r.ok) { say(r.error === 'invite not found' ? 'That invite doesn’t work — ask for a fresh link.' : leagueError(r.error)); return; }
+          LB.myLeagues().then(function () { LB.pushStats(0); });
           showLeague(r.league.leagueId);
         });
       };
     }
     function privacyNote() {
-      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. Nothing else is shared.</p>';
+      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. The person who runs it can also see a short progress summary from members who choose to share it (first name and initial only). Nothing else is shared.</p>';
     }
 
     // ---- one league
     function showLeague(id, justCreated) {
       body.innerHTML = '<div class="iv-note">Loading…</div>';
-      var week = null;
+      var week = null, myShare = true;
       if (weekOffset) { var base = new Date(); base.setDate(base.getDate() + weekOffset * 7); week = Core.dailySeedDate(base); }
-      LB.getLeague(id, week).then(function (r) {
+      function shareOf(list) { var m = (list || []).filter(function (l) { return l.leagueId === id; })[0]; return m ? m.share !== false : true; }
+      Promise.all([LB.getLeague(id, week), LB.myLeagues()]).then(function (both) {
+        var r = both[0];
+        myShare = shareOf(both[1].ok ? both[1].leagues : LB.cachedLeagues());
         if (!r.ok) {
           var cached = !week && LB.cachedLeague(id);
           if (cached) { draw(cached, true); return; }
@@ -1221,10 +1604,20 @@ IV.find = function (id) {
           '<table class="iv-table"><caption class="iv-sr">League table for the week</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Games</th><th scope="col" class="num">Points</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           (r.lastWeekWinner && weekOffset === 0 ? '<p class="iv-note" style="margin-top:.6rem">Last week’s winner: ' + esc(r.lastWeekWinner.avatar || '') + ' <b>' + esc(r.lastWeekWinner.displayName) + '</b> with ' + r.lastWeekWinner.points + ' points 🏆</p>' : '') +
           '<details class="iv-details" style="margin-top:.8rem"><summary>How points work</summary><p class="iv-note">Each finished daily game earns <b>1 point</b>. The best score of the day in that game earns <b>+2</b>, second best <b>+1</b> (ties share). The table runs Monday to Sunday, then starts again.</p></details>';
+        var needsName = myShare && !LB.managerName();
+        html += '<details class="iv-details" id="ivq-wrap"' + (needsName ? ' open' : '') + '><summary>Your sharing with the league manager</summary>' +
+          (needsName ? '<p class="iv-note">You haven’t added a name yet, so nothing is being shared. Add one, or tick Opt out.</p>' : '') +
+          shareFieldsHtml('ivq', LB.managerName() || '', !myShare) +
+          '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small" id="ivq-save">Save</button></div>' +
+          '<div class="iv-status" id="ivq-msg" role="status" aria-live="polite"></div></details>';
         if (owner) {
           var link = inviteLink(L.inviteCode);
-          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>Manage this league</summary>' +
-            '<div class="iv-label">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
+          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>League manager</summary>' +
+            '<div class="iv-label">Member progress</div>' +
+            '<p class="iv-note">Members who choose to share appear here with a short progress summary. Anyone who has opted out, or hasn’t added a name, shows as not sharing.</p>' +
+            '<div class="iv-row" style="margin-bottom:.4rem"><button type="button" class="iv-btn small" id="ivl-prog-btn">View member progress</button></div>' +
+            '<div id="ivl-prog" aria-live="polite"></div>' +
+            '<div class="iv-label" style="margin-top:1rem">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
             '<div class="iv-row" style="margin:.2rem 0 .8rem"><button type="button" class="iv-btn small ghost" id="ivl-share">Share link…</button><button type="button" class="iv-btn small ghost" id="ivl-reset">Make a new link</button></div>' +
             '<label class="iv-label" for="ivl-rename">League name</label><div class="iv-addrow"><input class="iv-input" id="ivl-rename" maxlength="30" value="' + esc(L.name) + '"><button type="button" class="iv-btn small" id="ivl-rensave">Save</button></div>' +
             '<div class="iv-label" style="margin-top:.8rem">Members</div><div id="ivl-members">' + r.members.map(function (m) {
@@ -1237,9 +1630,31 @@ IV.find = function (id) {
         html += '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>' + privacyNote();
         body.innerHTML = html;
         $('#ivl-back', s).onclick = loadList;
+        wireShareFields(s, 'ivq');
+        $('#ivq-save', s).onclick = function () {
+          var pf = readShareFields(s, 'ivq'), m = $('#ivq-msg', s);
+          if (!pf.ok) { m.textContent = pf.error; return; }
+          m.textContent = 'Saving…';
+          LB.saveManagerDefaults(pf.managerName, !pf.share);
+          LB.setMemberPrefs(id, pf).then(function (x) {
+            if (!x.ok) { m.textContent = leagueError(x.error); return; }
+            myShare = pf.share;
+            m.textContent = pf.share ? 'Saved ✓ — the league manager can now see your summary.' : 'Saved ✓ — you’re not sharing, and any summary already sent has been removed.';
+            LB.myLeagues().then(function () { LB.pushStats(0); });
+          });
+        };
         $('#ivl-prev', s).onclick = function () { weekOffset--; showLeague(id); };
         $('#ivl-next', s).onclick = function () { if (weekOffset < 0) { weekOffset++; showLeague(id); } };
         if (owner) {
+          $('#ivl-prog-btn', s).onclick = function () {
+            var box = $('#ivl-prog', s); box.innerHTML = '<div class="iv-note">Loading…</div>';
+            LB.manageLeague(id).then(function (x) {
+              if (!x.ok) { box.innerHTML = '<div class="iv-status">' + esc(leagueError(x.error)) + '</div>'; return; }
+              box.innerHTML = progressHtml(x);
+              var cp = $('#ivl-prog-copy', s);
+              if (cp) cp.onclick = function () { Core.copyText(progressText(x)).then(function (ok) { say(ok ? 'Copied ✓ — paste it into your notes.' : 'Couldn’t copy automatically.'); }); };
+            });
+          };
           $('#ivl-copy', s).onclick = function () { Core.copyText(inviteLink(L.inviteCode)).then(function (ok) { say(ok ? 'Invite link copied ✓ — send it to your group.' : 'Couldn’t copy automatically — select the link and copy it.'); }); };
           $('#ivl-share', s).onclick = function () {
             var text = 'Join my intrvl league “' + L.name + '” — a little weekly music-game competition:';
@@ -1302,15 +1717,21 @@ IV.find = function (id) {
       body.innerHTML = '<p style="margin-bottom:.8rem"><b>' + esc(r.ownerName) + '</b> has invited you to join <b>' + esc(r.name) + '</b> (' + r.members + ' member' + (r.members === 1 ? '' : 's') + '), a weekly music-game league.</p>' +
         '<label class="iv-label" for="ivi-name">Your name in the league</label>' +
         '<div class="iv-addrow"><input class="iv-input" id="ivi-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"></div>' +
-        '<p class="iv-note" style="margin:.2rem 0 .8rem">Members can see each other’s name, avatar and daily scores.</p>' +
-        '<div class="iv-row"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
+        '<p class="iv-note" style="margin:.2rem 0 .4rem">Members can see each other’s name, avatar and daily scores.</p>' +
+        shareFieldsHtml('ivm', LB.managerName() || '', LB.managerOptOut()) +
+        '<div class="iv-row" style="margin-top:.8rem"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
         '<div class="iv-status" id="ivi-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>';
+      wireShareFields(s, 'ivm');
       $('#ivi-no', s).onclick = function () { closeSheet(); };
       $('#ivi-join', s).onclick = function () {
+        var pf = readShareFields(s, 'ivm');
+        if (!pf.ok) { $('#ivi-msg', s).textContent = pf.error; return; }
+        LB.saveManagerDefaults(pf.managerName, !pf.share);
         Core.setDisplayName($('#ivi-name', s).value);
         $('#ivi-msg', s).textContent = 'Joining…';
-        LB.register(true).then(function () { return LB.joinLeague(code); }).then(function (j) {
+        LB.register(true).then(function () { return LB.joinLeague(code, pf); }).then(function (j) {
           if (!j.ok) { $('#ivi-msg', s).textContent = leagueError(j.error); return; }
+          LB.myLeagues().then(function () { LB.pushStats(0); });
           try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
           openLeague(j.league.leagueId);
         });
@@ -1362,7 +1783,11 @@ IV.find = function (id) {
       '<div class="iv-avatars" id="ivp-avatars" role="group" aria-labelledby="ivp-av-lbl"></div>' +
       '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" aria-label="Or type your own emoji as an avatar" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
       '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
-      '<div id="ivp-conn" class="iv-note">Checking…</div>',
+      '<div id="ivp-conn" class="iv-note">Checking…</div>' +
+      '<div class="iv-label" id="ivp-sync-lbl" style="margin-top:1.1rem">Save your progress online</div>' +
+      '<div id="ivp-sync" aria-labelledby="ivp-sync-lbl"></div>' +
+      '<div class="iv-label" id="ivp-timing-lbl" style="margin-top:1.1rem">Rhythm Tap timing</div>' +
+      '<div id="ivp-timing" aria-labelledby="ivp-timing-lbl"></div>',
       null, 'you');
     var status = $('#ivp-status', s);
     function sync() { if (LB.isConfigured()) LB.register(true); }
@@ -1379,9 +1804,199 @@ IV.find = function (id) {
     else LB.ping().then(function (r) {
       conn.textContent = r.ok ? 'Connected ✓ (backend v' + r.version + ')' : 'Can’t reach the leaderboard (' + (r.error || 'error') + ').';
     });
+    drawSync($('#ivp-sync', s));
+    drawTiming($('#ivp-timing', s), 'ivp');
     return s;
   }
   IV.openProfile = openProfile;
+
+  // "Save your progress online": the optional sync (see IntrvlSync). Draws into any container.
+  function drawSync(box) {
+    var Sync = global.IntrvlSync;
+    if (!box || !Sync) return;
+    if (!LB.isConfigured()) { box.innerHTML = '<p class="iv-note">Not available until the leaderboard is switched on.</p>'; return; }
+    function when(iso) {
+      var t = Date.parse(iso || ''); if (isNaN(t)) return 'not yet';
+      var m = Math.round((Date.now() - t) / 60000);
+      return m < 1 ? 'just now' : m < 60 ? m + ' minute' + (m === 1 ? '' : 's') + ' ago' : m < 1440 ? Math.round(m / 60) + ' hour' + (Math.round(m / 60) === 1 ? '' : 's') + ' ago' : new Date(t).toLocaleDateString();
+    }
+    function draw(msg) {
+      if (Sync.isOn()) {
+        box.innerHTML =
+          '<p class="iv-note">Switched on. Your scores and practice history are kept in step across your devices. Last saved: <b>' + esc(when(Sync.lastSync())) + '</b>' + (Sync.lastError() ? ' (' + esc(Sync.lastError()) + ')' : '') + '.</p>' +
+          '<div class="iv-label">Your recovery code</div>' +
+          '<div class="iv-code"><div><b id="ivs-key">' + esc(Sync.recoveryKey()) + '</b></div><div class="iv-row"><button type="button" class="iv-btn small ghost" id="ivs-copy">Copy</button></div></div>' +
+          '<p class="iv-note">Keep this safe. To use your progress on another device you need it <b>and</b> your friend code (<b>' + esc(Core.getPlayerCode()) + '</b>). Nobody can recover it for you.</p>' +
+          '<div class="iv-row"><button type="button" class="iv-btn small" id="ivs-now">Save now</button><button type="button" class="iv-btn small ghost" id="ivs-off">Switch off on this device</button></div>' +
+          '<details class="iv-details"><summary>Delete my online data</summary>' +
+            '<p class="iv-note">Removes your name, avatar, scores, friends, league memberships and saved progress from the leaderboard. Progress on this device stays. If you run a league, delete it first.</p>' +
+            '<div class="iv-row"><button type="button" class="iv-btn small ghost" id="ivs-del">Delete my online data</button></div>' +
+          '</details>' +
+          '<div id="ivs-msg" class="iv-status" role="status" aria-live="polite">' + esc(msg || '') + '</div>';
+        var m = $('#ivs-msg', box);
+        $('#ivs-copy', box).onclick = function () { Core.copyText(Sync.recoveryKey()).then(function (ok) { m.textContent = ok ? 'Recovery code copied ✓' : 'Couldn’t copy — write it down instead.'; }); };
+        $('#ivs-now', box).onclick = function () { m.textContent = 'Saving…'; Sync.syncNow().then(function (r) { draw(r.ok ? 'Saved ✓' : 'Couldn’t save: ' + r.error); }); };
+        $('#ivs-off', box).onclick = function () { Sync.disable(); draw('Switched off on this device. Your saved copy is still online.'); };
+        $('#ivs-del', box).onclick = function () {
+          if (!confirm('Delete everything stored online about you? This can’t be undone.')) return;
+          m.textContent = 'Deleting…';
+          Sync.deleteOnlineData().then(function (r) { draw(r.ok ? 'Your online data has been deleted.' : 'Couldn’t delete: ' + r.error); });
+        };
+      } else {
+        box.innerHTML =
+          '<p class="iv-note">Keeps a copy of your scores and practice history on the leaderboard server, so a new phone or a different browser can pick up where you left off. Off unless you switch it on.</p>' +
+          '<div class="iv-row"><button type="button" class="iv-btn small" id="ivs-on">Switch on</button></div>' +
+          '<details class="iv-details"><summary>I already have a recovery code</summary>' +
+            '<label class="iv-label" for="ivs-fc">Friend code from your other device</label>' +
+            '<input class="iv-input" id="ivs-fc" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="e.g. 7K2P9Q">' +
+            '<label class="iv-label" for="ivs-rk" style="margin-top:.6rem">Recovery code</label>' +
+            '<input class="iv-input" id="ivs-rk" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="XXXXX-XXXXX">' +
+            '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small" id="ivs-restore">Restore on this device</button></div>' +
+          '</details>' +
+          '<div id="ivs-msg" class="iv-status" role="status" aria-live="polite">' + esc(msg || '') + '</div>';
+        var m2 = $('#ivs-msg', box);
+        $('#ivs-on', box).onclick = function () {
+          m2.textContent = 'Switching on…';
+          Sync.enable().then(function (r) { if (r.ok) draw(r.warning ? 'Switched on. First save didn’t finish: ' + r.warning : 'Switched on ✓ — write your recovery code down.'); else m2.textContent = r.error; });
+        };
+        $('#ivs-restore', box).onclick = function () {
+          if (!confirm('This joins this device to the saved progress. Anything already here is kept and merged in. Carry on?')) return;
+          m2.textContent = 'Restoring…';
+          Sync.restore($('#ivs-fc', box).value, $('#ivs-rk', box).value).then(function (r) {
+            if (!r.ok) { m2.textContent = r.error; return; }
+            m2.textContent = 'Restored ✓ — reloading…';
+            setTimeout(function () { location.reload(); }, 700);
+          });
+        };
+      }
+    }
+    draw();
+  }
+  IV.drawSync = drawSync;
+
+  // ---- rhythm timing: how late (or early) this device plays sound -----------------------------------
+  // Shared by the You tab and the Rhythm Tap start screen.  The number is added to where each note is expected,
+  // so a phone or Bluetooth speaker that plays sound 60 ms late gets +60.
+  var OFFSET_KEY = 'intrvl.rhythm.offset';
+  function timingOffset() { return Number(Core.lsGet(OFFSET_KEY)) || 0; }
+  function setTimingOffset(v) {
+    v = Math.max(-150, Math.min(150, Math.round(Number(v) || 0)));
+    Core.lsSet(OFFSET_KEY, String(v));
+    try { document.dispatchEvent(new CustomEvent('intrvl:timing')); } catch (e) { /* old browser */ }
+    return v;
+  }
+  function median(a) { var b = a.slice().sort(function (x, y) { return x - y; }), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : 0; }
+  // errors: for each tap, (tap time - the click it was aimed at) in ms.  Wild taps are ignored.
+  function calibrationResult(errors) {
+    var e = (errors || []).filter(function (x) { return isFinite(x); });
+    if (e.length < 6) return { ok: false, n: e.length, error: 'Not enough taps — tap along with each click.' };
+    var m1 = median(e), keep = e.filter(function (x) { return Math.abs(x - m1) <= 120; });
+    if (keep.length < 6) return { ok: false, n: keep.length, error: 'The taps were too uneven to measure — try again.' };
+    var m2 = median(keep), spread = median(keep.map(function (x) { return Math.abs(x - m2); }));
+    return { ok: true, n: keep.length, offset: Math.max(-150, Math.min(150, Math.round(m2))), spread: Math.round(spread) };
+  }
+  IV.calibrationResult = calibrationResult;
+  IV.timingOffset = timingOffset;
+
+  function drawTiming(box, pre) {
+    if (!box) return;
+    pre = pre || 'ivt';
+    function paint() {
+      var v = timingOffset();
+      box.innerHTML =
+        '<p class="iv-note">Bluetooth speakers and some phones play sound a little late, which makes your taps look early or late. <b>Calibrate</b> measures it for you; the slider is for fine-tuning.</p>' +
+        '<label class="iv-label" for="' + pre + '-range">Adjust: <span id="' + pre + '-val">' + v + '</span> ms</label>' +
+        '<input type="range" class="iv-range" id="' + pre + '-range" min="-150" max="150" step="5" value="' + v + '">' +
+        '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small" id="' + pre + '-cal">Calibrate</button><button type="button" class="iv-btn small ghost" id="' + pre + '-reset">Reset to 0</button></div>';
+      $('#' + pre + '-range', box).oninput = function () { Core.lsSet(OFFSET_KEY, this.value); $('#' + pre + '-val', box).textContent = this.value; };
+      $('#' + pre + '-range', box).onchange = function () { setTimingOffset(this.value); };
+      $('#' + pre + '-cal', box).onclick = function () { openCalibration(); };
+      $('#' + pre + '-reset', box).onclick = function () { setTimingOffset(0); };
+    }
+    paint();
+    document.addEventListener('intrvl:timing', function h() {
+      if (!document.body.contains(box)) { document.removeEventListener('intrvl:timing', h); return; }
+      var r = $('#' + pre + '-range', box), l = $('#' + pre + '-val', box), v = timingOffset();
+      if (r && Number(r.value) !== v) r.value = v;
+      if (l) l.textContent = v;
+    });
+  }
+  IV.drawTiming = drawTiming;
+
+  var calClicks = [];
+  function openCalibration() {
+    var s = openSheet('<h3>Calibrate rhythm timing</h3><div id="ivc-body" aria-live="polite"></div>', null, 'you');
+    var body = $('#ivc-body', s), actx = null, taps = [], timer = 0;
+    function stop() { clearTimeout(timer); try { if (actx) actx.close(); } catch (e) { /* ignore */ } actx = null; }
+    var closeBtn = s.querySelector('.x');
+    if (closeBtn) closeBtn.addEventListener('click', stop);
+    function intro(msg) {
+      stop();
+      body.innerHTML =
+        '<p class="iv-note">Turn your volume up (and the silent switch off). You’ll hear 12 clicks: tap the big pad right on each one. This works out how late or early this device plays sound, so Rhythm Tap can allow for it.</p>' +
+        (msg ? '<p class="iv-status" role="status">' + esc(msg) + '</p>' : '') +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivc-start">Start</button><button type="button" class="iv-btn ghost" id="ivc-cancel">Cancel</button></div>';
+      $('#ivc-start', s).onclick = run;
+      $('#ivc-cancel', s).onclick = function () { stop(); closeSheet(); };
+      $('#ivc-start', s).focus();
+    }
+    function run() {
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) { intro('This browser can’t play the clicks.'); return; }
+      actx = new AC(); if (actx.state === 'suspended') actx.resume();
+      taps = []; calClicks = [];
+      var N = 12, gap = 0.6, t0 = actx.currentTime + 0.9, latency = (actx.outputLatency || actx.baseLatency || 0) * 1000;
+      var perf0 = performance.now() - actx.currentTime * 1000 + latency;
+      for (var k = 0; k < N; k++) {
+        (function (time, accent) {
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = 'square'; o.frequency.value = accent ? 1760 : 1175;
+          g.gain.setValueAtTime(0.0001, time); g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.35, time + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
+          o.connect(g); g.connect(actx.destination); o.start(time); o.stop(time + 0.08);
+        })(t0 + k * gap, k % 4 === 0);
+        calClicks.push(perf0 + (t0 + k * gap) * 1000);
+      }
+      body.innerHTML = '<p class="iv-note" id="ivc-msg" role="status">Get ready… tap on every click.</p>' +
+        '<button type="button" id="ivc-pad" class="iv-pad" aria-label="Tap on each click">TAP</button>' +
+        '<p class="iv-note">You can also use the space bar.</p>';
+      var pad = $('#ivc-pad', s);
+      function tap(ts) { if (ts > 1e12) ts = performance.now(); taps.push(ts); pad.classList.add('down'); setTimeout(function () { pad.classList.remove('down'); }, 90); }
+      pad.addEventListener('pointerdown', function (e) { e.preventDefault(); tap(e.timeStamp); });
+      pad.addEventListener('keydown', function (e) { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); tap(e.timeStamp); } });
+      pad.addEventListener('click', function (e) { e.preventDefault(); });
+      pad.focus();
+      timer = setTimeout(finish, (0.9 + N * gap + 0.9) * 1000);
+    }
+    function finish() {
+      if (!document.body.contains(body)) { stop(); return; }
+      var errs = [], used = {};
+      taps.forEach(function (T) {
+        var best = -1, bd = 1e9;
+        calClicks.forEach(function (H, j) { var d = Math.abs(T - H); if (d < bd) { bd = d; best = j; } });
+        if (best < 2 || bd > 300) return;                    // the first two clicks are for finding the beat
+        if (used[best] != null && Math.abs(used[best]) <= bd) return;
+        used[best] = T - calClicks[best];
+      });
+      Object.keys(used).forEach(function (k) { errs.push(used[k]); });
+      stop();
+      var r = calibrationResult(errs);
+      if (!r.ok) { intro(r.error); return; }
+      var dir = r.offset === 0 ? 'right on the beat' : Math.abs(r.offset) + ' ms ' + (r.offset > 0 ? 'late' : 'early');
+      body.innerHTML = '<p><b>You tapped about ' + esc(dir) + '</b> on average' + (r.spread > 45 ? ', but your taps were quite uneven, so you may want to try again' : ' and fairly evenly') + '.</p>' +
+        '<p class="iv-note">Using this means Rhythm Tap will treat ' + (r.offset > 0 ? r.offset + ' ms late' : r.offset < 0 ? Math.abs(r.offset) + ' ms early' : 'the click itself') + ' as perfect timing on this device.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivc-use">Use this (' + (r.offset > 0 ? '+' : '') + r.offset + ' ms)</button><button type="button" class="iv-btn ghost" id="ivc-again">Try again</button></div>';
+      $('#ivc-use', s).onclick = function () { setTimingOffset(r.offset); body.innerHTML = '<p role="status">Saved ✓ — timing set to ' + (r.offset > 0 ? '+' : '') + r.offset + ' ms.</p><div class="iv-row"><button type="button" class="iv-btn" id="ivc-done">Done</button></div>'; $('#ivc-done', s).onclick = closeSheet; $('#ivc-done', s).focus(); };
+      $('#ivc-again', s).onclick = function () { intro(''); };
+      $('#ivc-use', s).focus();
+    }
+    intro('');
+    return s;
+  }
+  IV.openCalibration = openCalibration;
+  IV._calClicks = function () { return calClicks.slice(); };
+
+  if (global.IntrvlSync) global.IntrvlSync.autoSync();
+  if (LB.isConfigured()) setTimeout(function () { LB.pushStats(); }, 5000);
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function openHistory(gameId) {
     var g = IV.find(gameId) || IV.GAMES[0];
@@ -1471,7 +2086,7 @@ IV.find = function (id) {
       '<div class="iv-label">What to practise next</div>' + weakHtml + strongHtml +
       '<div class="iv-label" style="margin-top:1.2rem">By game</div>' + gameRows +
       '<details class="iv-details"><summary>Back up or move your progress</summary>' +
-        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone.</p>' +
+        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone. (Or switch on <b>Save your progress online</b> in the You tab and skip the copying.)</p>' +
         '<div class="iv-row"><button type="button" class="iv-btn small" id="ivb-copy">Copy backup</button></div>' +
         '<label class="iv-label" for="ivb-text" style="margin-top:.8rem">Paste a backup to restore it</label>' +
         '<textarea class="iv-input" id="ivb-text" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>' +

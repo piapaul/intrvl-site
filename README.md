@@ -46,29 +46,43 @@ node build.mjs
 | Note Sprint / Note Sprint (Easy) | `/intrvl-notes`, `/intrvl-notes-easy` | Easy: treble and bass clef, natural notes only |
 | Clef Sprint / Clef Sprint (Easy) | `/intrvl-clefs`, `/intrvl-clefs-easy` | Easy: just treble and bass, with sharps and flats (drawn in the page) |
 | Key Signature Sprint / (Easy) | `/intrvl-keysigs`, `/intrvl-keysigs-easy` | Normal asks "What MAJOR key is this?" or "What MINOR key is this?" and every answer is in that mode. Easy: major keys, up to 4 sharps or flats, treble clef |
-| Rhythm Tap / Rhythm Tap (Easy) | `/intrvl-rhythm`, `/intrvl-rhythm-easy` | See below |
+| Rhythm Tap / Rhythm Tap (Easy) | `/intrvl-rhythm`, `/intrvl-rhythm-easy` | 4/4, 3/4 and 6/8. See below |
+| Interval Reader / Interval Reader (Easy) | `/intrvl-interval-reader`, `/intrvl-interval-reader-easy` | Two notes on the stave. Easy: just the number (2nd … octave), natural notes. Normal: with the quality (Minor 3rd, Perfect 5th …), sharps and flats, and intervals beyond the octave (up to a 12th) |
+| Chord Quality | `/intrvl-chord-quality` | A chord on the stave: Major, Minor, Diminished, Augmented, or (for 4-note chords) Major 7th, Dominant 7th, Minor 7th, Half-diminished 7th. Root position, treble or bass clef |
 | Practice Log | `/intrvl-practice` | Timer with a switch for what you're practising, overview, "send to teacher" text for My Music Staff |
 
-The **home page order** is set by the lists at the top of `src/shared/core.js` (`IV.GAMES`, `IV.TOOLS`). Games with an Easy version (`variantOf`) show as one tile with **Normal | Easy** buttons on the home and Games pages; the order is Note Sprint, Clef Sprint, Key Signature Sprint, Rhythm Tap, then the rest. Practice Log is first in Tools. Games you've finished today drop to the bottom of both lists, so what's left is at the top.
+The **home page order** is set by the lists at the top of `src/shared/core.js` (`IV.GAMES`, `IV.TOOLS`). Games with an Easy version (`variantOf`) show as one tile with **Normal | Easy** buttons on the home and Games pages; the order is Note Sprint, Clef Sprint, Key Signature Sprint, Rhythm Tap, Interval Reader, Chord Quality, then the rest. Practice Log is first in Tools. Games you've finished today drop to the bottom of both lists, so what's left is at the top.
 
 **Each new page needs its own Squarespace page and loader**, like the existing ones (the installable app needs nothing).
 
 ### Rhythm Tap
-Two bars of 4/4 shown as notation. A four-beat count-in plays, then you tap in time.
+Two bars of **4/4, 3/4 or 6/8** shown as notation. The daily rhythm's time signature is chosen from the date (the start screen says which; Easy and Normal share it). Practice has a **Mixed / 4/4 / 3/4 / 6/8** choice.
+- **Look first.** *Start* only shows the rhythm. Nothing plays until you press **Go**, so you can read it through. **Go stays greyed out until you've pressed *Test sound*** (a few clicks at the rhythm's tempo) so the volume gets checked; once checked, it stays unlocked until the page is reloaded.
+- A one-bar count-in plays (6/8 counts all six quavers), then you tap in time.
 - **Easy:** up to quavers and simple rests; the metronome keeps going throughout.
-- **Normal:** up to semiquavers, triplets, dotted rhythms, syncopation and tricky rests; the metronome stops after the count-in so you keep time yourself.
+- **Normal:** up to semiquavers, triplets (4/4 and 3/4), dotted rhythms, syncopation and tricky rests; the metronome stops after the count-in so you keep time yourself.
 - Each tap is matched to the nearest written note. Full marks within 45 ms (Easy) / 30 ms (Normal), fading to zero at 200 / 150 ms; missed notes score nothing and extra taps cost half a note. The score is accuracy out of 100.
 - The review picture shows the notation with a dot under every note: above the line = late, below = early, colour = how far out. *Save my review picture* makes a PNG (or opens the share sheet on a phone).
-- **Timing adjustment** (start screen) compensates for Bluetooth headphones or phones that play sound late.
-- Browsers can't measure a phone's real audio delay exactly, so results on a real device can differ a little from a computer. If someone is always 40 ms late, that slider is the fix.
+- **Calibration and timing** (start screen and **You** tab): *Calibrate* plays 12 clicks and you tap along; the median of your taps against the clicks (ignoring the first two and any wild ones) becomes the adjustment, which you can accept or retry. The slider (±150 ms) fine-tunes it and *Reset to 0* clears it. The adjustment belongs to the device, so it is **not** carried by online sync.
+- Because it measures *you* tapping along, a calibration also absorbs the usual human habit of tapping a touch early. If someone is consistently early or late by the same amount on a device, that is exactly what it is for. Browsers can't measure a phone's real audio delay exactly, so results on a real device can differ a little from a computer.
+- 3/4 and 6/8 are tracked as their own topics ("Three-time (3/4)", "Compound time (6/8)") for weak-spot practice.
 
 ## Friends League
 A league is a named group with an owner. Everyone's finished daily games earn points for the week (Monday to Sunday): **1 point per game finished, +2 for the best score of the day in that game, +1 for second best** (ties share). 
 - The **home page card** and the **Friends → League** tab let you start a league, join one, and see the table. 
-- The owner's **Manage this league** panel: invite link (copy / share / make a new one), rename, remove members, delete. Members can leave. 
+- The owner's **League manager** panel: member progress (below), invite link (copy / share / make a new one), rename, remove members, delete. Members can leave. 
 - Invite links look like `…/intrvl?league=CODE` (or `…/app/?league=CODE`). 
 - Admin actions are checked against the device that registered the player code, so knowing someone's friend code isn't enough to remove people from their league. 
-- Everyone in a league can see each other's name, avatar and daily scores, nothing else. If you run leagues for children, tell parents that, and encourage first names or nicknames.
+- Everyone in a league can see each other's name, avatar and daily scores, nothing else.
+
+### League manager: member progress
+The owner can see a short **progress summary** for each member who chooses to share one. This is how a teacher sees who is practising.
+- **What's shared:** a first name and initial (like "Ben O", letters only, 22 characters max), days played this week, games finished this week, streak, overall accuracy, minutes of Practice Log time this week, last active date, and the three weakest topics. **Nothing else**: no practice notes, no full history, no leaderboard code.
+- **Joining asks you to choose.** The join screen explains this and needs either a name or the **Opt out** tick box (unticked by default; ticking it greys out the name). Opting out means nothing is sent and the manager just sees "opted out". A member can change their mind any time in the league's **Your sharing with the league manager** section; opting out deletes any summary already stored if they aren't sharing with another league.
+- The owner's own row defaults to *not sharing*.
+- The summary is sent after each daily score and at most every 20 minutes when intrvl is opened. Only the league owner can read it (checked against their device), and only for members with sharing on and a name set.
+- **Copy as text** gives the manager a paste-able summary for their own notes.
+- **If you run leagues for children:** the data is a first name plus a surname initial and practice statistics, stored in your own Google Sheet. Tell parents what's collected, and use *Delete my online data* (You tab) if someone asks to be forgotten.
 
 ## Progress tracking
 
@@ -78,13 +92,24 @@ Rhythm Tap records how you do on triplets, dotted rhythms, semiquavers and entri
 
 **Practise my weak spots:** once a topic has 3+ answers and you're getting under about 85% of your recent answers right, each game shows a *Practise my weak spots* button (start screen and finished screen). It runs a practice round (not the daily puzzle) that leans towards those topics, about 70% of the time in the sprint games. The Progress screen's *Practise* links start it directly (`?weak=1`). The daily puzzle is never changed, so it stays the same for everyone.
 
+## Saving your progress online (sync)
+
+Optional, in the **You** tab (*Save your progress online*). Off unless someone switches it on.
+- Switching on makes a **recovery code** (`XXXXX-XXXXX`) and stores a copy of the player's progress (scores, streaks, history, practice log, friends list) on the leaderboard server. The server only keeps a **hash** of the recovery code, so it can't be read back from the Sheet.
+- On a new phone or browser: **I already have a recovery code**, then enter the friend code and the recovery code. The new device joins the saved player (it takes over the same identity) and merges anything already on it, never dropping either side: histories are combined (higher score wins for a day), per-topic results keep the fuller record, stats keep the best streak and the later activity.
+- After that it syncs by itself shortly after changes and when intrvl is opened (not more than every 10 minutes); *Save now* does it immediately. Things that belong to one device (the rhythm timing adjustment, running practice timer, caches) are never synced.
+- Wrong recovery codes are rate limited (5 tries an hour per player code).
+- **Delete my online data** removes the player, their scores, friends, league memberships, summaries and saved progress from the Sheet (leagues they own must be deleted first). Progress on the device stays.
+- Needs a secure (https) page, which Squarespace and GitHub Pages both are.
+- Known limit: a practice session deleted on one device can reappear from another until it is deleted there too.
+
 ## Accessibility
 
 Dialogs trap and restore focus and close with Esc; buttons and the circle of fifths work from the keyboard; right/wrong answers are announced to screen readers and shown with a tick/cross as well as colour; animations stop for people who ask for reduced motion; the picture games describe each picture in words. Checked with axe-core (WCAG 2.2 AA) on every page.
 
 ## The leaderboard (Google Apps Script)
 
-`backend/Code.gs.txt` is a copy of the script behind the friends leaderboard and the leagues (**version 5** — creates two new tabs, `leagues` and `league_members`, by itself the first time it runs). After changing it: paste it over the old code in the Sheet's Apps Script project, then **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**.
+`backend/Code.gs.txt` is a copy of the script behind the friends leaderboard and the leagues (**version 6** — creates the tabs `leagues`, `league_members`, `stats` and `sync` by itself the first time it runs, and adds the `share` and `managerName` columns to `league_members`). After changing it: paste it over the old code in the Sheet's Apps Script project, then **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**.
 
 ### The leaderboard secret
 
