@@ -75,6 +75,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startGame',
     kind: 'game', id: 'pitch', gameId: 'pitch',
     legacyStatsKeys: ['intrvlDailyStatsV2'],
     accentColors: ['#b8a877', '#A9B9A2', '#ada6b8', '#c2a687']
@@ -93,6 +94,8 @@
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const puzzle = [];
     const configs = [{ minC: 25, maxC: 40 }, { minC: 15, maxC: 30 }, { minC: 2, maxC: 20 }];
+    const GAPS = ['wide', 'medium', 'narrow'];
+    const focus = IntrvlCore.takeFocus('pitch');   // topics to lean towards in "practise my weak spots"
 
     let qTypes = ['lower', 'higher', randomFunc() < 0.5 ? 'lower' : 'higher'];
     for (let i = qTypes.length - 1; i > 0; i--) {
@@ -100,20 +103,28 @@
       [qTypes[i], qTypes[j]] = [qTypes[j], qTypes[i]];
     }
 
-    configs.forEach((config, index) => {
+    const plan = configs.map((c, i) => ({ cfg: i, ask: qTypes[i] }));
+    if (!useSeed && focus.length) {
+      for (let i = 0; i < plan.length; i++) {
+        const m = /^Spot the (lower|higher) note \((wide|medium|narrow) gap\)$/.exec(focus[Math.floor(randomFunc() * focus.length)]);
+        if (m) plan[i] = { cfg: GAPS.indexOf(m[2]), ask: m[1] };
+      }
+    }
+    plan.forEach((p, index) => {
+      const config = configs[p.cfg];
       const baseFreq = 220 + (randomFunc() * 660);
       const isPitch2Sharp = randomFunc() < 0.5;
       let centsOffset = config.minC + (randomFunc() * (config.maxC - config.minC));
       if (!isPitch2Sharp) centsOffset = -centsOffset;
 
       const pitch2Freq = baseFreq * Math.pow(2, centsOffset / 1200);
-      const askType = qTypes[index];
+      const askType = p.ask;
 
       let correctAnswer = askType === 'lower'
         ? (baseFreq < pitch2Freq ? 1 : 2)
         : (baseFreq > pitch2Freq ? 1 : 2);
 
-      puzzle.push({ pitch1: baseFreq, pitch2: pitch2Freq, question: askType, answer: correctAnswer, label: 'Spot the ' + askType + ' note (' + ['wide', 'medium', 'narrow'][index] + ' gap)' });
+      puzzle.push({ pitch1: baseFreq, pitch2: pitch2Freq, question: askType, answer: correctAnswer, label: 'Spot the ' + askType + ' note (' + GAPS[p.cfg] + ' gap)' });
     });
     return puzzle;
   }

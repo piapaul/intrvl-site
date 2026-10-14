@@ -264,3 +264,5 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 /* Raleway's default figures sit at x-height; the 'font' shorthand used by buttons and labels resets that, so set it for everything */
 #intrvl-app, #intrvl-app *, #iv-sheet, #iv-sheet *, #iv-tabbar, #iv-tabbar * { font-variant-numeric: lining-nums; }
 #intrvl-app .iv-bigval, #intrvl-app .tn-note, #intrvl-app .tn-freq { font-variant-numeric: lining-nums tabular-nums; }
+
+.iv-focus-note { font-size: .82rem; font-weight: 700; color: var(--intrvl-accent-dark); background: var(--intrvl-panel-bg); border: 1px dashed var(--intrvl-stone); border-radius: 10px; padding: .45rem .7rem; margin: 0 auto .9rem; max-width: 380px; text-align: center; line-height: 1.35; }

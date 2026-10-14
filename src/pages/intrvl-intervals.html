@@ -78,6 +78,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startGame',
     kind: 'game', id: 'interval', gameId: 'interval',
     legacyStatsKeys: ['intrvlIntervalStatsV1'],
     accentColors: ['#c2a687', '#A9B9A2', '#bda569', '#b3a8c7']
@@ -115,14 +116,20 @@
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const puzzle = [];
     const usedIntervalIndices = new Set();
+    const focus = IntrvlCore.takeFocus('interval');   // topics to lean towards in "practise my weak spots"
 
     for (let i = 0; i < 3; i++) {
       const baseMidi = Math.floor(randomFunc() * 20) + 48;
 
       let correctIntervalIndex;
-      do {
-        correctIntervalIndex = Math.floor(randomFunc() * intervalDict.length);
-      } while (usedIntervalIndices.has(correctIntervalIndex));
+      const focusIdx = useSeed ? [] : intervalDict.map((d, k) => k).filter(k => focus.indexOf(intervalDict[k].name) !== -1 && !usedIntervalIndices.has(k));
+      if (focusIdx.length) {
+        correctIntervalIndex = focusIdx[Math.floor(randomFunc() * focusIdx.length)];
+      } else {
+        do {
+          correctIntervalIndex = Math.floor(randomFunc() * intervalDict.length);
+        } while (usedIntervalIndices.has(correctIntervalIndex));
+      }
 
       usedIntervalIndices.add(correctIntervalIndex);
       const targetInterval = intervalDict[correctIntervalIndex];

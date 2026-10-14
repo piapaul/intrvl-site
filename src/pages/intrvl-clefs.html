@@ -100,6 +100,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startGame',
     kind: 'game', id: 'clef', gameId: 'clef',
     legacyStatsKeys: ['intrvlClefSprintStatsV1'],
     accentColors: ['#a3b0bd', '#A9B9A2', '#bda569', '#c79aa0']
@@ -183,10 +184,12 @@
   function generatePool(useSeed) {
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const pool = [];
+    const focus = IntrvlCore.takeFocus('clef');   // topics to lean towards in "practise my weak spots"
+    const focusIdx = useSeed ? [] : focus.map(l => clefNames.findIndex(n => n + ' clef' === l)).filter(k => k >= 0);
 
     for (let i = 0; i < 200; i++) {
       const p = Math.floor(randomFunc() * 11) - 5;
-      const targetClefIndex = Math.floor(randomFunc() * 4);
+      const targetClefIndex = (focusIdx.length && randomFunc() < 0.7) ? focusIdx[Math.floor(randomFunc() * focusIdx.length)] : Math.floor(randomFunc() * 4);
       let noteIdx = (bases[targetClefIndex] + p) % 7;
       if (noteIdx < 0) noteIdx += 7;
 

@@ -75,6 +75,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startGame',
     kind: 'game', id: 'seventh', gameId: 'seventh',
     legacyStatsKeys: ['intrvlSeventhStatsV1'],
     accentColors: ['#9db0a8', '#A9B9A2', '#bda569', '#ada6b8']
@@ -104,14 +105,20 @@
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const puzzle = [];
     const usedChordIndices = new Set();
+    const focus = IntrvlCore.takeFocus('seventh');   // topics to lean towards in "practise my weak spots"
 
     for (let i = 0; i < 3; i++) {
       const rootMidi = Math.floor(randomFunc() * 20) + 43;
 
       let correctChordIndex;
-      do {
-        correctChordIndex = Math.floor(randomFunc() * chordDict.length);
-      } while (usedChordIndices.has(correctChordIndex));
+      const focusIdx = useSeed ? [] : chordDict.map((d, k) => k).filter(k => focus.indexOf(chordDict[k].name) !== -1 && !usedChordIndices.has(k));
+      if (focusIdx.length) {
+        correctChordIndex = focusIdx[Math.floor(randomFunc() * focusIdx.length)];
+      } else {
+        do {
+          correctChordIndex = Math.floor(randomFunc() * chordDict.length);
+        } while (usedChordIndices.has(correctChordIndex));
+      }
 
       usedChordIndices.add(correctChordIndex);
       const targetChord = chordDict[correctChordIndex];

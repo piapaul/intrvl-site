@@ -265,6 +265,8 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 /* Raleway's default figures sit at x-height; the 'font' shorthand used by buttons and labels resets that, so set it for everything */
 #intrvl-app, #intrvl-app *, #iv-sheet, #iv-sheet *, #iv-tabbar, #iv-tabbar * { font-variant-numeric: lining-nums; }
 #intrvl-app .iv-bigval, #intrvl-app .tn-note, #intrvl-app .tn-freq { font-variant-numeric: lining-nums tabular-nums; }
+
+.iv-focus-note { font-size: .82rem; font-weight: 700; color: var(--intrvl-accent-dark); background: var(--intrvl-panel-bg); border: 1px dashed var(--intrvl-stone); border-radius: 10px; padding: .45rem .7rem; margin: 0 auto .9rem; max-width: 380px; text-align: center; line-height: 1.35; }
 </style>
 
 <div id="intrvl-app">
@@ -449,6 +451,35 @@ IV.find = function (id) {
   function weakSpots(limit) {
     return rankedItems(3).filter(function (x) { return x.recent < 0.85; })
       .sort(function (a, b) { return a.recent - b.recent || b.answered - a.answered; }).slice(0, limit || 5);
+  }
+  // "Practise my weak spots": the labels a game should lean towards in its next practice round.
+  var focusNext = false;
+  function weakLabelsFor(id, limit) {
+    var items = getItemsFor(id), out = [];
+    Object.keys(items).forEach(function (k) {
+      var it = items[k];
+      if (it && it.a >= 3 && recentAccuracy(it) < 0.85) out.push({ label: k, recent: recentAccuracy(it), a: it.a });
+    });
+    out.sort(function (a, b) { return a.recent - b.recent || b.a - a.a; });
+    return out.slice(0, limit || 6).map(function (x) { return x.label; });
+  }
+  function requestFocus() { focusNext = true; }
+  // Called once by a game when it builds a round. Returns the weak labels if weak-spot practice was asked for
+  // (and shows a note saying so), otherwise an empty list.
+  function takeFocus(id) {
+    var note = document.getElementById('iv-focus-note');
+    if (note) note.remove();
+    if (!focusNext) return [];
+    focusNext = false;
+    var labels = weakLabelsFor(id, 6);
+    var screen = document.getElementById('screen-game');
+    if (labels.length && screen) {
+      note = document.createElement('div');
+      note.id = 'iv-focus-note'; note.className = 'iv-focus-note';
+      note.textContent = '🎯 Focusing on your weak spots: ' + labels.join(', ');
+      screen.insertBefore(note, screen.firstChild);
+    }
+    return labels;
   }
   function strongSpots(limit) {
     return rankedItems(5).filter(function (x) { return x.recent >= 0.9; })
@@ -645,7 +676,7 @@ IV.find = function (id) {
     statsFor: statsFor, playedToday: playedToday,
     loadDailyBlocks: loadDailyBlocks, saveDailyBlock: saveDailyBlock,
     getHistory: getHistory, getHistoryFor: getHistoryFor, recordDailyResult: recordDailyResult,
-    recordItem: recordItem, getItemsFor: getItemsFor, weakSpots: weakSpots, strongSpots: strongSpots,
+    recordItem: recordItem, getItemsFor: getItemsFor, weakLabelsFor: weakLabelsFor, requestFocus: requestFocus, takeFocus: takeFocus, weakSpots: weakSpots, strongSpots: strongSpots,
     allPlayedDates: allPlayedDates, practiceStreak: practiceStreak, addDays: addDays,
     exportProgress: exportProgress, importProgress: importProgress,
     announce: announce, shake: shake, refocus: refocus, reducedMotion: reducedMotion,
@@ -1088,7 +1119,7 @@ IV.find = function (id) {
       return '<div class="iv-scoreline iv-spot ' + tone + '"><div class="iv-grow"><div class="t"><span aria-hidden="true">' + x.game.icon + '</span> ' + esc(x.label) + '</div>' +
         '<div class="s">' + esc(x.game.name) + ' · ' + pct(x.recent) + '% of your last ' + x.recentN + '</div>' +
         '<span class="iv-meter" aria-hidden="true"><i style="width:' + pct(x.recent) + '%"></i></span></div>' +
-        '<a class="iv-linkbtn" href="' + IV.href(x.game.url) + '" aria-label="Practise ' + esc(x.game.name) + '">Practise</a></div>';
+        '<a class="iv-linkbtn" href="' + IV.href(x.game.url) + (tone === 'weak' ? '?weak=1' : '') + '" aria-label="Practise ' + esc(x.game.name) + (tone === 'weak' ? ' weak spots' : '') + '">Practise</a></div>';
     }
     var weak = Core.weakSpots(5), strong = Core.strongSpots(3);
     var weakHtml = weak.length ? weak.map(function (x) { return spotRow(x, 'weak'); }).join('')
@@ -1197,6 +1228,39 @@ IV.find = function (id) {
   }
   buildHeader();
   buildTabBar();
+  // "Practise my weak spots" buttons on each game's start and finished screens.
+  function refreshWeakButtons() {
+    if (KIND !== 'game' || !CFG.startFn) return;
+    var n = Core.weakLabelsFor(CFG.id || CFG.gameId, 6).length;
+    Array.prototype.forEach.call(document.querySelectorAll('.iv-weak-btn'), function (b) {
+      b.classList.toggle('hidden', !n);
+      b.innerHTML = '<span aria-hidden="true">🎯</span> Practise my weak spots';
+    });
+  }
+  (function weakButtons() {
+    if (KIND !== 'game' || !CFG.startFn) return;
+    ['screen-start', 'screen-done'].forEach(function (sid) {
+      var host = document.getElementById(sid);
+      if (!host) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn-practice iv-weak-btn hidden';
+      b.onclick = function () {
+        var fn = global[CFG.startFn];
+        if (typeof fn !== 'function') return;
+        Core.requestFocus();
+        fn(false);
+      };
+      var after = host.querySelector('.btn-practice');
+      if (after && after.parentNode) after.parentNode.insertBefore(b, after.nextSibling); else host.appendChild(b);
+    });
+    refreshWeakButtons();
+    if (/[?&]weak=1/.test(location.search)) {
+      setTimeout(function () {
+        var b = document.querySelector('#screen-start:not(.hidden) .iv-weak-btn:not(.hidden), #screen-done:not(.hidden) .iv-weak-btn:not(.hidden)');
+        if (b) b.click();
+      }, 400);
+    }
+  })();
   // Several tools redraw their buttons when you press one. Without this, keyboard focus would fall to the top of
   // the page each time; this puts it back on the matching new button.
   (function keepFocus() {
@@ -1262,6 +1326,7 @@ IV.find = function (id) {
         var el = m.target;
         if (!interacted || !el.id || el.id.indexOf('screen-') !== 0 || el.classList.contains('hidden')) return;
         if (m.oldValue && (' ' + m.oldValue + ' ').indexOf(' hidden ') === -1) return;   // it was already showing
+        refreshWeakButtons();
         var focusTarget = el.querySelector('[data-focus]') || (el.querySelector('.game-hud') && el.querySelector('.choice-btn:not(:disabled)')) || el.querySelector('h2,h3,.level-title') || el;
         if (!focusTarget.hasAttribute('tabindex')) focusTarget.setAttribute('tabindex', '-1');
         try { focusTarget.focus({ preventScroll: true }); } catch (e) { /* ignore */ }

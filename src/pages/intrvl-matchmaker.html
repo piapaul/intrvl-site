@@ -86,6 +86,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startEnSprint',
     kind: 'game', id: 'enharmonic', gameId: 'enharmonic',
     legacyStatsKeys: ['intrvlEnharmonicStatsV1'],
     accentColors: ['#ada6b8', '#A9B9A2', '#bda569', '#c2a687']
@@ -157,9 +158,11 @@
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const pool = [];
     const activePairs = enharmonicPairs.filter(p => !useSeed ? p.isBlackKey : true);
+    const focus = IntrvlCore.takeFocus('enharmonic');   // topics to lean towards in "practise my weak spots"
+    const focusPairs = useSeed ? [] : enharmonicPairs.filter(p => focus.indexOf(p.note + ' = ' + p.answer) !== -1);
 
     for (let i = 0; i < 200; i++) {
-      const pair = activePairs[Math.floor(randomFunc() * activePairs.length)];
+      const pair = (focusPairs.length && randomFunc() < 0.7) ? focusPairs[Math.floor(randomFunc() * focusPairs.length)] : activePairs[Math.floor(randomFunc() * activePairs.length)];
       const clef = clefs[Math.floor(randomFunc() * clefs.length)];
       const octaves = validOctaves[clef][pair.base];
       const octave = octaves[Math.floor(randomFunc() * octaves.length)];

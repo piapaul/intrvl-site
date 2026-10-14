@@ -41,6 +41,8 @@ node build.mjs
 
 Every answer in the seven games is remembered against a short label (an interval, a chord, a clef, a note…). The **Progress** tab shows the daily streak, a five-week activity calendar, the topics that need most work, and a per-game summary. Data lives in the browser (`localStorage`); nothing extra is sent to the leaderboard.
 
+**Practise my weak spots:** once a topic has 3+ answers and you're getting under about 85% of your recent answers right, each game shows a *Practise my weak spots* button (start screen and finished screen). It runs a practice round (not the daily puzzle) that leans towards those topics, about 70% of the time in the sprint games. The Progress screen's *Practise* links start it directly (`?weak=1`). The daily puzzle is never changed, so it stays the same for everyone.
+
 ## Accessibility
 
 Dialogs trap and restore focus and close with Esc; buttons and the circle of fifths work from the keyboard; right/wrong answers are announced to screen readers and shown with a tick/cross as well as colour; animations stop for people who ask for reduced motion; the picture games describe each picture in words. Checked with axe-core (WCAG 2.2 AA) on every page.

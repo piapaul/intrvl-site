@@ -86,6 +86,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startCsbSprint',
     kind: 'game', id: 'spelling', gameId: 'spelling',
     legacyStatsKeys: ['intrvlChordSpellingStatsV1'],
     accentColors: ['#c79aa0', '#A9B9A2', '#bda569', '#9db0a8']
@@ -183,9 +184,11 @@
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const pool = [];
     const activeChords = chordLibrary.filter(c => !useSeed ? c.level === 1 : true);
+    const focus = IntrvlCore.takeFocus('spelling');   // topics to lean towards in "practise my weak spots"
+    const focusChords = useSeed ? [] : chordLibrary.filter(c => focus.indexOf(c.sym) !== -1);
 
     for (let i = 0; i < 200; i++) {
-      const targetChord = activeChords[Math.floor(randomFunc() * activeChords.length)];
+      const targetChord = (focusChords.length && randomFunc() < 0.7) ? focusChords[Math.floor(randomFunc() * focusChords.length)] : activeChords[Math.floor(randomFunc() * activeChords.length)];
       const options = [targetChord.spell];
 
       let failsafe = 0;

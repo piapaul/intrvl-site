@@ -79,6 +79,7 @@
 
 <script>
   window.INTRVL_CONFIG = {
+    startFn: 'startGame',
     kind: 'game', id: 'note', gameId: 'note',
     legacyStatsKeys: ['intrvlNoteStatsV2'],
     accentColors: ['#bfae94', '#A9B9A2', '#bda569', '#a3b0bd']
@@ -90,6 +91,7 @@
   const IMAGE_BASE_URL = "https://piapaul.github.io/music-theory-images/single";
 
   let allNotesData = [];
+  let focusNotes = [];
   let currentPool = [];
   let currentQuestion = null;
   let score = 0;
@@ -159,6 +161,8 @@
     maxCombo = 0;
     isGameActive = true;
 
+    const focusLabels = IntrvlCore.takeFocus('note');   // topics to lean towards in "practise my weak spots"
+    focusNotes = isDailyMode ? [] : focusLabels;
     if (isDailyMode) {
       currentPool = allNotesData;
     } else {
@@ -208,7 +212,11 @@
       btn.disabled = false;
     }
 
-    const q = currentPool[Math.floor(Math.random() * currentPool.length)];
+    let q = currentPool[Math.floor(Math.random() * currentPool.length)];
+    if (focusNotes.length && Math.random() < 0.7) {
+      const weak = allNotesData.filter(d => focusNotes.indexOf(d['note-name']) !== -1);
+      if (weak.length) q = weak[Math.floor(Math.random() * weak.length)];
+    }
     const correct = q['note-name'];
     const filename = getFilename(q);
     const accidentalGroup = isNaturalNote(q, filename) ? "natural" : (q.accidental || "");
