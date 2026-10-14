@@ -138,6 +138,8 @@ line-height: 1.2;
 .iv-select, .iv-input { width: 100%; padding: .6rem .75rem; border: 1px solid var(--intrvl-stone); border-radius: 10px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .95rem; }
 .iv-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236b6b6b' stroke-width='2'/></svg>"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
 .iv-input:focus, .iv-select:focus { outline: 2px solid var(--intrvl-accent); outline-offset: 1px; border-color: transparent; }
+.iv-pad { display: block; width: 100%; max-width: 340px; height: 150px; margin: .6rem auto; border-radius: 26px; border: 3px solid var(--intrvl-ink); background: var(--intrvl-accent); color: var(--intrvl-ink); font: 900 2.2rem var(--intrvl-font-head); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 6px 0 var(--intrvl-ink); }
+.iv-pad.down { transform: translateY(5px); box-shadow: 0 1px 0 var(--intrvl-ink); }
 .iv-range { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--intrvl-stone); outline: none; margin: .6rem 0; }
 .iv-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
 .iv-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--intrvl-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
@@ -1005,7 +1007,7 @@ IV.find = function (id) {
   'use strict';
   var Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
   var K_ON = 'intrvl.sync.on', K_KEY = 'intrvl.sync.key', K_LAST = 'intrvl.sync.last', K_ERR = 'intrvl.sync.err';
-  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1)/;
+  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1|rhythm\.offset)/;
   var applying = false, timer = null, busy = null, listeners = [];
 
   function syncable(k) { return k && k.indexOf('intrvl.') === 0 && !SKIP.test(k); }
@@ -1667,7 +1669,9 @@ IV.find = function (id) {
       '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
       '<div id="ivp-conn" class="iv-note">Checking…</div>' +
       '<div class="iv-label" id="ivp-sync-lbl" style="margin-top:1.1rem">Save your progress online</div>' +
-      '<div id="ivp-sync" aria-labelledby="ivp-sync-lbl"></div>',
+      '<div id="ivp-sync" aria-labelledby="ivp-sync-lbl"></div>' +
+      '<div class="iv-label" id="ivp-timing-lbl" style="margin-top:1.1rem">Rhythm Tap timing</div>' +
+      '<div id="ivp-timing" aria-labelledby="ivp-timing-lbl"></div>',
       null, 'you');
     var status = $('#ivp-status', s);
     function sync() { if (LB.isConfigured()) LB.register(true); }
@@ -1685,6 +1689,7 @@ IV.find = function (id) {
       conn.textContent = r.ok ? 'Connected ✓ (backend v' + r.version + ')' : 'Can’t reach the leaderboard (' + (r.error || 'error') + ').';
     });
     drawSync($('#ivp-sync', s));
+    drawTiming($('#ivp-timing', s), 'ivp');
     return s;
   }
   IV.openProfile = openProfile;
@@ -1752,6 +1757,128 @@ IV.find = function (id) {
     draw();
   }
   IV.drawSync = drawSync;
+
+  // ---- rhythm timing: how late (or early) this device plays sound -----------------------------------
+  // Shared by the You tab and the Rhythm Tap start screen.  The number is added to where each note is expected,
+  // so a phone or Bluetooth speaker that plays sound 60 ms late gets +60.
+  var OFFSET_KEY = 'intrvl.rhythm.offset';
+  function timingOffset() { return Number(Core.lsGet(OFFSET_KEY)) || 0; }
+  function setTimingOffset(v) {
+    v = Math.max(-150, Math.min(150, Math.round(Number(v) || 0)));
+    Core.lsSet(OFFSET_KEY, String(v));
+    try { document.dispatchEvent(new CustomEvent('intrvl:timing')); } catch (e) { /* old browser */ }
+    return v;
+  }
+  function median(a) { var b = a.slice().sort(function (x, y) { return x - y; }), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : 0; }
+  // errors: for each tap, (tap time - the click it was aimed at) in ms.  Wild taps are ignored.
+  function calibrationResult(errors) {
+    var e = (errors || []).filter(function (x) { return isFinite(x); });
+    if (e.length < 6) return { ok: false, n: e.length, error: 'Not enough taps — tap along with each click.' };
+    var m1 = median(e), keep = e.filter(function (x) { return Math.abs(x - m1) <= 120; });
+    if (keep.length < 6) return { ok: false, n: keep.length, error: 'The taps were too uneven to measure — try again.' };
+    var m2 = median(keep), spread = median(keep.map(function (x) { return Math.abs(x - m2); }));
+    return { ok: true, n: keep.length, offset: Math.max(-150, Math.min(150, Math.round(m2))), spread: Math.round(spread) };
+  }
+  IV.calibrationResult = calibrationResult;
+  IV.timingOffset = timingOffset;
+
+  function drawTiming(box, pre) {
+    if (!box) return;
+    pre = pre || 'ivt';
+    function paint() {
+      var v = timingOffset();
+      box.innerHTML =
+        '<p class="iv-note">Bluetooth speakers and some phones play sound a little late, which makes your taps look early or late. <b>Calibrate</b> measures it for you; the slider is for fine-tuning.</p>' +
+        '<label class="iv-label" for="' + pre + '-range">Adjust: <span id="' + pre + '-val">' + v + '</span> ms</label>' +
+        '<input type="range" class="iv-range" id="' + pre + '-range" min="-150" max="150" step="5" value="' + v + '">' +
+        '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small" id="' + pre + '-cal">Calibrate</button><button type="button" class="iv-btn small ghost" id="' + pre + '-reset">Reset to 0</button></div>';
+      $('#' + pre + '-range', box).oninput = function () { Core.lsSet(OFFSET_KEY, this.value); $('#' + pre + '-val', box).textContent = this.value; };
+      $('#' + pre + '-range', box).onchange = function () { setTimingOffset(this.value); };
+      $('#' + pre + '-cal', box).onclick = function () { openCalibration(); };
+      $('#' + pre + '-reset', box).onclick = function () { setTimingOffset(0); };
+    }
+    paint();
+    document.addEventListener('intrvl:timing', function h() {
+      if (!document.body.contains(box)) { document.removeEventListener('intrvl:timing', h); return; }
+      var r = $('#' + pre + '-range', box), l = $('#' + pre + '-val', box), v = timingOffset();
+      if (r && Number(r.value) !== v) r.value = v;
+      if (l) l.textContent = v;
+    });
+  }
+  IV.drawTiming = drawTiming;
+
+  var calClicks = [];
+  function openCalibration() {
+    var s = openSheet('<h3>Calibrate rhythm timing</h3><div id="ivc-body" aria-live="polite"></div>', null, 'you');
+    var body = $('#ivc-body', s), actx = null, taps = [], timer = 0;
+    function stop() { clearTimeout(timer); try { if (actx) actx.close(); } catch (e) { /* ignore */ } actx = null; }
+    var closeBtn = s.querySelector('.x');
+    if (closeBtn) closeBtn.addEventListener('click', stop);
+    function intro(msg) {
+      stop();
+      body.innerHTML =
+        '<p class="iv-note">Turn your volume up (and the silent switch off). You’ll hear 12 clicks: tap the big pad right on each one. This works out how late or early this device plays sound, so Rhythm Tap can allow for it.</p>' +
+        (msg ? '<p class="iv-status" role="status">' + esc(msg) + '</p>' : '') +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivc-start">Start</button><button type="button" class="iv-btn ghost" id="ivc-cancel">Cancel</button></div>';
+      $('#ivc-start', s).onclick = run;
+      $('#ivc-cancel', s).onclick = function () { stop(); closeSheet(); };
+      $('#ivc-start', s).focus();
+    }
+    function run() {
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) { intro('This browser can’t play the clicks.'); return; }
+      actx = new AC(); if (actx.state === 'suspended') actx.resume();
+      taps = []; calClicks = [];
+      var N = 12, gap = 0.6, t0 = actx.currentTime + 0.9, latency = (actx.outputLatency || actx.baseLatency || 0) * 1000;
+      var perf0 = performance.now() - actx.currentTime * 1000 + latency;
+      for (var k = 0; k < N; k++) {
+        (function (time, accent) {
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = 'square'; o.frequency.value = accent ? 1760 : 1175;
+          g.gain.setValueAtTime(0.0001, time); g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.35, time + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
+          o.connect(g); g.connect(actx.destination); o.start(time); o.stop(time + 0.08);
+        })(t0 + k * gap, k % 4 === 0);
+        calClicks.push(perf0 + (t0 + k * gap) * 1000);
+      }
+      body.innerHTML = '<p class="iv-note" id="ivc-msg" role="status">Get ready… tap on every click.</p>' +
+        '<button type="button" id="ivc-pad" class="iv-pad" aria-label="Tap on each click">TAP</button>' +
+        '<p class="iv-note">You can also use the space bar.</p>';
+      var pad = $('#ivc-pad', s);
+      function tap(ts) { if (ts > 1e12) ts = performance.now(); taps.push(ts); pad.classList.add('down'); setTimeout(function () { pad.classList.remove('down'); }, 90); }
+      pad.addEventListener('pointerdown', function (e) { e.preventDefault(); tap(e.timeStamp); });
+      pad.addEventListener('keydown', function (e) { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); tap(e.timeStamp); } });
+      pad.addEventListener('click', function (e) { e.preventDefault(); });
+      pad.focus();
+      timer = setTimeout(finish, (0.9 + N * gap + 0.9) * 1000);
+    }
+    function finish() {
+      if (!document.body.contains(body)) { stop(); return; }
+      var errs = [], used = {};
+      taps.forEach(function (T) {
+        var best = -1, bd = 1e9;
+        calClicks.forEach(function (H, j) { var d = Math.abs(T - H); if (d < bd) { bd = d; best = j; } });
+        if (best < 2 || bd > 300) return;                    // the first two clicks are for finding the beat
+        if (used[best] != null && Math.abs(used[best]) <= bd) return;
+        used[best] = T - calClicks[best];
+      });
+      Object.keys(used).forEach(function (k) { errs.push(used[k]); });
+      stop();
+      var r = calibrationResult(errs);
+      if (!r.ok) { intro(r.error); return; }
+      var dir = r.offset === 0 ? 'right on the beat' : Math.abs(r.offset) + ' ms ' + (r.offset > 0 ? 'late' : 'early');
+      body.innerHTML = '<p><b>You tapped about ' + esc(dir) + '</b> on average' + (r.spread > 45 ? ', but your taps were quite uneven, so you may want to try again' : ' and fairly evenly') + '.</p>' +
+        '<p class="iv-note">Using this means Rhythm Tap will treat ' + (r.offset > 0 ? r.offset + ' ms late' : r.offset < 0 ? Math.abs(r.offset) + ' ms early' : 'the click itself') + ' as perfect timing on this device.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivc-use">Use this (' + (r.offset > 0 ? '+' : '') + r.offset + ' ms)</button><button type="button" class="iv-btn ghost" id="ivc-again">Try again</button></div>';
+      $('#ivc-use', s).onclick = function () { setTimingOffset(r.offset); body.innerHTML = '<p role="status">Saved ✓ — timing set to ' + (r.offset > 0 ? '+' : '') + r.offset + ' ms.</p><div class="iv-row"><button type="button" class="iv-btn" id="ivc-done">Done</button></div>'; $('#ivc-done', s).onclick = closeSheet; $('#ivc-done', s).focus(); };
+      $('#ivc-again', s).onclick = function () { intro(''); };
+      $('#ivc-use', s).focus();
+    }
+    intro('');
+    return s;
+  }
+  IV.openCalibration = openCalibration;
+  IV._calClicks = function () { return calClicks.slice(); };
+
   if (global.IntrvlSync) global.IntrvlSync.autoSync();
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function openHistory(gameId) {
