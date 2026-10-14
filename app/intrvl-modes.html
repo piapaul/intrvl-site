@@ -966,7 +966,7 @@ IV.find = function (id) {
 
   // ---- the progress summary a league manager can see (only if the player has given a name and not opted out) ----
   var MGR_NAME = 'intrvl.manager.name', MGR_OUT = 'intrvl.manager.optout', MGR_PUSHED = 'intrvl.manager.pushed';
-  function cleanManagerName(n) { return String(n == null ? '' : n).replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'’\- ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22); }
+  function cleanManagerName(n) { return String(n == null ? '' : n).replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'\u2019\- ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22); }
   function managerName() { return Core.lsGet(MGR_NAME) || ''; }
   function managerOptOut() { return Core.lsGet(MGR_OUT) === '1'; }
   function saveManagerDefaults(name, out) { Core.lsSet(MGR_NAME, cleanManagerName(name)); Core.lsSet(MGR_OUT, out ? '1' : '0'); }
@@ -1543,7 +1543,7 @@ IV.find = function (id) {
   function readShareFields(s, pre) {
     var out = $('#' + pre + '-out', s).checked, name = LB.cleanManagerName($('#' + pre + '-name', s).value);
     if (out) return { ok: true, share: false, managerName: '' };
-    if (name.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '').length < 2) return { ok: false, error: 'Add your first name and initial (like “Ben O”), or tick Opt out.' };
+    if (name.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF]/g, '').length < 2) return { ok: false, error: 'Add your first name and initial (like “Ben O”), or tick Opt out.' };
     return { ok: true, share: true, managerName: name };
   }
   function progressItems(x) {
