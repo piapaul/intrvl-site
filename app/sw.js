@@ -3,7 +3,7 @@
    which is what makes the phone pick up updates). Edit src/app/sw.js, not app/sw.js. */
 'use strict';
 
-var VERSION = '54a6c8bf24c9';
+var VERSION = '0cde8f976061';
 var CACHE = 'intrvl-app-' + VERSION;       // the app itself: replaced on every update
 var RUNTIME = 'intrvl-pictures-v1';       // stave pictures: kept between updates
 var PRECACHE = [

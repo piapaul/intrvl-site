@@ -393,7 +393,10 @@ IV.find = function (id) {
   var CFG = global.INTRVL_CONFIG || {};
   var GAME_ID = CFG.gameId || CFG.id || 'unknown';
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ } }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ }
+    if (global.IntrvlSync && global.IntrvlSync.noteChange) global.IntrvlSync.noteChange(k);
+  }
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   function getDailySeed() {
     var today = new Date();
@@ -762,7 +765,7 @@ IV.find = function (id) {
     getAvatar: getAvatar, setAvatar: setAvatar,
     esc: esc, darken: darken, copyText: copyText,
     showScreen: showScreen, confetti: confetti, share: share,
-    lsGet: lsGet, lsSet: lsSet
+    lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, generateCode: generateCode
   };
 })(window);
 (function (global) {
@@ -952,11 +955,264 @@ IV.find = function (id) {
     });
   }
   global.IntrvlLeaderboard = {
-    isConfigured: isConfigured, ping: ping, register: register,
+    isConfigured: isConfigured, ping: ping, register: register, call: post,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
     createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
     resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
     submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
+  };
+})(window);
+// ---- progress sync -------------------------------------------------------------------------------
+// Optional.  Switching it on stores a copy of this player's progress on the leaderboard server, locked by a
+// recovery code that only the player has (the server keeps just a hash of it).  Entering the friend code +
+// recovery code on another device brings the progress across and keeps the two in step.
+(function (global) {
+  'use strict';
+  var Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
+  var K_ON = 'intrvl.sync.on', K_KEY = 'intrvl.sync.key', K_LAST = 'intrvl.sync.last', K_ERR = 'intrvl.sync.err';
+  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1)/;
+  var applying = false, timer = null, busy = null, listeners = [];
+
+  function syncable(k) { return k && k.indexOf('intrvl.') === 0 && !SKIP.test(k); }
+  function isOn() { return Core.lsGet(K_ON) === '1' && !!Core.lsGet(K_KEY); }
+  function recoveryKey() { return Core.lsGet(K_KEY) || ''; }
+  function lastSync() { return Core.lsGet(K_LAST) || ''; }
+  function lastError() { return Core.lsGet(K_ERR) || ''; }
+  function onChange(fn) { listeners.push(fn); }
+  function fire() { listeners.forEach(function (f) { try { f(); } catch (e) { /* ignore */ } }); }
+  function canHash() { return !!(global.crypto && global.crypto.subtle && global.TextEncoder); }
+
+  function hex(buf) { var a = new Uint8Array(buf), s = ''; for (var i = 0; i < a.length; i++) s += (a[i] < 16 ? '0' : '') + a[i].toString(16); return s; }
+  function hashKey(code, key) {
+    if (!canHash()) return Promise.reject(new Error('no crypto'));
+    return global.crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code).toUpperCase() + ':' + String(key).toUpperCase().replace(/[^A-Z0-9]/g, ''))).then(hex);
+  }
+  function newRecoveryKey() { var c = Core.generateCode ? Core.generateCode(10) : ''; return c.slice(0, 5) + '-' + c.slice(5); }
+  function cleanKey(k) { var c = String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return c.length === 10 ? c.slice(0, 5) + '-' + c.slice(5) : c; }
+
+  // ---- snapshot (all syncable keys) --------------------------------------------------------------
+  function collect() {
+    var data = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (syncable(k)) data[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* storage blocked */ }
+    return data;
+  }
+  function parse(s, fallback) { try { var o = JSON.parse(s); return o == null ? fallback : o; } catch (e) { return fallback; } }
+  function dateNum(s) { var t = Date.parse(s || ''); return isNaN(t) ? 0 : t; }
+
+  // ---- merging: two copies of the same player's progress become one, never losing either ----------
+  function mergeStats(a, b) {
+    var x = parse(a, null), y = parse(b, null);
+    if (!x) return b; if (!y) return a;
+    var later = dateNum(y.lastPlayedDate) > dateNum(x.lastPlayedDate), base = later ? y : x, other = later ? x : y;
+    var bigger = (y.totalPlayed || 0) > (x.totalPlayed || 0) ? y : x, out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    out.totalPlayed = bigger.totalPlayed || 0; out.totalCorrect = bigger.totalCorrect || 0;
+    out.bestStreak = Math.max(x.bestStreak || 0, y.bestStreak || 0);
+    out.highScorePractice = Math.max(x.highScorePractice || 0, y.highScorePractice || 0);
+    var d1 = base.dailyBest, d2 = other.dailyBest;
+    out.dailyBest = (!d1 || (d2 && (d2.score || 0) > (d1.score || 0))) ? (d2 || d1 || null) : d1;
+    return JSON.stringify(out);
+  }
+  function mergeHistory(a, b) {
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    [x, y].forEach(function (o) { Object.keys(o).forEach(function (d) { out[d] = (d in out) ? Math.max(out[d], o[d]) : o[d]; }); });
+    return JSON.stringify(out);
+  }
+  function mergeUnion(a, b) {   // local wins on a clash
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    Object.keys(y).forEach(function (k) { out[k] = y[k]; });
+    Object.keys(x).forEach(function (k) { out[k] = x[k]; });
+    return JSON.stringify(out);
+  }
+  function mergeItems(a, b) {
+    var x = parse(a, {}), y = parse(b, {}), out = {};
+    Object.keys(y).forEach(function (k) { out[k] = y[k]; });
+    Object.keys(x).forEach(function (k) { if (!out[k] || (x[k].a || 0) >= (out[k].a || 0)) out[k] = x[k]; });
+    return JSON.stringify(out);
+  }
+  function mergeFriends(a, b) {
+    var x = parse(a, []), y = parse(b, []), out = x.slice();
+    y.forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); });
+    return JSON.stringify(out);
+  }
+  function mergePractice(a, b) {
+    var x = parse(a, { sessions: [] }), y = parse(b, { sessions: [] }), seen = {}, out = [];
+    (x.sessions || []).concat(y.sessions || []).forEach(function (s) { if (s && !seen[s.id]) { seen[s.id] = 1; out.push(s); } });
+    out.sort(function (p, q) { return (p.ts || 0) - (q.ts || 0); });
+    return JSON.stringify({ sessions: out });
+  }
+  // keys that describe "who this is": on a restore the saved copy wins, in everyday syncing this device's wins
+  var IDENTITY = /^intrvl\.(deviceId|playerCode|displayName|avatar)$/;
+  function mergeValue(k, local, remote, restoring) {
+    if (local == null) return remote;
+    if (remote == null) return local;
+    if (local === remote) return local;
+    if (IDENTITY.test(k)) return restoring ? remote : local;
+    if (/\.stats\.v1$/.test(k)) return mergeStats(local, remote);
+    if (/\.history\.v1$/.test(k)) return mergeHistory(local, remote);
+    if (/\.blocks\.v1$/.test(k)) return mergeUnion(local, remote);
+    if (/\.items\.v1$/.test(k)) return mergeItems(local, remote);
+    if (k === 'intrvl.friends') return mergeFriends(local, remote);
+    if (k === 'intrvl.practice.log.v1') return mergePractice(local, remote);
+    if (/^intrvl\.sent\./.test(k)) return '1';
+    return local;   // settings such as the rhythm timing adjustment: this device keeps its own
+  }
+  function merge(local, remote, restoring) {
+    var out = {}, keys = {};
+    Object.keys(local || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(remote || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(keys).forEach(function (k) {
+      if (!syncable(k) || (remote && remote[k] != null && (typeof remote[k] !== 'string' || remote[k].length > 200000))) return;
+      var v = mergeValue(k, local ? local[k] : null, remote ? remote[k] : null, !!restoring);
+      if (v != null) out[k] = v;
+    });
+    return out;
+  }
+  function sameData(a, b) {
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) if (a[ka[i]] !== b[ka[i]]) return false;
+    return true;
+  }
+
+  // ---- packing (gzip when the browser can, plain otherwise) ---------------------------------------
+  function toB64(bytes) { var s = ''; for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s); }
+  function fromB64(t) { var s = atob(t), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+  function streamBytes(stream, bytes) {
+    var w = stream.writable.getWriter(); w.write(bytes); w.close();
+    return new Response(stream.readable).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function pack(data) {
+    var text = JSON.stringify(data), bytes = new TextEncoder().encode(text);
+    if (typeof CompressionStream === 'function') {
+      try { return streamBytes(new CompressionStream('gzip'), bytes).then(function (z) { return 'g1:' + toB64(z); }); } catch (e) { /* fall through */ }
+    }
+    return Promise.resolve('j1:' + toB64(bytes));
+  }
+  function unpack(text) {
+    text = String(text || '');
+    var kind = text.slice(0, 3), bytes;
+    try { bytes = fromB64(text.slice(3)); } catch (e) { return Promise.reject(new Error('unreadable')); }
+    var p = kind === 'g1:'
+      ? (typeof DecompressionStream === 'function' ? streamBytes(new DecompressionStream('gzip'), bytes) : Promise.reject(new Error('This browser can’t open the saved copy.')))
+      : kind === 'j1:' ? Promise.resolve(bytes) : Promise.reject(new Error('unreadable'));
+    return p.then(function (b) {
+      var o = JSON.parse(new TextDecoder().decode(b));
+      if (!o || typeof o !== 'object') throw new Error('unreadable');
+      return o;
+    });
+  }
+
+  function apply(data) {
+    applying = true;
+    try { Object.keys(data).forEach(function (k) { if (syncable(k) && Core.lsGet(k) !== data[k]) Core.lsSet(k, data[k]); }); }
+    finally { applying = false; }
+  }
+  function stamp(ok, err) {
+    if (ok) { Core.lsSet(K_LAST, new Date().toISOString()); Core.lsDel ? Core.lsDel(K_ERR) : Core.lsSet(K_ERR, ''); } else Core.lsSet(K_ERR, err || 'couldn’t reach the server');
+    fire();
+  }
+  function friendlyErr(r) { return (r && r.error === 'network error') ? 'no connection — will try again later' : ((r && r.error) || 'something went wrong'); }
+
+  // pull the saved copy, merge it with this device, and push the result back if anything changed
+  function syncNow() {
+    if (!isOn()) return Promise.resolve({ ok: false, error: 'sync is off' });
+    if (busy) return busy;
+    busy = LB.register().then(function () {
+      return LB.call({ action: 'syncPull', code: Core.getPlayerCode(), deviceId: Core.getDeviceId() });
+    }).then(function (res) {
+      if (!res.ok) throw res;
+      return (res.data ? unpack(res.data) : Promise.resolve({})).then(function (remote) {
+        var local = collect(), merged = merge(local, remote, false);
+        if (!sameData(local, merged)) apply(merged);
+        if (res.data && sameData(remote, merged)) return { ok: true, unchanged: true };
+        return pack(merged).then(function (packed) {
+          return LB.call({ action: 'syncPush', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), data: packed });
+        }).then(function (r) { if (!r.ok) throw r; return { ok: true }; });
+      });
+    }).then(function (r) { stamp(true); busy = null; return r; }, function (e) {
+      busy = null;
+      var msg = e && e.error ? friendlyErr(e) : 'something went wrong';
+      stamp(false, msg);
+      return { ok: false, error: msg };
+    });
+    return busy;
+  }
+
+  function enable() {
+    if (!LB.isConfigured()) return Promise.resolve({ ok: false, error: 'The leaderboard isn’t set up yet.' });
+    if (!canHash()) return Promise.resolve({ ok: false, error: 'This browser can’t do secure sync.' });
+    var key = recoveryKey() || newRecoveryKey();
+    return LB.register().then(function (reg) {
+      if (!reg.ok) throw reg;
+      return hashKey(Core.getPlayerCode(), key);
+    }).then(function (h) {
+      return LB.call({ action: 'syncEnable', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), keyHash: h });
+    }).then(function (r) {
+      if (!r.ok) throw r;
+      Core.lsSet(K_KEY, key); Core.lsSet(K_ON, '1');
+      return syncNow().then(function (s) { return s.ok ? { ok: true, key: key } : { ok: true, key: key, warning: s.error }; });
+    }).catch(function (e) { return { ok: false, error: e && e.error ? friendlyErr(e) : 'Couldn’t switch sync on — please try again.' }; });
+  }
+  function disable() {   // stops syncing on this device; the saved copy stays until deleted
+    Core.lsSet(K_ON, '0'); fire();
+  }
+  function restore(friendCode, key) {
+    var code = String(friendCode || '').trim().toUpperCase(), k = cleanKey(key);
+    if (!code || k.length < 10) return Promise.resolve({ ok: false, error: 'Enter both codes.' });
+    if (!canHash()) return Promise.resolve({ ok: false, error: 'This browser can’t do secure sync.' });
+    return hashKey(code, k).then(function (h) {
+      return LB.call({ action: 'syncRestore', code: code, keyHash: h });
+    }).then(function (r) {
+      if (!r.ok) throw r;
+      return unpack(r.data);
+    }).then(function (remote) {
+      var local = collect(), merged = merge(local, remote, true);
+      merged['intrvl.playerCode'] = code;
+      applying = true;
+      try { Object.keys(merged).forEach(function (kk) { if (syncable(kk)) Core.lsSet(kk, merged[kk]); }); } finally { applying = false; }
+      Core.lsSet(K_KEY, k); Core.lsSet(K_ON, '1');
+      if (Core.lsDel) Core.lsDel('intrvl.reg');
+      stamp(true);
+      return { ok: true };
+    }).catch(function (e) { return { ok: false, error: (e && e.error) ? friendlyErr(e) : ((e && e.message) || 'Couldn’t restore — please try again.') }; });
+  }
+  function deleteOnlineData() {
+    return LB.register().then(function () {
+      return LB.call({ action: 'deleteMyData', code: Core.getPlayerCode(), deviceId: Core.getDeviceId() });
+    }).then(function (r) {
+      if (!r.ok) return { ok: false, error: friendlyErr(r) };
+      Core.lsSet(K_ON, '0'); Core.lsDel && Core.lsDel(K_KEY); Core.lsDel && Core.lsDel(K_LAST);
+      Core.lsDel && Core.lsDel('intrvl.reg'); Core.lsDel && Core.lsDel('intrvl.friends');
+      fire();
+      return { ok: true };
+    });
+  }
+
+  // changes made on this device are sent a little later (not on every tap)
+  function noteChange(k) {
+    if (applying || !isOn() || !syncable(k)) return;
+    if (timer) return;
+    timer = setTimeout(function () { timer = null; syncNow(); }, 20000);
+  }
+  function autoSync() {   // on page load: at most every 10 minutes
+    if (!isOn()) return;
+    var t = Date.parse(lastSync());
+    if (!isNaN(t) && Date.now() - t < 600000) return;
+    setTimeout(syncNow, 2500);
+  }
+  if (global.addEventListener) global.addEventListener('pagehide', function () { if (timer) { clearTimeout(timer); timer = null; if (isOn()) syncNow(); } });
+
+  global.IntrvlSync = {
+    isOn: isOn, recoveryKey: recoveryKey, lastSync: lastSync, lastError: lastError, onChange: onChange,
+    enable: enable, disable: disable, restore: restore, syncNow: syncNow, deleteOnlineData: deleteOnlineData,
+    noteChange: noteChange, autoSync: autoSync, canHash: canHash,
+    _merge: merge, _collect: collect, _pack: pack, _unpack: unpack
   };
 })(window);
 (function (global) {
@@ -1374,7 +1630,9 @@ IV.find = function (id) {
       '<div class="iv-avatars" id="ivp-avatars" role="group" aria-labelledby="ivp-av-lbl"></div>' +
       '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" aria-label="Or type your own emoji as an avatar" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
       '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
-      '<div id="ivp-conn" class="iv-note">Checking…</div>',
+      '<div id="ivp-conn" class="iv-note">Checking…</div>' +
+      '<div class="iv-label" id="ivp-sync-lbl" style="margin-top:1.1rem">Save your progress online</div>' +
+      '<div id="ivp-sync" aria-labelledby="ivp-sync-lbl"></div>',
       null, 'you');
     var status = $('#ivp-status', s);
     function sync() { if (LB.isConfigured()) LB.register(true); }
@@ -1391,9 +1649,75 @@ IV.find = function (id) {
     else LB.ping().then(function (r) {
       conn.textContent = r.ok ? 'Connected ✓ (backend v' + r.version + ')' : 'Can’t reach the leaderboard (' + (r.error || 'error') + ').';
     });
+    drawSync($('#ivp-sync', s));
     return s;
   }
   IV.openProfile = openProfile;
+
+  // "Save your progress online": the optional sync (see IntrvlSync). Draws into any container.
+  function drawSync(box) {
+    var Sync = global.IntrvlSync;
+    if (!box || !Sync) return;
+    if (!LB.isConfigured()) { box.innerHTML = '<p class="iv-note">Not available until the leaderboard is switched on.</p>'; return; }
+    function when(iso) {
+      var t = Date.parse(iso || ''); if (isNaN(t)) return 'not yet';
+      var m = Math.round((Date.now() - t) / 60000);
+      return m < 1 ? 'just now' : m < 60 ? m + ' minute' + (m === 1 ? '' : 's') + ' ago' : m < 1440 ? Math.round(m / 60) + ' hour' + (Math.round(m / 60) === 1 ? '' : 's') + ' ago' : new Date(t).toLocaleDateString();
+    }
+    function draw(msg) {
+      if (Sync.isOn()) {
+        box.innerHTML =
+          '<p class="iv-note">Switched on. Your scores and practice history are kept in step across your devices. Last saved: <b>' + esc(when(Sync.lastSync())) + '</b>' + (Sync.lastError() ? ' (' + esc(Sync.lastError()) + ')' : '') + '.</p>' +
+          '<div class="iv-label">Your recovery code</div>' +
+          '<div class="iv-code"><div><b id="ivs-key">' + esc(Sync.recoveryKey()) + '</b></div><div class="iv-row"><button type="button" class="iv-btn small ghost" id="ivs-copy">Copy</button></div></div>' +
+          '<p class="iv-note">Keep this safe. To use your progress on another device you need it <b>and</b> your friend code (<b>' + esc(Core.getPlayerCode()) + '</b>). Nobody can recover it for you.</p>' +
+          '<div class="iv-row"><button type="button" class="iv-btn small" id="ivs-now">Save now</button><button type="button" class="iv-btn small ghost" id="ivs-off">Switch off on this device</button></div>' +
+          '<details class="iv-details"><summary>Delete my online data</summary>' +
+            '<p class="iv-note">Removes your name, avatar, scores, friends, league memberships and saved progress from the leaderboard. Progress on this device stays. If you run a league, delete it first.</p>' +
+            '<div class="iv-row"><button type="button" class="iv-btn small ghost" id="ivs-del">Delete my online data</button></div>' +
+          '</details>' +
+          '<div id="ivs-msg" class="iv-status" role="status" aria-live="polite">' + esc(msg || '') + '</div>';
+        var m = $('#ivs-msg', box);
+        $('#ivs-copy', box).onclick = function () { Core.copyText(Sync.recoveryKey()).then(function (ok) { m.textContent = ok ? 'Recovery code copied ✓' : 'Couldn’t copy — write it down instead.'; }); };
+        $('#ivs-now', box).onclick = function () { m.textContent = 'Saving…'; Sync.syncNow().then(function (r) { draw(r.ok ? 'Saved ✓' : 'Couldn’t save: ' + r.error); }); };
+        $('#ivs-off', box).onclick = function () { Sync.disable(); draw('Switched off on this device. Your saved copy is still online.'); };
+        $('#ivs-del', box).onclick = function () {
+          if (!confirm('Delete everything stored online about you? This can’t be undone.')) return;
+          m.textContent = 'Deleting…';
+          Sync.deleteOnlineData().then(function (r) { draw(r.ok ? 'Your online data has been deleted.' : 'Couldn’t delete: ' + r.error); });
+        };
+      } else {
+        box.innerHTML =
+          '<p class="iv-note">Keeps a copy of your scores and practice history on the leaderboard server, so a new phone or a different browser can pick up where you left off. Off unless you switch it on.</p>' +
+          '<div class="iv-row"><button type="button" class="iv-btn small" id="ivs-on">Switch on</button></div>' +
+          '<details class="iv-details"><summary>I already have a recovery code</summary>' +
+            '<label class="iv-label" for="ivs-fc">Friend code from your other device</label>' +
+            '<input class="iv-input" id="ivs-fc" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="e.g. 7K2P9Q">' +
+            '<label class="iv-label" for="ivs-rk" style="margin-top:.6rem">Recovery code</label>' +
+            '<input class="iv-input" id="ivs-rk" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="XXXXX-XXXXX">' +
+            '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small" id="ivs-restore">Restore on this device</button></div>' +
+          '</details>' +
+          '<div id="ivs-msg" class="iv-status" role="status" aria-live="polite">' + esc(msg || '') + '</div>';
+        var m2 = $('#ivs-msg', box);
+        $('#ivs-on', box).onclick = function () {
+          m2.textContent = 'Switching on…';
+          Sync.enable().then(function (r) { if (r.ok) draw(r.warning ? 'Switched on. First save didn’t finish: ' + r.warning : 'Switched on ✓ — write your recovery code down.'); else m2.textContent = r.error; });
+        };
+        $('#ivs-restore', box).onclick = function () {
+          if (!confirm('This joins this device to the saved progress. Anything already here is kept and merged in. Carry on?')) return;
+          m2.textContent = 'Restoring…';
+          Sync.restore($('#ivs-fc', box).value, $('#ivs-rk', box).value).then(function (r) {
+            if (!r.ok) { m2.textContent = r.error; return; }
+            m2.textContent = 'Restored ✓ — reloading…';
+            setTimeout(function () { location.reload(); }, 700);
+          });
+        };
+      }
+    }
+    draw();
+  }
+  IV.drawSync = drawSync;
+  if (global.IntrvlSync) global.IntrvlSync.autoSync();
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function openHistory(gameId) {
     var g = IV.find(gameId) || IV.GAMES[0];
@@ -1483,7 +1807,7 @@ IV.find = function (id) {
       '<div class="iv-label">What to practise next</div>' + weakHtml + strongHtml +
       '<div class="iv-label" style="margin-top:1.2rem">By game</div>' + gameRows +
       '<details class="iv-details"><summary>Back up or move your progress</summary>' +
-        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone.</p>' +
+        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone. (Or switch on <b>Save your progress online</b> in the You tab and skip the copying.)</p>' +
         '<div class="iv-row"><button type="button" class="iv-btn small" id="ivb-copy">Copy backup</button></div>' +
         '<label class="iv-label" for="ivb-text" style="margin-top:.8rem">Paste a backup to restore it</label>' +
         '<textarea class="iv-input" id="ivb-text" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>' +
