@@ -138,6 +138,8 @@ line-height: 1.2;
 .iv-select, .iv-input { width: 100%; padding: .6rem .75rem; border: 1px solid var(--intrvl-stone); border-radius: 10px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .95rem; }
 .iv-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236b6b6b' stroke-width='2'/></svg>"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
 .iv-input:focus, .iv-select:focus { outline: 2px solid var(--intrvl-accent); outline-offset: 1px; border-color: transparent; }
+.iv-check { display: flex; gap: .6rem; align-items: flex-start; min-height: 44px; margin: .5rem 0; font-size: .9rem; line-height: 1.35; cursor: pointer; }
+.iv-check input { width: 22px; height: 22px; min-width: 22px; margin-top: 1px; accent-color: var(--intrvl-accent-dark); }
 .iv-pad { display: block; width: 100%; max-width: 340px; height: 150px; margin: .6rem auto; border-radius: 26px; border: 3px solid var(--intrvl-ink); background: var(--intrvl-accent); color: var(--intrvl-ink); font: 900 2.2rem var(--intrvl-font-head); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 6px 0 var(--intrvl-ink); }
 .iv-pad.down { transform: translateY(5px); box-shadow: 0 1px 0 var(--intrvl-ink); }
 .iv-range { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--intrvl-stone); outline: none; margin: .6rem 0; }
@@ -946,8 +948,55 @@ IV.find = function (id) {
       return post(payload);
     });
   }
-  function createLeague(name) { return leagueCall({ action: 'createLeague', name: name }); }
-  function joinLeague(invite) { return leagueCall({ action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() }); }
+  function createLeague(name, prefs) { return leagueCall({ action: 'createLeague', name: name, share: prefs ? !!prefs.share : false, managerName: prefs ? prefs.managerName || '' : '' }); }
+  function joinLeague(invite, prefs) {
+    var p = { action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() };
+    if (prefs) { p.share = !!prefs.share; p.managerName = prefs.managerName || ''; }
+    return leagueCall(p);
+  }
+  function setMemberPrefs(id, prefs) { return leagueCall({ action: 'setMemberPrefs', leagueId: id, share: !!prefs.share, managerName: prefs.managerName || '' }); }
+  function manageLeague(id) { return leagueCall({ action: 'leagueManage', leagueId: id }); }
+
+  // ---- the progress summary a league manager can see (only if the player has given a name and not opted out) ----
+  var MGR_NAME = 'intrvl.manager.name', MGR_OUT = 'intrvl.manager.optout', MGR_PUSHED = 'intrvl.manager.pushed';
+  function cleanManagerName(n) { return String(n == null ? '' : n).replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'’\- ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22); }
+  function managerName() { return Core.lsGet(MGR_NAME) || ''; }
+  function managerOptOut() { return Core.lsGet(MGR_OUT) === '1'; }
+  function saveManagerDefaults(name, out) { Core.lsSet(MGR_NAME, cleanManagerName(name)); Core.lsSet(MGR_OUT, out ? '1' : '0'); }
+  function mondayOf(ds) { var d = new Date(ds + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Core.dailySeedDate(d); }
+  function buildSummary() {
+    var today = Core.dailySeedDate(), mon = mondayOf(today), played = Core.allPlayedDates(), days = {}, games = 0, last = '', mins = 0, IVg = (global.IV && global.IV.GAMES) || [];
+    Object.keys(played).forEach(function (d) {
+      if (d >= mon && d <= today) { days[d] = 1; games += played[d]; }
+      if (d > last) last = d;
+    });
+    try {
+      var log = JSON.parse(Core.lsGet('intrvl.practice.log.v1') || '{}');
+      (log.sessions || []).forEach(function (x) {
+        if (!x || !x.date) return;
+        if (x.date >= mon && x.date <= today) { days[x.date] = 1; Object.keys(x.secs || {}).forEach(function (k) { mins += (Number(x.secs[k]) || 0) / 60; }); }
+        if (x.date > last) last = x.date;
+      });
+    } catch (e) { /* no log yet */ }
+    var tp = 0, tc = 0;
+    IVg.forEach(function (g) { var st = Core.statsFor(g.id); tp += st.totalPlayed || 0; tc += st.totalCorrect || 0; });
+    return {
+      v: 1, week: mon, lastActive: last, daysThisWeek: Object.keys(days).length, gamesThisWeek: games, streak: Core.practiceStreak(),
+      accuracy: tp ? Math.round(tc / tp * 100) : null, practiceMins: Math.round(mins),
+      weak: Core.weakSpots(3).map(function (w) { return { g: w.game.name, l: w.label, p: Math.round(w.recent * 100) }; })
+    };
+  }
+  // Sends the summary if this player shares with at least one league.  minutes: don't resend more often than this.
+  function pushStats(minutes) {
+    if (!isConfigured() || !managerName() || managerOptOut()) return Promise.resolve({ ok: true, skipped: true });
+    var last = Number(Core.lsGet(MGR_PUSHED)) || 0;
+    if (Date.now() - last < (minutes == null ? 20 : minutes) * 60000) return Promise.resolve({ ok: true, skipped: true });
+    var known = cachedLeagues();
+    return (known ? Promise.resolve({ ok: true, leagues: known }) : myLeagues()).then(function (r) {
+      if (!r.ok || !r.leagues.some(function (l) { return l.share; })) return { ok: true, skipped: true };
+      return leagueCall({ action: 'statsPush', summary: buildSummary() }).then(function (res) { if (res.ok) Core.lsSet(MGR_PUSHED, String(Date.now())); return res; });
+    });
+  }
   function leaveLeague(id) { return leagueCall({ action: 'leaveLeague', leagueId: id }); }
   function removeMember(id, memberCode) { return leagueCall({ action: 'removeMember', leagueId: id, memberCode: memberCode }); }
   function renameLeague(id, name) { return leagueCall({ action: 'renameLeague', leagueId: id, name: name }); }
@@ -985,7 +1034,7 @@ IV.find = function (id) {
     box.innerHTML = '<div class="iv-note iv-center">Sending your score…</div>';
     var date = Core.dailySeedDate();
     var sentKey = 'intrvl.sent.' + opts.gameId + '.' + date;
-    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) Core.lsSet(sentKey, '1'); return r; });
+    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) { Core.lsSet(sentKey, '1'); pushStats(1); } return r; });
     send.then(function (res) {
       if (!res.ok) {
         box.innerHTML = '<div class="iv-note iv-center">Couldn’t reach the leaderboard just now — your score is saved on this device. <button class="iv-linkbtn" id="iv-lb-retry">Try again</button></div>';
@@ -1013,7 +1062,8 @@ IV.find = function (id) {
     isConfigured: isConfigured, ping: ping, register: register, call: post,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
     createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
-    resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
+    resetInvite: resetInvite, deleteLeague: deleteLeague, setMemberPrefs: setMemberPrefs, manageLeague: manageLeague, pushStats: pushStats, buildSummary: buildSummary,
+    cleanManagerName: cleanManagerName, managerName: managerName, managerOptOut: managerOptOut, saveManagerDefaults: saveManagerDefaults, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
     submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
   };
 })(window);
@@ -1025,7 +1075,7 @@ IV.find = function (id) {
   'use strict';
   var Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
   var K_ON = 'intrvl.sync.on', K_KEY = 'intrvl.sync.key', K_LAST = 'intrvl.sync.last', K_ERR = 'intrvl.sync.err';
-  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1|rhythm\.offset)/;
+  var SKIP = /^intrvl\.(reg|sync\.|board\.|leagues\.v1|league\.|practice\.active\.v1|rhythm\.offset|manager\.pushed)/;
   var applying = false, timer = null, busy = null, listeners = [];
 
   function syncable(k) { return k && k.indexOf('intrvl.') === 0 && !SKIP.test(k); }
@@ -1468,6 +1518,68 @@ IV.find = function (id) {
   }
   function inviteLink(code) { return IV.fullUrl(IV.SECTIONS.home.url) + '?league=' + code; }
 
+  // ---- "what does the league manager see?" fields (used when joining and in a league's own settings) ----
+  function shareFieldsHtml(pre, name, optedOut) {
+    return '<div class="iv-sharebox">' +
+      '<div class="iv-label" id="' + pre + '-lbl" style="margin-top:.8rem">Sharing with the league manager</div>' +
+      '<p class="iv-note">The person who runs this league can see a short summary of your progress: your first name and initial, days played this week, games, streak, accuracy, practice time and your three weakest topics. Nothing else, and never your full history.</p>' +
+      '<label class="iv-label" for="' + pre + '-name">First name and initial (like “Ben O”)</label>' +
+      '<input class="iv-input" id="' + pre + '-name" maxlength="22" autocomplete="off" value="' + esc(name || '') + '"' + (optedOut ? ' disabled' : '') + '>' +
+      '<label class="iv-check"><input type="checkbox" id="' + pre + '-out"' + (optedOut ? ' checked' : '') + '><span><b>Opt out</b> — don’t share my progress with the league manager</span></label>' +
+      '</div>';
+  }
+  function wireShareFields(s, pre) {
+    var out = $('#' + pre + '-out', s), name = $('#' + pre + '-name', s);
+    out.onchange = function () { name.disabled = out.checked; };
+  }
+  // -> { ok, share, managerName } or { ok: false, error }
+  function readShareFields(s, pre) {
+    var out = $('#' + pre + '-out', s).checked, name = LB.cleanManagerName($('#' + pre + '-name', s).value);
+    if (out) return { ok: true, share: false, managerName: '' };
+    if (name.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '').length < 2) return { ok: false, error: 'Add your first name and initial (like “Ben O”), or tick Opt out.' };
+    return { ok: true, share: true, managerName: name };
+  }
+  function progressItems(x) {
+    var sharers = x.members.filter(function (m) { return m.sharing; }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+    var others = x.members.filter(function (m) { return !m.sharing; });
+    return { sharers: sharers, others: others };
+  }
+  function summaryLine(m, wk) {
+    var sm = m.summary, cur = sm && sm.week === wk;
+    if (!sm) return null;
+    return {
+      last: niceDay(sm.lastActive),
+      week: (cur ? sm.daysThisWeek : 0) + ' day' + ((cur ? sm.daysThisWeek : 0) === 1 ? '' : 's') + ' · ' + (cur ? sm.gamesThisWeek : 0) + ' game' + ((cur ? sm.gamesThisWeek : 0) === 1 ? '' : 's') + ' · ' + (cur ? sm.practiceMins : 0) + ' min practice',
+      streak: sm.streak, accuracy: sm.accuracy == null ? '–' : sm.accuracy + '%',
+      weak: (sm.weak || []).map(function (w) { return w.l + ' (' + w.g + ', ' + w.p + '%)'; })
+    };
+  }
+  function progressHtml(x) {
+    var it = progressItems(x), html = '';
+    if (!it.sharers.length) html += '<p class="iv-note">Nobody is sharing yet.</p>';
+    it.sharers.forEach(function (m) {
+      var l = summaryLine(m, x.week);
+      html += '<div class="iv-card"><div><b>' + esc(m.avatar || '') + ' ' + esc(m.name) + '</b>' + (m.updatedAt ? ' <span class="iv-note">· updated ' + esc(when(m.updatedAt)) + '</span>' : '') + '</div>' +
+        (l ? '<div class="iv-note" style="color:var(--intrvl-ink)">Last played: ' + esc(l.last) + '<br>This week: ' + esc(l.week) + '<br>Streak: ' + l.streak + ' · Accuracy: ' + esc(l.accuracy) + (l.weak.length ? '<br>Needs work: ' + esc(l.weak.join('; ')) : '') + '</div>' : '<div class="iv-note">No summary yet — it arrives the next time they open intrvl.</div>') + '</div>';
+    });
+    if (it.others.length) html += '<p class="iv-note" style="margin-top:.6rem">Not sharing: ' + it.others.map(function (m) { return esc(m.displayName) + ' (' + esc(m.reason) + ')'; }).join(', ') + '</p>';
+    if (it.sharers.length) html += '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small ghost" id="ivl-prog-copy">Copy as text</button></div>';
+    return html;
+  }
+  function progressText(x) {
+    var it = progressItems(x);
+    return 'intrvl — ' + x.league.name + ' (week of ' + shortDate(x.week) + ')\n' + it.sharers.map(function (m) {
+      var l = summaryLine(m, x.week);
+      return l ? m.name + ': last played ' + l.last + '; ' + l.week + '; streak ' + l.streak + '; accuracy ' + l.accuracy + (l.weak.length ? '; needs work: ' + l.weak.join(', ') : '') : m.name + ': no summary yet';
+    }).join('\n');
+  }
+  function when(ts) {
+    var t = Date.parse(ts || ''); if (isNaN(t)) return '';
+    var m = Math.round((Date.now() - t) / 60000);
+    return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  }
+  function niceDay(ds) { if (!ds) return 'never'; var d = new Date(ds + 'T12:00:00'); return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' ' + shortDate(ds); }
+
   function openLeague(preferId, opts) {
     opts = opts || {};
     var s = openSheet('<h3>Friends League</h3>' + viewSwitch('league') + '<div id="ivl-body" aria-live="polite"><div class="iv-note">Loading…</div></div>', null, 'friends');
@@ -1490,9 +1602,12 @@ IV.find = function (id) {
       html += '<label class="iv-label" for="ivl-new">Start a league</label>' +
         '<div class="iv-addrow"><input class="iv-input" id="ivl-new" maxlength="30" placeholder="e.g. Thursday piano group" autocomplete="off"><button type="button" class="iv-btn small" id="ivl-create">Create</button></div>' +
         '<label class="iv-label" for="ivl-join" style="margin-top:.8rem">Join with an invite code or link</label>' +
-        '<div class="iv-addrow"><input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
+        '<input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters">' +
+        shareFieldsHtml('ivj', LB.managerName() || '', LB.managerOptOut()) +
+        '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
         '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite"></div>' + privacyNote();
       body.innerHTML = html;
+      wireShareFields(s, 'ivj');
       Array.prototype.forEach.call(body.querySelectorAll('[data-id]'), function (b) { b.onclick = function () { showLeague(b.getAttribute('data-id')); }; });
       $('#ivl-create', s).onclick = function () {
         var name = $('#ivl-new', s).value.trim();
@@ -1506,23 +1621,30 @@ IV.find = function (id) {
       $('#ivl-joinbtn', s).onclick = function () {
         var raw = $('#ivl-join', s).value, m = /[?&]league=([A-Za-z0-9]+)/.exec(raw), code = (m ? m[1] : raw).trim();
         if (!code) { say('Paste an invite code or link first.'); return; }
+        var pf = readShareFields(s, 'ivj');
+        if (!pf.ok) { say(pf.error); return; }
         say('Joining…');
-        LB.joinLeague(code).then(function (r) {
+        LB.saveManagerDefaults(pf.managerName, !pf.share);
+        LB.joinLeague(code, pf).then(function (r) {
           if (!r.ok) { say(r.error === 'invite not found' ? 'That invite doesn’t work — ask for a fresh link.' : leagueError(r.error)); return; }
+          LB.myLeagues().then(function () { LB.pushStats(0); });
           showLeague(r.league.leagueId);
         });
       };
     }
     function privacyNote() {
-      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. Nothing else is shared.</p>';
+      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. The person who runs it can also see a short progress summary from members who choose to share it (first name and initial only). Nothing else is shared.</p>';
     }
 
     // ---- one league
     function showLeague(id, justCreated) {
       body.innerHTML = '<div class="iv-note">Loading…</div>';
-      var week = null;
+      var week = null, myShare = true;
       if (weekOffset) { var base = new Date(); base.setDate(base.getDate() + weekOffset * 7); week = Core.dailySeedDate(base); }
-      LB.getLeague(id, week).then(function (r) {
+      function shareOf(list) { var m = (list || []).filter(function (l) { return l.leagueId === id; })[0]; return m ? m.share !== false : true; }
+      Promise.all([LB.getLeague(id, week), LB.myLeagues()]).then(function (both) {
+        var r = both[0];
+        myShare = shareOf(both[1].ok ? both[1].leagues : LB.cachedLeagues());
         if (!r.ok) {
           var cached = !week && LB.cachedLeague(id);
           if (cached) { draw(cached, true); return; }
@@ -1544,10 +1666,20 @@ IV.find = function (id) {
           '<table class="iv-table"><caption class="iv-sr">League table for the week</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Games</th><th scope="col" class="num">Points</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           (r.lastWeekWinner && weekOffset === 0 ? '<p class="iv-note" style="margin-top:.6rem">Last week’s winner: ' + esc(r.lastWeekWinner.avatar || '') + ' <b>' + esc(r.lastWeekWinner.displayName) + '</b> with ' + r.lastWeekWinner.points + ' points 🏆</p>' : '') +
           '<details class="iv-details" style="margin-top:.8rem"><summary>How points work</summary><p class="iv-note">Each finished daily game earns <b>1 point</b>. The best score of the day in that game earns <b>+2</b>, second best <b>+1</b> (ties share). The table runs Monday to Sunday, then starts again.</p></details>';
+        var needsName = myShare && !LB.managerName();
+        html += '<details class="iv-details" id="ivq-wrap"' + (needsName ? ' open' : '') + '><summary>Your sharing with the league manager</summary>' +
+          (needsName ? '<p class="iv-note">You haven’t added a name yet, so nothing is being shared. Add one, or tick Opt out.</p>' : '') +
+          shareFieldsHtml('ivq', LB.managerName() || '', !myShare) +
+          '<div class="iv-row" style="margin-top:.6rem"><button type="button" class="iv-btn small" id="ivq-save">Save</button></div>' +
+          '<div class="iv-status" id="ivq-msg" role="status" aria-live="polite"></div></details>';
         if (owner) {
           var link = inviteLink(L.inviteCode);
-          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>Manage this league</summary>' +
-            '<div class="iv-label">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
+          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>League manager</summary>' +
+            '<div class="iv-label">Member progress</div>' +
+            '<p class="iv-note">Members who choose to share appear here with a short progress summary. Anyone who has opted out, or hasn’t added a name, shows as not sharing.</p>' +
+            '<div class="iv-row" style="margin-bottom:.4rem"><button type="button" class="iv-btn small" id="ivl-prog-btn">View member progress</button></div>' +
+            '<div id="ivl-prog" aria-live="polite"></div>' +
+            '<div class="iv-label" style="margin-top:1rem">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
             '<div class="iv-row" style="margin:.2rem 0 .8rem"><button type="button" class="iv-btn small ghost" id="ivl-share">Share link…</button><button type="button" class="iv-btn small ghost" id="ivl-reset">Make a new link</button></div>' +
             '<label class="iv-label" for="ivl-rename">League name</label><div class="iv-addrow"><input class="iv-input" id="ivl-rename" maxlength="30" value="' + esc(L.name) + '"><button type="button" class="iv-btn small" id="ivl-rensave">Save</button></div>' +
             '<div class="iv-label" style="margin-top:.8rem">Members</div><div id="ivl-members">' + r.members.map(function (m) {
@@ -1560,9 +1692,31 @@ IV.find = function (id) {
         html += '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>' + privacyNote();
         body.innerHTML = html;
         $('#ivl-back', s).onclick = loadList;
+        wireShareFields(s, 'ivq');
+        $('#ivq-save', s).onclick = function () {
+          var pf = readShareFields(s, 'ivq'), m = $('#ivq-msg', s);
+          if (!pf.ok) { m.textContent = pf.error; return; }
+          m.textContent = 'Saving…';
+          LB.saveManagerDefaults(pf.managerName, !pf.share);
+          LB.setMemberPrefs(id, pf).then(function (x) {
+            if (!x.ok) { m.textContent = leagueError(x.error); return; }
+            myShare = pf.share;
+            m.textContent = pf.share ? 'Saved ✓ — the league manager can now see your summary.' : 'Saved ✓ — you’re not sharing, and any summary already sent has been removed.';
+            LB.myLeagues().then(function () { LB.pushStats(0); });
+          });
+        };
         $('#ivl-prev', s).onclick = function () { weekOffset--; showLeague(id); };
         $('#ivl-next', s).onclick = function () { if (weekOffset < 0) { weekOffset++; showLeague(id); } };
         if (owner) {
+          $('#ivl-prog-btn', s).onclick = function () {
+            var box = $('#ivl-prog', s); box.innerHTML = '<div class="iv-note">Loading…</div>';
+            LB.manageLeague(id).then(function (x) {
+              if (!x.ok) { box.innerHTML = '<div class="iv-status">' + esc(leagueError(x.error)) + '</div>'; return; }
+              box.innerHTML = progressHtml(x);
+              var cp = $('#ivl-prog-copy', s);
+              if (cp) cp.onclick = function () { Core.copyText(progressText(x)).then(function (ok) { say(ok ? 'Copied ✓ — paste it into your notes.' : 'Couldn’t copy automatically.'); }); };
+            });
+          };
           $('#ivl-copy', s).onclick = function () { Core.copyText(inviteLink(L.inviteCode)).then(function (ok) { say(ok ? 'Invite link copied ✓ — send it to your group.' : 'Couldn’t copy automatically — select the link and copy it.'); }); };
           $('#ivl-share', s).onclick = function () {
             var text = 'Join my intrvl league “' + L.name + '” — a little weekly music-game competition:';
@@ -1625,15 +1779,21 @@ IV.find = function (id) {
       body.innerHTML = '<p style="margin-bottom:.8rem"><b>' + esc(r.ownerName) + '</b> has invited you to join <b>' + esc(r.name) + '</b> (' + r.members + ' member' + (r.members === 1 ? '' : 's') + '), a weekly music-game league.</p>' +
         '<label class="iv-label" for="ivi-name">Your name in the league</label>' +
         '<div class="iv-addrow"><input class="iv-input" id="ivi-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"></div>' +
-        '<p class="iv-note" style="margin:.2rem 0 .8rem">Members can see each other’s name, avatar and daily scores.</p>' +
-        '<div class="iv-row"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
+        '<p class="iv-note" style="margin:.2rem 0 .4rem">Members can see each other’s name, avatar and daily scores.</p>' +
+        shareFieldsHtml('ivm', LB.managerName() || '', LB.managerOptOut()) +
+        '<div class="iv-row" style="margin-top:.8rem"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
         '<div class="iv-status" id="ivi-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>';
+      wireShareFields(s, 'ivm');
       $('#ivi-no', s).onclick = function () { closeSheet(); };
       $('#ivi-join', s).onclick = function () {
+        var pf = readShareFields(s, 'ivm');
+        if (!pf.ok) { $('#ivi-msg', s).textContent = pf.error; return; }
+        LB.saveManagerDefaults(pf.managerName, !pf.share);
         Core.setDisplayName($('#ivi-name', s).value);
         $('#ivi-msg', s).textContent = 'Joining…';
-        LB.register(true).then(function () { return LB.joinLeague(code); }).then(function (j) {
+        LB.register(true).then(function () { return LB.joinLeague(code, pf); }).then(function (j) {
           if (!j.ok) { $('#ivi-msg', s).textContent = leagueError(j.error); return; }
+          LB.myLeagues().then(function () { LB.pushStats(0); });
           try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
           openLeague(j.league.leagueId);
         });
@@ -1898,6 +2058,7 @@ IV.find = function (id) {
   IV._calClicks = function () { return calClicks.slice(); };
 
   if (global.IntrvlSync) global.IntrvlSync.autoSync();
+  if (LB.isConfigured()) setTimeout(function () { LB.pushStats(); }, 5000);
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function openHistory(gameId) {
     var g = IV.find(gameId) || IV.GAMES[0];
