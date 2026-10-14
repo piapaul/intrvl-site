@@ -1,0 +1,1367 @@
+window.IV = window.IV || {};
+IV.CONFIG = {
+  assets: 'https://piapaul.github.io/intrvl-site',   // where icons are published (GitHub Pages)
+  endpoint: 'https://script.google.com/macros/s/AKfycbzXoNJxCfMtJNiAVGXf2qmVcTccOZ4IRN5Jcs292Q1iTKw-NHIE4Wkuqllez0fTZXg7xg/exec',
+  secret: '1m8L5MqViDvQhKj'
+};
+window.IV = window.IV || {};
+IV.SECTIONS = {
+  home:  { title: 'intrvl',  icon: '🎼', url: '/intrvl',       blurb: 'Daily music games and practice tools' },
+  games: { title: 'Games',   icon: '🎮', url: '/intrvl-games', blurb: 'One short challenge a day — build your streak' },
+  tools: { title: 'Tools',   icon: '🧰', url: '/intrvl-tools', blurb: 'Practice tools for every musician' }
+};
+IV.GAMES = [
+  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' },
+  { id: 'note-easy',  name: 'Note Sprint (Easy)',    icon: '🎵', accent: '#bfae94', url: '/intrvl-notes-easy',  blurb: 'Treble and bass clef, natural notes only' },
+  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
+  { id: 'clef-easy',  name: 'Clef Sprint (Easy)',    icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs-easy',  blurb: 'Just treble and bass, with sharps and flats' },
+  { id: 'keysig',     name: 'Key Signature Sprint',  icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs',     blurb: '30 seconds: name the key from its signature' },
+  { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats' },
+  { id: 'interval',   name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',   blurb: 'Name the interval you hear' },
+  { id: 'enharmonic', name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',  blurb: '30 seconds: find the enharmonic twin' },
+  { id: 'pitch',      name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',         blurb: 'Which pitch is higher, which is lower?' },
+  { id: 'seventh',    name: '7th Heaven',            icon: '🎹', accent: '#9db0a8', url: '/intrvl-heaven',      blurb: 'Hear the quality of a 7th chord' },
+  { id: 'spelling',   name: 'Chord Spelling Bee',    icon: '🐝', accent: '#c79aa0', url: '/intrvl-spelling',    blurb: '30 seconds: spell the chord correctly' },
+  { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',    icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy', blurb: 'Tap the rhythm with the metronome running' },
+  { id: 'rhythm',     name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',      blurb: 'Tap the rhythm, then keep time on your own' }
+];
+IV.TOOLS = [
+  { id: 'metronome',    name: 'Metronome',          icon: '⏱️', accent: '#c2a687', url: '/intrvl-metronome',        blurb: 'Tempo, time signatures and tap tempo' },
+  { id: 'tuner',        name: 'Tuner',              icon: '🎸', accent: '#9db0a8', url: '/intrvl-tuner',            blurb: 'Tune with your microphone or by ear' },
+  { id: 'note-spinner', name: 'Note Spinner',       icon: '🎡', accent: '#b0a3c7', url: '/intrvl-note-spinner',     blurb: 'Spin for an expressive word to play with' },
+  { id: 'circle',       name: 'Circle of Fifths',   icon: '🕛', accent: '#8eaab5', url: '/intrvl-circle-of-fifths', blurb: 'Every key, scale and key signature' },
+  { id: 'modes',        name: 'Modes Buster',       icon: '🌗', accent: '#c9a0b8', url: '/intrvl-modes',            blurb: 'See how the modes really work' },
+  { id: 'transpose',    name: 'Transposer',         icon: '🎷', accent: '#b9ae8a', url: '/intrvl-transpose',        blurb: 'Concert pitch and transposing instruments' },
+  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' },
+  { id: 'practice',     name: 'Practice Log',       icon: '📒', accent: '#D9A5B3', url: '/intrvl-practice',         blurb: 'Time your practice and send it to your teacher' }
+];
+IV.find = function (id) {
+  var all = IV.GAMES.concat(IV.TOOLS);
+  for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
+  return null;
+};
+(function (global) {
+  'use strict';
+  var CFG = global.INTRVL_CONFIG || {};
+  var GAME_ID = CFG.gameId || CFG.id || 'unknown';
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — carry on */ } }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+  function getDailySeed() {
+    var today = new Date();
+    var dateString = today.getFullYear() + '-' + today.getMonth() + '-' + today.getDate();
+    var hash = 0;
+    for (var i = 0; i < dateString.length; i++) hash = (Math.imul(31, hash) + dateString.charCodeAt(i)) | 0;
+    return hash;
+  }
+  function mulberry32(a) {
+    return function () {
+      var t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function todayStr() { return new Date().toDateString(); }
+  function pad2(n) { return String(n).length < 2 ? '0' + n : String(n); }
+  function dailySeedDate(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function statsKey(id) { return 'intrvl.' + id + '.stats.v1'; }
+  function defaultStats(id) {
+    return { gameId: id, totalPlayed: 0, totalCorrect: 0, currentStreak: 0, bestStreak: 0, lastPlayedDate: null, dailyBest: null, highScorePractice: 0 };
+  }
+  function migrateLegacyStats() {
+    var keys = CFG.legacyStatsKeys || [];
+    for (var i = 0; i < keys.length; i++) {
+      var raw = lsGet(keys[i]);
+      if (!raw) continue;
+      try {
+        var legacy = JSON.parse(raw);
+        var m = defaultStats(GAME_ID);
+        m.currentStreak = legacy.streak || 0;
+        m.bestStreak = legacy.streak || 0;
+        m.lastPlayedDate = legacy.lastCompleted || null;
+        m.totalPlayed = legacy.totalPlayed || 0;
+        m.totalCorrect = legacy.totalCorrect || 0;
+        m.highScorePractice = legacy.highScorePractice || 0;
+        if (legacy.highScoreDaily) m.dailyBest = { date: legacy.lastCompleted, score: legacy.highScoreDaily };
+        return m;
+      } catch (e) { /* ignore malformed legacy data */ }
+    }
+    return null;
+  }
+  function applyLapse(stats) {
+    var y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (stats.lastPlayedDate !== todayStr() && stats.lastPlayedDate !== y.toDateString()) stats.currentStreak = 0;
+    return stats;
+  }
+  function statsFor(id) {
+    var stats = null;
+    try { stats = JSON.parse(lsGet(statsKey(id)) || 'null'); } catch (e) { stats = null; }
+    return applyLapse(stats || defaultStats(id));
+  }
+  function playedToday(id) { return statsFor(id).lastPlayedDate === todayStr(); }
+  function loadStats() {
+    var raw = lsGet(statsKey(GAME_ID));
+    var stats = null;
+    if (raw) { try { stats = JSON.parse(raw); } catch (e) { stats = null; } }
+    if (!stats) { stats = migrateLegacyStats() || defaultStats(GAME_ID); saveStats(stats); }
+    return applyLapse(stats);
+  }
+  function saveStats(stats) { lsSet(statsKey(GAME_ID), JSON.stringify(stats)); }
+  function recordCompletion(stats, correctCount, totalCount) {
+    stats.totalPlayed += totalCount;
+    stats.totalCorrect += correctCount;
+    if (stats.lastPlayedDate !== todayStr()) {
+      stats.currentStreak += 1;
+      stats.bestStreak = Math.max(stats.bestStreak, stats.currentStreak);
+      stats.lastPlayedDate = todayStr();
+    }
+    saveStats(stats);
+    return stats;
+  }
+  function loadDailyBlocks() {
+    try { return JSON.parse(lsGet('intrvl.' + GAME_ID + '.blocks.v1') || '{}'); } catch (e) { return {}; }
+  }
+  function saveDailyBlock(results) {
+    var blocks = loadDailyBlocks();
+    blocks[dailySeedDate()] = results.map(function (r) { return r ? '✅' : '❌'; }).join('');
+    lsSet('intrvl.' + GAME_ID + '.blocks.v1', JSON.stringify(blocks));
+  }
+  function getHistoryFor(id) {
+    try { return JSON.parse(lsGet('intrvl.' + id + '.history.v1') || '{}'); } catch (e) { return {}; }
+  }
+  function getHistory() { return getHistoryFor(GAME_ID); }
+  function recordDailyResult(score) {
+    var h = getHistory();
+    h[dailySeedDate()] = score;
+    lsSet('intrvl.' + GAME_ID + '.history.v1', JSON.stringify(h));
+  }
+
+  // ---- progress tracking ------------------------------------------------------------------------
+  // Every answer is remembered against a short label (e.g. "Minor 7th", "Treble", "Cmaj7") so the Progress
+  // screen can show which topics need the most work.  Stored per game as { label: { a: answered, c: correct,
+  // r: last 12 results as 1/0, d: date last seen } }.
+  function itemsKey(id) { return 'intrvl.' + id + '.items.v1'; }
+  function getItemsFor(id) {
+    try { var o = JSON.parse(lsGet(itemsKey(id)) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; }
+  }
+  function recordItem(id, label, correct) {
+    label = String(label == null ? '' : label).replace(/[<>]/g, '').trim().slice(0, 40);
+    if (!id || !label) return;
+    var all = getItemsFor(id), it = all[label] || { a: 0, c: 0, r: '', d: '' };
+    it.a += 1;
+    if (correct) it.c += 1;
+    it.r = (it.r + (correct ? '1' : '0')).slice(-12);
+    it.d = dailySeedDate();
+    all[label] = it;
+    lsSet(itemsKey(id), JSON.stringify(all));
+  }
+  function recentAccuracy(it) {
+    var r = it.r || '';
+    return r ? (r.split('1').length - 1) / r.length : (it.a ? it.c / it.a : 0);
+  }
+  function rankedItems(minAnswers) {
+    var out = [], games = (global.IV && global.IV.GAMES) || [];
+    games.forEach(function (g) {
+      var items = getItemsFor(g.id);
+      Object.keys(items).forEach(function (label) {
+        var it = items[label];
+        if (!it || it.a < minAnswers) return;
+        out.push({ game: g, label: label, answered: it.a, correct: it.c, recent: recentAccuracy(it), recentN: (it.r || '').length || it.a, overall: it.c / it.a });
+      });
+    });
+    return out;
+  }
+  // topics you get wrong most often lately (needs 3+ answers so one slip doesn't count)
+  function weakSpots(limit) {
+    return rankedItems(3).filter(function (x) { return x.recent < 0.85; })
+      .sort(function (a, b) { return a.recent - b.recent || b.answered - a.answered; }).slice(0, limit || 5);
+  }
+  // "Practise my weak spots": the labels a game should lean towards in its next practice round.
+  var focusNext = false;
+  function weakLabelsFor(id, limit) {
+    var items = getItemsFor(id), out = [];
+    Object.keys(items).forEach(function (k) {
+      var it = items[k];
+      if (it && it.a >= 3 && recentAccuracy(it) < 0.85) out.push({ label: k, recent: recentAccuracy(it), a: it.a });
+    });
+    out.sort(function (a, b) { return a.recent - b.recent || b.a - a.a; });
+    return out.slice(0, limit || 6).map(function (x) { return x.label; });
+  }
+  function requestFocus() { focusNext = true; }
+  // Called once by a game when it builds a round. Returns the weak labels if weak-spot practice was asked for
+  // (and shows a note saying so), otherwise an empty list.
+  function takeFocus(id) {
+    var note = document.getElementById('iv-focus-note');
+    if (note) note.remove();
+    if (!focusNext) return [];
+    focusNext = false;
+    var labels = weakLabelsFor(id, 6);
+    var screen = document.getElementById('screen-game');
+    if (labels.length && screen) {
+      note = document.createElement('div');
+      note.id = 'iv-focus-note'; note.className = 'iv-focus-note';
+      note.textContent = '🎯 Focusing on your weak spots: ' + labels.join(', ');
+      screen.insertBefore(note, screen.firstChild);
+    }
+    return labels;
+  }
+  function strongSpots(limit) {
+    return rankedItems(5).filter(function (x) { return x.recent >= 0.9; })
+      .sort(function (a, b) { return b.answered - a.answered; }).slice(0, limit || 3);
+  }
+  function addDays(dateStr, n) {
+    var d = new Date(dateStr + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return dailySeedDate(d);
+  }
+  // date -> how many of the daily games were completed that day
+  function allPlayedDates() {
+    var set = {}, games = (global.IV && global.IV.GAMES) || [];
+    games.forEach(function (g) {
+      var h = getHistoryFor(g.id);
+      Object.keys(h).forEach(function (d) { set[d] = (set[d] || 0) + 1; });
+    });
+    return set;
+  }
+  // days in a row on which at least one daily game was finished (today not played yet doesn't break it)
+  function practiceStreak() {
+    var set = allPlayedDates(), today = dailySeedDate(), d = set[today] ? today : addDays(today, -1), n = 0;
+    while (set[d]) { n += 1; d = addDays(d, -1); }
+    return n;
+  }
+
+  // ---- back up / move progress ------------------------------------------------------------------
+  // The website and the installed app are different addresses, so each keeps its own progress.  This turns
+  // everything into one block of text that can be pasted into the other.
+  var BACKUP_PREFIX = 'INTRVL1:';
+  function exportProgress() {
+    var data = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('intrvl.') === 0 && k.indexOf('intrvl.board.') !== 0 && k !== 'intrvl.reg') data[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* storage blocked */ }
+    return BACKUP_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  }
+  function importProgress(text) {
+    text = String(text || '').trim();
+    if (text.indexOf(BACKUP_PREFIX) !== 0) return { ok: false, error: 'That doesn’t look like an intrvl backup.' };
+    var data;
+    try { data = JSON.parse(decodeURIComponent(escape(atob(text.slice(BACKUP_PREFIX.length))))); } catch (e) { return { ok: false, error: 'That backup couldn’t be read — check you copied all of it.' }; }
+    if (!data || typeof data !== 'object') return { ok: false, error: 'That backup couldn’t be read.' };
+    var keys = Object.keys(data), n = 0;
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf('intrvl.') !== 0 || typeof data[keys[i]] !== 'string' || data[keys[i]].length > 200000) return { ok: false, error: 'That backup contains something unexpected, so it was not used.' };
+    }
+    keys.forEach(function (k) { lsSet(k, data[k]); n++; });
+    lsDel('intrvl.reg');   // re-register this player with the leaderboard on next visit
+    return { ok: true, count: n };
+  }
+
+  // ---- accessibility helpers --------------------------------------------------------------------
+  function reducedMotion() {
+    try { return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+  }
+  // Says something to screen-reader users without moving focus ("Correct", "Time's up", ...).
+  function announce(msg) {
+    var el = document.getElementById('iv-live');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'iv-live'; el.className = 'iv-sr';
+      el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); el.setAttribute('aria-atomic', 'true');
+      document.body.appendChild(el);
+    }
+    el.textContent = '';
+    setTimeout(function () { el.textContent = msg; }, 60);
+  }
+  // Puts keyboard focus back on a button after the game swaps questions (only if focus was already in the game).
+  function refocus(el) {
+    if (typeof el === 'string') el = document.getElementById(el);
+    if (!el || el.disabled) return;
+    var a = document.activeElement, area = document.getElementById('intrvl-game-area');
+    if (!a || a === document.body || (area && area.contains(a))) { try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  // The little "wrong answer" wobble - skipped for people who've asked their device for less motion.
+  function shake(el) {
+    if (!el || reducedMotion()) return;
+    el.style.transform = 'translateX(5px)';
+    setTimeout(function () { el.style.transform = 'translateX(-5px)'; }, 50);
+    setTimeout(function () { el.style.transform = 'translateX(5px)'; }, 100);
+    setTimeout(function () { el.style.transform = 'translateX(0)'; }, 150);
+  }
+  function getDeviceId() {
+    var id = lsGet('intrvl.deviceId');
+    if (!id) {
+      id = (global.crypto && global.crypto.randomUUID) ? global.crypto.randomUUID() : ('id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+      lsSet('intrvl.deviceId', id);
+    }
+    return id;
+  }
+  var CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L — easy to read aloud
+  function generateCode(length) {
+    length = length || 6;
+    var bytes = new Uint8Array(length);
+    if (global.crypto && global.crypto.getRandomValues) global.crypto.getRandomValues(bytes);
+    else for (var i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    var c = '';
+    for (var j = 0; j < length; j++) c += CODE_ALPHABET[bytes[j] % CODE_ALPHABET.length];
+    return c;
+  }
+  function getPlayerCode() {
+    var code = lsGet('intrvl.playerCode');
+    if (!code) { code = generateCode(6); lsSet('intrvl.playerCode', code); }
+    return code;
+  }
+  function regeneratePlayerCode() { var c = generateCode(6); lsSet('intrvl.playerCode', c); return c; }
+  function isNameSet() { return !!lsGet('intrvl.displayName'); }
+  function getDisplayName() {
+    return lsGet('intrvl.displayName') || ('Player ' + getPlayerCode().slice(0, 3));
+  }
+  function setDisplayName(name) {
+    var t = String(name || '').replace(/[<>]/g, '').trim().slice(0, 24);
+    if (!t) { lsDel('intrvl.displayName'); return getDisplayName(); }
+    lsSet('intrvl.displayName', t);
+    return t;
+  }
+  var AVATARS = ['🎹', '🎸', '🥁', '🎺', '🎻', '🎷', '😀', '🦊', '🐱', '🐶', '🦁', '🐼'];
+  function getAvatar() { return lsGet('intrvl.avatar') || AVATARS[0]; }
+  function setAvatar(emoji) {
+    var c = String(emoji || '').replace(/[<>]/g, '').trim().slice(0, 16) || AVATARS[0];
+    lsSet('intrvl.avatar', c);
+    return c;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function darken(hex, f) {
+    var h = String(hex || '#A9B9A2').replace('#', '');
+    if (h.length === 3) h = h.replace(/(.)/g, '$1$1');
+    var n = parseInt(h, 16);
+    var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+    return '#' + [r, g, b].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+  }
+  function showScreen(showId, hideIds) {
+    var s = document.getElementById(showId);
+    if (s) s.classList.remove('hidden');
+    (hideIds || []).forEach(function (id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+  }
+  function confetti(canvasId) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas || reducedMotion()) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.opacity = 1;
+    var ctx = canvas.getContext('2d');
+    var cols = CFG.accentColors || ['#A9B9A2', '#566B50', '#bda569', '#b3a8c7'];
+    var conf = Array.from({ length: 120 }, function () {
+      return { x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height, r: Math.random() * 6 + 4, c: cols[Math.floor(Math.random() * cols.length)], v: Math.random() * 4 + 3 };
+    });
+    var f = 0;
+    (function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      conf.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, (p.y += p.v), p.r, 0, 2 * Math.PI); ctx.fillStyle = p.c; ctx.fill(); });
+      if (++f < 180) requestAnimationFrame(draw);
+      else { canvas.style.opacity = 0; setTimeout(function () { ctx.clearRect(0, 0, canvas.width, canvas.height); }, 1000); }
+    })();
+  }
+  function flashButton(btn, message) {
+    if (!btn) return;
+    var original = btn.textContent;
+    btn.textContent = message;
+    setTimeout(function () { btn.textContent = original; }, 3000);
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; });
+    return new Promise(function (resolve) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta); resolve(ok);
+    });
+  }
+  function share(text, buttonEl, title) {
+    copyText(text).then(function () {
+      if (navigator.share) {
+        navigator.share({ title: title || 'intrvl', text: text }).then(function () { flashButton(buttonEl, 'Shared! ✓'); }).catch(function () { /* cancelled — clipboard copy already happened */ });
+      } else {
+        flashButton(buttonEl, 'Copied to Clipboard! ✓');
+      }
+    });
+  }
+  global.IntrvlCore = {
+    AVATARS: AVATARS,
+    getDailySeed: getDailySeed, mulberry32: mulberry32,
+    todayStr: todayStr, dailySeedDate: dailySeedDate,
+    loadStats: loadStats, saveStats: saveStats, recordCompletion: recordCompletion,
+    statsFor: statsFor, playedToday: playedToday,
+    loadDailyBlocks: loadDailyBlocks, saveDailyBlock: saveDailyBlock,
+    getHistory: getHistory, getHistoryFor: getHistoryFor, recordDailyResult: recordDailyResult,
+    recordItem: recordItem, getItemsFor: getItemsFor, weakLabelsFor: weakLabelsFor, requestFocus: requestFocus, takeFocus: takeFocus, weakSpots: weakSpots, strongSpots: strongSpots,
+    allPlayedDates: allPlayedDates, practiceStreak: practiceStreak, addDays: addDays,
+    exportProgress: exportProgress, importProgress: importProgress,
+    announce: announce, shake: shake, refocus: refocus, reducedMotion: reducedMotion,
+    getDeviceId: getDeviceId, getPlayerCode: getPlayerCode, regeneratePlayerCode: regeneratePlayerCode,
+    isNameSet: isNameSet, getDisplayName: getDisplayName, setDisplayName: setDisplayName,
+    getAvatar: getAvatar, setAvatar: setAvatar,
+    esc: esc, darken: darken, copyText: copyText,
+    showScreen: showScreen, confetti: confetti, share: share,
+    lsGet: lsGet, lsSet: lsSet
+  };
+})(window);
+(function (global) {
+  'use strict';
+  var CFG = (global.IV && global.IV.CONFIG) || {};
+  var ENDPOINT = CFG.endpoint || '';
+  var SECRET = CFG.secret || '';
+  var FRIENDS_KEY = 'intrvl.friends';
+  var Core = global.IntrvlCore;
+  function isConfigured() { return !!ENDPOINT && ENDPOINT.indexOf('PASTE_') !== 0 && !!SECRET; }
+  var NOT_CONFIGURED = { ok: false, error: 'not configured' };
+  var NET_ERR = { ok: false, error: 'network error' };
+  function get(params) {
+    if (!isConfigured()) return Promise.resolve(NOT_CONFIGURED);
+    var qs = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    return fetch(ENDPOINT + '?' + qs).then(function (r) { return r.json(); }).catch(function () { return NET_ERR; });
+  }
+  function post(payload) {
+    if (!isConfigured()) return Promise.resolve(NOT_CONFIGURED);
+    payload.secret = SECRET;
+    return fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(payload) }).then(function (r) { return r.json(); }).catch(function () { return NET_ERR; });
+  }
+  function ping() { return get({ action: 'ping' }); }
+  var registered = null;
+  function regKey() { return [Core.getPlayerCode(), Core.getDisplayName(), Core.getAvatar(), Core.getDeviceId()].join('|'); }
+  function register(force) {
+    if (!force && Core.lsGet('intrvl.reg') === regKey()) return Promise.resolve({ ok: true, cached: true });
+    if (!force && registered) return registered;
+    function send() {
+      return post({ action: 'registerPlayer', code: Core.getPlayerCode(), deviceId: Core.getDeviceId(), displayName: Core.getDisplayName(), avatar: Core.getAvatar() });
+    }
+    registered = send().then(function (res) {
+      if (!res.ok && res.error === 'code taken') { Core.regeneratePlayerCode(); return send(); } // astronomically rare collision
+      return res;
+    }).then(function (res) {
+      if (res.ok) Core.lsSet('intrvl.reg', regKey());
+      registered = null;
+      return res;
+    });
+    return registered;
+  }
+  function resolveCode(code) { return get({ action: 'resolveCode', code: String(code || '').trim().toUpperCase() }); }
+  function getFriends() {
+    try { return JSON.parse(Core.lsGet(FRIENDS_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function setFriends(list) { Core.lsSet(FRIENDS_KEY, JSON.stringify(list)); return list; }
+  function addFriend(code) {
+    var clean = String(code || '').trim().toUpperCase();
+    if (!clean) return Promise.resolve({ ok: false, error: 'enter a code' });
+    if (clean === Core.getPlayerCode()) return Promise.resolve({ ok: false, error: "that's your own code" });
+    if (!isConfigured()) return Promise.resolve(NOT_CONFIGURED);
+    return register().then(function () {
+      return post({ action: 'addFriend', code: Core.getPlayerCode(), friendCode: clean });
+    }).then(function (res) {
+      if (res.ok) {
+        var list = getFriends();
+        if (list.indexOf(clean) === -1) list.push(clean);
+        setFriends(list);
+      }
+      return res;
+    });
+  }
+  function removeFriend(code) {
+    var clean = String(code || '').toUpperCase();
+    function dropLocal() { setFriends(getFriends().filter(function (c) { return c !== clean; })); }
+    if (!isConfigured()) { dropLocal(); return Promise.resolve({ ok: true }); }
+    return post({ action: 'removeFriend', code: Core.getPlayerCode(), friendCode: clean }).then(function (res) {
+      if (res.ok) dropLocal();
+      return res;
+    });
+  }
+  function syncFriends() {
+    if (!isConfigured()) return Promise.resolve({ ok: true, friends: getFriends() });
+    return register().then(function () { return get({ action: 'friendsOf', code: Core.getPlayerCode() }); }).then(function (res) {
+      if (!res.ok) return { ok: false, error: res.error, friends: getFriends() };
+      var merged = getFriends();
+      (res.friends || []).forEach(function (f) { if (merged.indexOf(f.code) === -1) merged.push(f.code); });
+      setFriends(merged);
+      return { ok: true, friends: merged };
+    });
+  }
+  function submitScore(opts) {
+    return register().then(function () {
+      return post({
+        gameId: opts.gameId, deviceId: Core.getDeviceId(), displayName: Core.getDisplayName(),
+        dailySeedDate: Core.dailySeedDate(), score: opts.score, streak: opts.streak
+      });
+    });
+  }
+  function cacheKey(gameId, date) { return 'intrvl.board.' + (gameId || 'all') + '.' + date; }
+  function cachedBoard(gameId, date) {
+    try { return JSON.parse(Core.lsGet(cacheKey(gameId, date || Core.dailySeedDate())) || 'null'); } catch (e) { return null; }
+  }
+  function fetchBoard(gameId, date) {
+    date = date || Core.dailySeedDate();
+    var p = { action: 'board', code: Core.getPlayerCode(), codes: getFriends().join(','), date: date };
+    if (gameId) p.gameId = gameId;
+    return get(p).then(function (res) {
+      if (res.ok) {
+        var merged = getFriends();
+        (res.friendCodes || []).forEach(function (c) { if (merged.indexOf(c) === -1) merged.push(c); });
+        setFriends(merged);
+        Core.lsSet(cacheKey(gameId, date), JSON.stringify(res));
+      }
+      return res;
+    });
+  }
+  function boardHtml(res, gameId) {
+    var me = Core.getPlayerCode();
+    var rows = (res.friends || []).map(function (f, i) {
+      var sc = gameId ? f.score : null;
+      var right = gameId ? (f.hasPlayed ? '<b>' + Core.esc(sc) + '</b>' : '<span class="iv-note">—</span>') : '<span class="iv-note">' + (f.playedCount || 0) + ' played</span>';
+      var rk = (gameId && f.hasPlayed) ? (i + 1) : '';
+      return '<div class="iv-boardrow' + (f.code === me ? ' me' : '') + '"><span class="rk">' + rk + '</span><span class="iv-grow">' + Core.esc(f.avatar || '') + ' ' + Core.esc(f.displayName) + (f.code === me ? ' (you)' : '') + '</span>' + right + '</div>';
+    });
+    return rows.join('');
+  }
+  // ---- friends leagues (all of these need the player to be registered first) ----
+  function leagueCall(payload) {
+    return register().then(function () {
+      payload.code = Core.getPlayerCode();
+      payload.deviceId = Core.getDeviceId();
+      return post(payload);
+    });
+  }
+  function createLeague(name) { return leagueCall({ action: 'createLeague', name: name }); }
+  function joinLeague(invite) { return leagueCall({ action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() }); }
+  function leaveLeague(id) { return leagueCall({ action: 'leaveLeague', leagueId: id }); }
+  function removeMember(id, memberCode) { return leagueCall({ action: 'removeMember', leagueId: id, memberCode: memberCode }); }
+  function renameLeague(id, name) { return leagueCall({ action: 'renameLeague', leagueId: id, name: name }); }
+  function resetInvite(id) { return leagueCall({ action: 'resetInvite', leagueId: id }); }
+  function deleteLeague(id) { return leagueCall({ action: 'deleteLeague', leagueId: id }); }
+  function myLeagues() {
+    return get({ action: 'myLeagues', code: Core.getPlayerCode() }).then(function (res) {
+      if (res.ok) Core.lsSet('intrvl.leagues.v1', JSON.stringify(res.leagues));
+      return res;
+    });
+  }
+  function cachedLeagues() { try { return JSON.parse(Core.lsGet('intrvl.leagues.v1') || 'null'); } catch (e) { return null; } }
+  function getLeague(id, week) {
+    var p = { action: 'league', code: Core.getPlayerCode(), leagueId: id };
+    if (week) p.week = week;
+    return get(p).then(function (res) {
+      if (res.ok && !week) Core.lsSet('intrvl.league.' + id, JSON.stringify(res));
+      return res;
+    });
+  }
+  function cachedLeague(id) { try { return JSON.parse(Core.lsGet('intrvl.league.' + id) || 'null'); } catch (e) { return null; } }
+  function invitePreview(invite) { return get({ action: 'invitePreview', invite: String(invite || '').trim().toUpperCase() }); }
+
+  var retryArmed = false;
+  function attachSubmitButton(opts) {
+    var host = document.getElementById('screen-done') || document.getElementById('intrvl-app');
+    if (!host) return;
+    var old = document.getElementById('iv-lb');
+    if (old) old.remove();
+    var box = document.createElement('div');
+    box.id = 'iv-lb';
+    box.style.cssText = 'margin-top:1.2rem;width:100%;max-width:320px;text-align:left;margin-left:auto;margin-right:auto';
+    host.appendChild(box);
+    if (!isConfigured()) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="iv-note iv-center">Sending your score…</div>';
+    var date = Core.dailySeedDate();
+    var sentKey = 'intrvl.sent.' + opts.gameId + '.' + date;
+    var send = Core.lsGet(sentKey) ? Promise.resolve({ ok: true }) : submitScore(opts).then(function (r) { if (r.ok) Core.lsSet(sentKey, '1'); return r; });
+    send.then(function (res) {
+      if (!res.ok) {
+        box.innerHTML = '<div class="iv-note iv-center">Couldn’t reach the leaderboard just now — your score is saved on this device. <button class="iv-linkbtn" id="iv-lb-retry">Try again</button></div>';
+        var rb = document.getElementById('iv-lb-retry');
+        if (rb) rb.onclick = function () { attachSubmitButton(opts); };
+        if (!retryArmed) {
+          retryArmed = true;
+          var again = function () { global.removeEventListener('online', again); retryArmed = false; if (document.getElementById('iv-lb')) attachSubmitButton(opts); };
+          global.addEventListener('online', again);
+        }
+        return;
+      }
+      fetchBoard(opts.gameId, date).then(function (board) {
+        if (!board.ok) { box.innerHTML = '<div class="iv-note iv-center">Score sent ✓</div>'; return; }
+        var many = (board.friends || []).length > 1;
+        box.innerHTML =
+          '<div class="iv-label iv-center">' + (many ? 'Today, among friends' : 'Score sent ✓') + '</div>' + boardHtml(board, opts.gameId) +
+          '<div class="iv-center" style="margin-top:.7rem"><button class="iv-btn ghost small" id="iv-lb-add">' + (many ? 'Manage friends' : 'Invite a friend to compare') + '</button></div>';
+        var ab = document.getElementById('iv-lb-add');
+        if (ab && global.IV && IV.openFriends) ab.onclick = function () { IV.openFriends(opts.gameId); };
+      });
+    });
+  }
+  global.IntrvlLeaderboard = {
+    isConfigured: isConfigured, ping: ping, register: register,
+    resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
+    createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
+    resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
+    submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
+  };
+})(window);
+(function (global) {
+  'use strict';
+  var IV = global.IV, Core = global.IntrvlCore, LB = global.IntrvlLeaderboard;
+  var CFG = global.INTRVL_CONFIG || {};
+  var KIND = CFG.kind || 'home';
+  var esc = Core.esc;
+  var STANDALONE = !!global.INTRVL_STANDALONE;     // true in the installable app, where pages are plain .html files
+  var EXT = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) ? '.html' : '';
+  IV.href = function (url) {
+    if (STANDALONE) return url === IV.SECTIONS.home.url ? 'index.html' : url.replace(/^\//, '') + '.html';
+    return url + EXT;
+  };
+  IV.fullUrl = function (url) { return STANDALONE ? new URL(IV.href(url), location.href).href : location.origin + IV.href(url); };
+  var app = document.getElementById('intrvl-app');
+  var item = (KIND === 'game' || KIND === 'tool') ? IV.find(CFG.id || CFG.gameId) : null;
+  var accent = item ? item.accent : (CFG.accent || '#A9B9A2');
+  if (app) {
+    app.style.setProperty('--intrvl-accent', accent);
+    app.style.setProperty('--intrvl-accent-dark', Core.darken(accent, 0.55));
+  }
+  function buildHeader() {
+    if (!app) return;
+    var S = IV.SECTIONS, crumbs = '', title, sub, icon;
+    var home = '<a href="' + IV.href(S.home.url) + '">intrvl</a>';
+    if (KIND === 'home') { title = S.home.title; sub = S.home.blurb; icon = S.home.icon; crumbs = ''; }
+    else if (KIND === 'games' || KIND === 'tools') {
+      var sec = S[KIND]; title = sec.title; sub = sec.blurb; icon = sec.icon;
+      crumbs = home + ' <span aria-hidden="true">›</span> <span aria-current="page">' + esc(sec.title) + '</span>';
+    } else if (item) {
+      var parent = KIND === 'game' ? S.games : S.tools;
+      title = item.name; sub = item.blurb; icon = item.icon;
+      crumbs = home + ' <span aria-hidden="true">›</span> <a href="' + IV.href(parent.url) + '">' + esc(parent.title) + '</a> <span aria-hidden="true">›</span> <span aria-current="page">' + esc(item.name) + '</span>';
+    } else { return; }
+    var html = '';
+    if (crumbs) html += '<nav class="iv-crumbs" aria-label="Breadcrumb">' + crumbs + '</nav>';
+    html += '<div class="iv-head"><div class="iv-badge" aria-hidden="true">' + icon + '</div><div><h1 class="iv-title">' + esc(title) + '</h1><div class="iv-sub">' + esc(sub) + '</div></div></div>';
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html;
+    while (wrap.lastChild) app.insertBefore(wrap.lastChild, app.firstChild);
+  }
+  // Sheets (Friends, You, Progress...) behave like proper dialogs: focus moves into them, Tab stays inside,
+  // Esc closes them, the page behind is switched off for screen readers, and focus goes back where it was.
+  var lastFocus = null;
+  function setBackgroundInert(on) {
+    ['intrvl-app', 'iv-tabbar'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+      else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+    });
+  }
+  function sheetKeys(e) {
+    var s = document.getElementById('iv-sheet');
+    if (!s) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeSheet(); return; }
+    if (e.key !== 'Tab') return;
+    var f = Array.prototype.filter.call(s.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])'), function (el) { return el.offsetParent !== null; });
+    if (!f.length) { e.preventDefault(); s.focus(); return; }
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === s)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  function closeSheet(keepFocus) {
+    var b = document.getElementById('iv-backdrop'), s = document.getElementById('iv-sheet');
+    var wasOpen = !!s;
+    if (b) b.remove();
+    if (s) s.remove();
+    document.removeEventListener('keydown', sheetKeys, true);
+    setBackgroundInert(false);
+    setTab(null);
+    if (wasOpen && keepFocus !== true && lastFocus && document.contains(lastFocus)) { try { lastFocus.focus(); } catch (e) { /* ignore */ } }
+    if (keepFocus !== true) lastFocus = null;
+  }
+  function openSheet(html, mount, tab) {
+    if (!document.getElementById('iv-sheet')) lastFocus = document.activeElement;
+    closeSheet(true);
+    var b = document.createElement('div'); b.id = 'iv-backdrop'; b.onclick = function () { closeSheet(); };
+    var s = document.createElement('div'); s.id = 'iv-sheet';
+    s.setAttribute('role', 'dialog'); s.setAttribute('aria-modal', 'true'); s.setAttribute('tabindex', '-1');
+    s.innerHTML = '<button class="x" aria-label="Close" title="Close"><span aria-hidden="true">✕</span></button>' + html;
+    var h = s.querySelector('h3');
+    if (h) { h.id = 'iv-sheet-title'; s.setAttribute('aria-labelledby', 'iv-sheet-title'); }
+    s.querySelector('.x').onclick = function () { closeSheet(); };
+    document.body.appendChild(b); document.body.appendChild(s);
+    setBackgroundInert(true);
+    document.addEventListener('keydown', sheetKeys, true);
+    if (tab) setTab(tab);
+    if (mount) mount(s);
+    try { s.focus({ preventScroll: true }); } catch (e) { s.focus(); }
+    return s;
+  }
+  IV.openSheet = openSheet; IV.closeSheet = closeSheet;
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  // "Friends | League" switch at the top of both sheets
+  function viewSwitch(on) {
+    return '<div class="iv-seg" id="iv-viewsw" role="group" aria-label="Friends or league" style="margin-bottom:1rem">' +
+      '<button type="button" data-v="friends" class="' + (on === 'friends' ? 'on' : '') + '" aria-pressed="' + (on === 'friends') + '">👥 Friends</button>' +
+      '<button type="button" data-v="league" class="' + (on === 'league' ? 'on' : '') + '" aria-pressed="' + (on === 'league') + '">🏆 League</button></div>';
+  }
+  function wireSwitch(s) {
+    var sw = s.querySelector('#iv-viewsw'); if (!sw) return;
+    sw.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.getAttribute('data-v') === 'league') openLeague(); else openFriends();
+    };
+  }
+  function openFriends(gameId) {
+    var gid = gameId || (KIND === 'game' ? (CFG.id || CFG.gameId) : IV.GAMES[0].id);
+    var inviteBase = IV.fullUrl(IV.SECTIONS.home.url);
+    var s = openSheet(
+      '<h3>Friends</h3>' + viewSwitch('friends') +
+      '<div class="iv-code"><div><div class="iv-label" style="margin:0">Your code</div><b>' + esc(Core.getPlayerCode()) + '</b></div>' +
+      '<div class="iv-row"><button class="iv-btn small ghost" id="ivf-copy">Copy code</button><button class="iv-btn small" id="ivf-link">Invite link</button></div></div>' +
+      '<div id="ivf-note" class="iv-status" role="status" aria-live="polite"></div>' +
+      '<label class="iv-label" for="ivf-code">Add a friend by code</label>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivf-code" maxlength="12" placeholder="e.g. 7K2P9Q" autocapitalize="characters" autocomplete="off"><button class="iv-btn small" id="ivf-add">Add</button></div>' +
+      '<div id="ivf-status" class="iv-status" role="status" aria-live="polite"></div>' +
+      '<div class="iv-label" id="ivf-lbl" style="margin-top:.6rem">Leaderboard · today</div>' +
+      '<div class="iv-chips" id="ivf-games" role="group" aria-labelledby="ivf-lbl" style="margin-bottom:.6rem"></div>' +
+      '<div id="ivf-board" aria-live="polite"><div class="iv-note">Loading…</div></div>',
+      null, 'friends');
+    wireSwitch(s);
+    var note = $('#ivf-note', s), status = $('#ivf-status', s), codeIn = $('#ivf-code', s);
+    function say(el, msg) { el.textContent = msg; }
+    $('#ivf-copy', s).onclick = function () { Core.copyText(Core.getPlayerCode()).then(function (ok) { say(note, ok ? 'Code copied ✓' : 'Copy failed — long-press the code instead'); }); };
+    $('#ivf-link', s).onclick = function () {
+      var link = inviteBase + '?add=' + Core.getPlayerCode();
+      Core.copyText(link).then(function (ok) { say(note, ok ? 'Invite link copied ✓ — send it to a friend' : link); });
+    };
+    var chips = $('#ivf-games', s);
+    chips.innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip' + (g.id === gid ? ' on' : '') + '" data-id="' + g.id + '" aria-pressed="' + (g.id === gid) + '">' + g.icon + ' ' + esc(g.name) + '</button>'; }).join('');
+    chips.onclick = function (e) {
+      var b = e.target.closest('.iv-chip'); if (!b) return;
+      gid = b.getAttribute('data-id');
+      Array.prototype.forEach.call(chips.children, function (c) { c.classList.toggle('on', c === b); c.setAttribute('aria-pressed', c === b ? 'true' : 'false'); });
+      drawBoard();
+    };
+    var boardEl = $('#ivf-board', s), loadId = 0;
+    function paintBoard(res) {
+      var html = LB.boardHtml(res, gid);
+      var friends = LB.getFriends();
+      html += friends.length ? '<div class="iv-note" style="margin-top:.7rem">Tap ✕ to remove a friend.</div>' : '<div class="iv-empty" style="margin-top:.5rem">No friends yet — share your code or invite link above.</div>';
+      boardEl.innerHTML = html;
+      Array.prototype.forEach.call(boardEl.querySelectorAll('.iv-boardrow'), function (row, i) {
+        var f = res.friends[i];
+        if (!f || f.code === Core.getPlayerCode()) return;
+        var x = document.createElement('button'); x.className = 'x2'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove ' + f.displayName);
+        x.onclick = function () {
+          if (!confirm('Remove ' + f.displayName + ' from your friends?')) return;
+          say(status, 'Removing…');
+          LB.removeFriend(f.code).then(function (r) { if (r.ok) { say(status, 'Removed.'); drawBoard(); } else say(status, 'Couldn’t remove right now — try again.'); });
+        };
+        row.appendChild(x);
+      });
+    }
+    function drawBoard() {
+      if (!LB.isConfigured()) { boardEl.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return; }
+      var my = ++loadId, cached = LB.cachedBoard(gid);
+      if (cached) { paintBoard(cached); boardEl.insertAdjacentHTML('afterbegin', '<div class="iv-note" id="ivf-upd" style="margin-bottom:.4rem">Updating…</div>'); }
+      else boardEl.innerHTML = '<div class="iv-note">Loading… the first load can take a few seconds.</div>';
+      LB.fetchBoard(gid).then(function (res) {
+        if (my !== loadId) return;               // a newer request replaced this one
+        if (!res.ok) {
+          if (!cached) boardEl.innerHTML = '<div class="iv-empty">Couldn’t load the board (' + esc(res.error || 'error') + '). Check your connection and try again.</div>';
+          else { var u = $('#ivf-upd', s); if (u) u.textContent = 'Couldn’t update — showing the last board.'; }
+          return;
+        }
+        paintBoard(res);
+      });
+    }
+    function addByCode(code) {
+      code = String(code || '').trim().toUpperCase();
+      if (!code) { say(status, 'Type a friend’s code first.'); return; }
+      if (!LB.isConfigured()) { say(status, 'Friends aren’t switched on yet.'); return; }
+      say(status, 'Adding ' + code + '… this can take a few seconds.');
+      LB.addFriend(code).then(function (a) {
+        if (a.ok) { say(status, 'Added ' + ((a.friend && a.friend.displayName) || code) + ' ✓ — you’re now friends both ways.'); codeIn.value = ''; drawBoard(); }
+        else say(status, a.error === 'code not found' ? 'No player has that code — check it and try again.' : a.error === 'network error' ? 'Couldn’t reach the leaderboard — try again.' : (a.error || 'Couldn’t add that friend.'));
+      });
+    }
+    $('#ivf-add', s).onclick = function () { addByCode(codeIn.value); };
+    codeIn.onkeydown = function (e) { if (e.key === 'Enter') addByCode(codeIn.value); };
+    if (LB.isConfigured()) LB.register();
+    drawBoard();
+    return s;
+  }
+  IV.openFriends = openFriends;
+
+  // ---- friends league -----------------------------------------------------------------------------
+  var LEAGUE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function shortDate(ds) { var d = new Date(ds + 'T12:00:00'); return d.getDate() + ' ' + LEAGUE_MONTHS[d.getMonth()]; }
+  function leagueError(err) {
+    if (err === 'network error') return 'Couldn’t reach the leaderboard — check your connection and try again.';
+    if (err === 'not configured') return 'The friends leaderboard isn’t switched on yet.';
+    return err || 'Something went wrong — try again.';
+  }
+  function inviteLink(code) { return IV.fullUrl(IV.SECTIONS.home.url) + '?league=' + code; }
+
+  function openLeague(preferId, opts) {
+    opts = opts || {};
+    var s = openSheet('<h3>Friends League</h3>' + viewSwitch('league') + '<div id="ivl-body" aria-live="polite"><div class="iv-note">Loading…</div></div>', null, 'friends');
+    wireSwitch(s);
+    var body = $('#ivl-body', s), weekOffset = 0;
+    function say(msg) { var el = $('#ivl-msg', s); if (el) el.textContent = msg; }
+    if (!LB.isConfigured()) { body.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return s; }
+    LB.register();
+
+    // ---- all my leagues / create / join
+    function showList(leagues) {
+      var html = '';
+      if (leagues.length) {
+        html += '<div class="iv-label">Your leagues</div><div class="iv-list" style="margin-bottom:1.1rem">' + leagues.map(function (l) {
+          return '<button type="button" class="iv-item" data-id="' + esc(l.leagueId) + '" style="text-align:left;cursor:pointer;width:100%;font:inherit"><div class="iv-grow"><div class="iv-item-name">' + esc(l.name) + '</div><div class="iv-item-blurb">' + l.members + ' member' + (l.members === 1 ? '' : 's') + (l.role === 'owner' ? ' · you run this one' : (l.ownerName ? ' · run by ' + esc(l.ownerName) : '')) + '</div></div><span class="iv-chev" aria-hidden="true">›</span></button>';
+        }).join('') + '</div>';
+      } else {
+        html += '<p class="iv-note" style="margin-bottom:1rem">A league is a small group — a class, a family, a band — that competes for points each week from the daily games. Start one and send the invite link, or join one with a code.</p>';
+      }
+      html += '<label class="iv-label" for="ivl-new">Start a league</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivl-new" maxlength="30" placeholder="e.g. Thursday piano group" autocomplete="off"><button type="button" class="iv-btn small" id="ivl-create">Create</button></div>' +
+        '<label class="iv-label" for="ivl-join" style="margin-top:.8rem">Join with an invite code or link</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
+        '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite"></div>' + privacyNote();
+      body.innerHTML = html;
+      Array.prototype.forEach.call(body.querySelectorAll('[data-id]'), function (b) { b.onclick = function () { showLeague(b.getAttribute('data-id')); }; });
+      $('#ivl-create', s).onclick = function () {
+        var name = $('#ivl-new', s).value.trim();
+        if (!name) { say('Give your league a name first.'); return; }
+        say('Creating…');
+        LB.createLeague(name).then(function (r) {
+          if (!r.ok) { say(leagueError(r.error)); return; }
+          showLeague(r.league.leagueId, true);
+        });
+      };
+      $('#ivl-joinbtn', s).onclick = function () {
+        var raw = $('#ivl-join', s).value, m = /[?&]league=([A-Za-z0-9]+)/.exec(raw), code = (m ? m[1] : raw).trim();
+        if (!code) { say('Paste an invite code or link first.'); return; }
+        say('Joining…');
+        LB.joinLeague(code).then(function (r) {
+          if (!r.ok) { say(r.error === 'invite not found' ? 'That invite doesn’t work — ask for a fresh link.' : leagueError(r.error)); return; }
+          showLeague(r.league.leagueId);
+        });
+      };
+    }
+    function privacyNote() {
+      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. Nothing else is shared.</p>';
+    }
+
+    // ---- one league
+    function showLeague(id, justCreated) {
+      body.innerHTML = '<div class="iv-note">Loading…</div>';
+      var week = null;
+      if (weekOffset) { var base = new Date(); base.setDate(base.getDate() + weekOffset * 7); week = Core.dailySeedDate(base); }
+      LB.getLeague(id, week).then(function (r) {
+        if (!r.ok) {
+          var cached = !week && LB.cachedLeague(id);
+          if (cached) { draw(cached, true); return; }
+          body.innerHTML = '<div class="iv-empty">' + esc(r.error === 'you are not in this league' ? 'You’re no longer in this league.' : leagueError(r.error)) + '</div><p style="margin-top:.8rem"><button type="button" class="iv-btn small ghost" id="ivl-back">All leagues</button></p>';
+          $('#ivl-back', s).onclick = loadList;
+          return;
+        }
+        draw(r, false);
+      });
+      function draw(r, stale) {
+        var L = r.league, me = Core.getPlayerCode(), owner = L.role === 'owner';
+        var rows = r.members.map(function (m) {
+          return '<tr class="' + (m.code === me ? 'me' : '') + '"><td class="rk">' + m.rank + '</td><td>' + esc(m.avatar || '') + ' ' + esc(m.displayName) + (m.code === me ? ' <span class="iv-note">(you)</span>' : '') + (m.role === 'owner' ? ' <span class="iv-note" title="Runs the league">★</span>' : '') + '</td><td class="num">' + m.played + '</td><td class="num"><b>' + m.points + '</b></td></tr>';
+        }).join('');
+        var html = '<p style="margin:0 0 .6rem"><button type="button" class="iv-linkbtn" id="ivl-back">‹ All leagues</button></p>' +
+          '<h4 class="iv-h2" style="margin:.2rem 0 .1rem" id="ivl-title">' + esc(L.name) + '</h4>' +
+          '<div class="iv-row between" style="margin-bottom:.5rem"><button type="button" class="iv-iconbtn" id="ivl-prev" aria-label="Previous week">‹</button><b>' + shortDate(r.week) + ' – ' + shortDate(r.weekEnd) + (weekOffset === 0 ? ' (this week)' : '') + '</b><button type="button" class="iv-iconbtn" id="ivl-next" aria-label="Next week"' + (weekOffset >= 0 ? ' disabled' : '') + '>›</button></div>' +
+          (stale ? '<div class="iv-note" style="margin-bottom:.4rem">Couldn’t update — showing the last table you saw.</div>' : '') +
+          '<table class="iv-table"><caption class="iv-sr">League table for the week</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Games</th><th scope="col" class="num">Points</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+          (r.lastWeekWinner && weekOffset === 0 ? '<p class="iv-note" style="margin-top:.6rem">Last week’s winner: ' + esc(r.lastWeekWinner.avatar || '') + ' <b>' + esc(r.lastWeekWinner.displayName) + '</b> with ' + r.lastWeekWinner.points + ' points 🏆</p>' : '') +
+          '<details class="iv-details" style="margin-top:.8rem"><summary>How points work</summary><p class="iv-note">Each finished daily game earns <b>1 point</b>. The best score of the day in that game earns <b>+2</b>, second best <b>+1</b> (ties share). The table runs Monday to Sunday, then starts again.</p></details>';
+        if (owner) {
+          var link = inviteLink(L.inviteCode);
+          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>Manage this league</summary>' +
+            '<div class="iv-label">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
+            '<div class="iv-row" style="margin:.2rem 0 .8rem"><button type="button" class="iv-btn small ghost" id="ivl-share">Share link…</button><button type="button" class="iv-btn small ghost" id="ivl-reset">Make a new link</button></div>' +
+            '<label class="iv-label" for="ivl-rename">League name</label><div class="iv-addrow"><input class="iv-input" id="ivl-rename" maxlength="30" value="' + esc(L.name) + '"><button type="button" class="iv-btn small" id="ivl-rensave">Save</button></div>' +
+            '<div class="iv-label" style="margin-top:.8rem">Members</div><div id="ivl-members">' + r.members.map(function (m) {
+              return '<div class="iv-boardrow"><span class="iv-grow">' + esc(m.avatar || '') + ' ' + esc(m.displayName) + (m.role === 'owner' ? ' (you, owner)' : '') + '</span>' + (m.role === 'owner' ? '' : '<button type="button" class="iv-btn small ghost" data-rm="' + esc(m.code) + '" data-name="' + esc(m.displayName) + '" aria-label="Remove ' + esc(m.displayName) + ' from the league">Remove</button>') + '</div>';
+            }).join('') + '</div>' +
+            '<div style="margin-top:1rem"><button type="button" class="iv-btn small danger" id="ivl-delete">Delete this league</button></div></details>';
+        } else {
+          html += '<div style="margin-top:1rem"><button type="button" class="iv-btn small ghost" id="ivl-leave">Leave this league</button></div>';
+        }
+        html += '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>' + privacyNote();
+        body.innerHTML = html;
+        $('#ivl-back', s).onclick = loadList;
+        $('#ivl-prev', s).onclick = function () { weekOffset--; showLeague(id); };
+        $('#ivl-next', s).onclick = function () { if (weekOffset < 0) { weekOffset++; showLeague(id); } };
+        if (owner) {
+          $('#ivl-copy', s).onclick = function () { Core.copyText(inviteLink(L.inviteCode)).then(function (ok) { say(ok ? 'Invite link copied ✓ — send it to your group.' : 'Couldn’t copy automatically — select the link and copy it.'); }); };
+          $('#ivl-share', s).onclick = function () {
+            var text = 'Join my intrvl league “' + L.name + '” — a little weekly music-game competition:';
+            if (navigator.share) navigator.share({ title: 'Join my intrvl league', text: text, url: inviteLink(L.inviteCode) }).catch(function () { /* cancelled */ });
+            else Core.copyText(text + ' ' + inviteLink(L.inviteCode)).then(function () { say('Sharing isn’t available here, so the message was copied ✓'); });
+          };
+          $('#ivl-reset', s).onclick = function () {
+            if (!confirm('Make a new invite link? The old link will stop working (people already in the league stay in).')) return;
+            LB.resetInvite(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+          };
+          $('#ivl-rensave', s).onclick = function () {
+            var n = $('#ivl-rename', s).value.trim(); if (!n) { say('A league needs a name.'); return; }
+            LB.renameLeague(id, n).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+          };
+          Array.prototype.forEach.call(body.querySelectorAll('[data-rm]'), function (b) {
+            b.onclick = function () {
+              if (!confirm('Remove ' + b.getAttribute('data-name') + ' from the league?')) return;
+              LB.removeMember(id, b.getAttribute('data-rm')).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+            };
+          });
+          $('#ivl-delete', s).onclick = function () {
+            if (!confirm('Delete “' + L.name + '” for everyone? This can’t be undone.')) return;
+            LB.deleteLeague(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } loadList(); });
+          };
+        } else {
+          $('#ivl-leave', s).onclick = function () {
+            if (!confirm('Leave “' + L.name + '”?')) return;
+            LB.leaveLeague(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } loadList(); });
+          };
+        }
+      }
+    }
+
+    function loadList() {
+      weekOffset = 0;
+      body.innerHTML = '<div class="iv-note">Loading…</div>';
+      LB.myLeagues().then(function (r) {
+        if (!r.ok) {
+          var cached = LB.cachedLeagues();
+          if (cached) { showList(cached); return; }
+          body.innerHTML = '<div class="iv-empty">' + esc(leagueError(r.error)) + '</div>';
+          return;
+        }
+        if (r.leagues.length === 1 && !opts.showList) showLeague(r.leagues[0].leagueId); else showList(r.leagues);
+        opts.showList = true;
+      });
+    }
+    if (preferId) showLeague(preferId); else loadList();
+    return s;
+  }
+  IV.openLeague = openLeague;
+
+  // Invite link: ?league=CODE -> "Join this league?" with a quick chance to set your name
+  function openLeagueInvite(code) {
+    var s = openSheet('<h3>You’re invited</h3><div id="ivi-body" aria-live="polite"><div class="iv-note">Checking the invite…</div></div>', null, 'friends');
+    var body = $('#ivi-body', s);
+    if (!LB.isConfigured()) { body.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return; }
+    LB.invitePreview(code).then(function (r) {
+      if (!r.ok) { body.innerHTML = '<div class="iv-empty">This invite link doesn’t work any more. Ask the person who sent it for a new one.</div>'; return; }
+      body.innerHTML = '<p style="margin-bottom:.8rem"><b>' + esc(r.ownerName) + '</b> has invited you to join <b>' + esc(r.name) + '</b> (' + r.members + ' member' + (r.members === 1 ? '' : 's') + '), a weekly music-game league.</p>' +
+        '<label class="iv-label" for="ivi-name">Your name in the league</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivi-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"></div>' +
+        '<p class="iv-note" style="margin:.2rem 0 .8rem">Members can see each other’s name, avatar and daily scores.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
+        '<div class="iv-status" id="ivi-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>';
+      $('#ivi-no', s).onclick = function () { closeSheet(); };
+      $('#ivi-join', s).onclick = function () {
+        Core.setDisplayName($('#ivi-name', s).value);
+        $('#ivi-msg', s).textContent = 'Joining…';
+        LB.register(true).then(function () { return LB.joinLeague(code); }).then(function (j) {
+          if (!j.ok) { $('#ivi-msg', s).textContent = leagueError(j.error); return; }
+          try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+          openLeague(j.league.leagueId);
+        });
+      };
+    });
+  }
+
+  // The League card on the home page
+  IV.renderLeagueCard = function (el) {
+    if (!el || !LB.isConfigured()) { if (el) el.classList.add('hidden'); return; }
+    function paint(leagues, standings) {
+      if (!leagues || !leagues.length) {
+        el.innerHTML = '<div><div class="iv-label" style="margin:0">Friends league</div><b class="iv-strong-accent" style="font-size:1.05rem">Compete with friends each week</b></div>' +
+          '<button type="button" class="iv-btn small ghost" id="home-league-btn">🏆 Start or join</button>';
+      } else {
+        var l = leagues[0], line = '';
+        if (standings && standings.ok) {
+          var me = standings.members.filter(function (m) { return m.code === Core.getPlayerCode(); })[0];
+          if (me) line = 'You’re ' + ordinal(me.rank) + ' of ' + standings.members.length + ' this week · ' + me.points + ' pts';
+        }
+        el.innerHTML = '<div><div class="iv-label" style="margin:0">' + esc(l.name) + (leagues.length > 1 ? ' +' + (leagues.length - 1) + ' more' : '') + '</div><b class="iv-strong-accent" style="font-size:1.05rem">' + esc(line || l.members + ' member' + (l.members === 1 ? '' : 's')) + '</b></div>' +
+          '<button type="button" class="iv-btn small ghost" id="home-league-btn">🏆 Open league</button>';
+      }
+      var b = el.querySelector('#home-league-btn');
+      if (b) b.onclick = function () { openLeague(null, { showList: !!(leagues && leagues.length > 1) }); };
+    }
+    function ordinal(n) { var v = n % 100; return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] || ['th', 'st', 'nd', 'rd'][v] || 'th'); }
+    var cached = LB.cachedLeagues();
+    paint(cached, cached && cached.length ? LB.cachedLeague(cached[0].leagueId) : null);
+    LB.myLeagues().then(function (r) {
+      if (!r.ok) return;
+      if (!r.leagues.length) { paint([], null); return; }
+      LB.getLeague(r.leagues[0].leagueId).then(function (st) { paint(r.leagues, st); });
+    });
+  };
+  (function () {
+    var m = /[?&]league=([A-Za-z0-9]{6,12})/.exec(location.search);
+    if (m) setTimeout(function () { openLeagueInvite(m[1].toUpperCase()); }, 450);
+  })();
+  function openProfile() {
+    var cur = Core.getAvatar();
+    var isPreset = Core.AVATARS.indexOf(cur) !== -1;
+    var s = openSheet(
+      '<h3>You</h3>' +
+      '<label class="iv-label" for="ivp-name">Your name</label>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivp-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"><button class="iv-btn small" id="ivp-save">Save</button></div>' +
+      '<div id="ivp-status" class="iv-status" role="status" aria-live="polite"></div>' +
+      '<div class="iv-label" id="ivp-av-lbl">Your avatar</div>' +
+      '<div class="iv-avatars" id="ivp-avatars" role="group" aria-labelledby="ivp-av-lbl"></div>' +
+      '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" aria-label="Or type your own emoji as an avatar" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
+      '<div class="iv-row" style="margin-top:1.1rem"><button class="iv-btn small" id="ivp-progress">📈 See your progress</button></div>' +
+      '<div class="iv-label" style="margin-top:1.1rem">Your history</div>' +
+      '<div id="ivp-hist" class="iv-chips"></div>' +
+      '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
+      '<div id="ivp-conn" class="iv-note">Checking…</div>',
+      null, 'you');
+    var status = $('#ivp-status', s);
+    function sync() { if (LB.isConfigured()) LB.register(true); }
+    function drawAvatars() {
+      var cur2 = Core.getAvatar();
+      $('#ivp-avatars', s).innerHTML = Core.AVATARS.map(function (a) { return '<button data-a="' + a + '" aria-pressed="' + (a === cur2) + '"' + (a === cur2 ? ' class="on"' : '') + '>' + a + '</button>'; }).join('');
+    }
+    drawAvatars();
+    $('#ivp-avatars', s).onclick = function (e) { var b = e.target.closest('button'); if (!b) return; Core.setAvatar(b.getAttribute('data-a')); $('#ivp-custom', s).value = ''; drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
+    $('#ivp-usecustom', s).onclick = function () { var v = $('#ivp-custom', s).value.trim(); if (!v) return; Core.setAvatar(v); drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
+    $('#ivp-save', s).onclick = function () { var n = Core.setDisplayName($('#ivp-name', s).value); $('#ivp-name', s).value = n; sync(); status.textContent = 'Name saved ✓'; };
+    $('#ivp-hist', s).innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip" data-id="' + g.id + '">📅 ' + esc(g.name) + '</button>'; }).join('');
+    $('#ivp-hist', s).onclick = function (e) { var b = e.target.closest('.iv-chip'); if (b) openHistory(b.getAttribute('data-id')); };
+    $('#ivp-progress', s).onclick = function () { openProgress(); };
+    var conn = $('#ivp-conn', s);
+    if (!LB.isConfigured()) conn.textContent = 'Not set up (src/config.js has no endpoint yet).';
+    else LB.ping().then(function (r) {
+      conn.textContent = r.ok ? 'Connected ✓ (backend v' + r.version + ')' : 'Can’t reach the leaderboard (' + (r.error || 'error') + ').';
+    });
+    return s;
+  }
+  IV.openProfile = openProfile;
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function openHistory(gameId) {
+    var g = IV.find(gameId) || IV.GAMES[0];
+    var hist = Core.getHistoryFor(g.id);
+    var dates = Object.keys(hist).sort();
+    var now = new Date(), view = new Date(now.getFullYear(), now.getMonth(), 1);
+    var first = dates.length ? new Date(dates[0].slice(0, 4), Number(dates[0].slice(5, 7)) - 1, 1) : new Date(now.getFullYear(), now.getMonth(), 1);
+    var s = openSheet('<h3>' + g.icon + ' ' + esc(g.name) + ' — history</h3><div id="ivh-body"></div>', null, null);
+    function draw() {
+      var y = view.getFullYear(), m = view.getMonth();
+      var startDow = (new Date(y, m, 1).getDay() + 6) % 7; // Monday first
+      var days = new Date(y, m + 1, 0).getDate();
+      var cells = '', i, playedList = '';
+      for (i = 0; i < startDow; i++) cells += '<div class="iv-cal-cell e"></div>';
+      var today = Core.dailySeedDate();
+      var total = 0, count = 0;
+      for (i = 1; i <= days; i++) {
+        var key = y + '-' + ('0' + (m + 1)).slice(-2) + '-' + ('0' + i).slice(-2);
+        var played = hist[key] != null;
+        if (played) { total += Number(hist[key]) || 0; count++; }
+        cells += '<div class="iv-cal-cell' + (played ? ' played' : '') + (key === today ? ' today' : '') + '"' + (played ? ' style="--cal-accent:' + g.accent + '"' : '') + '><span>' + i + '</span>' + (played ? '<b>' + esc(hist[key]) + '</b>' : '') + '</div>';
+        if (played) playedList += '<li>' + i + ' ' + MONTHS[m] + ': scored ' + esc(hist[key]) + '</li>';
+      }
+      $('#ivh-body', s).innerHTML =
+        '<div class="iv-cal-nav"><button id="ivh-prev" aria-label="Previous month"' + (view <= first ? ' disabled' : '') + '>‹</button><b aria-live="polite">' + MONTHS[m] + ' ' + y + '</b><button id="ivh-next" aria-label="Next month"' + (y === now.getFullYear() && m === now.getMonth() ? ' disabled' : '') + '>›</button></div>' +
+        '<div aria-hidden="true"><div class="iv-cal-wd"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="iv-cal-grid">' + cells + '</div></div>' +
+        (playedList ? '<ul class="iv-sr">' + playedList + '</ul>' : '') +
+        '<p class="iv-note iv-center" style="margin-top:.8rem">' + (count ? count + ' day' + (count > 1 ? 's' : '') + ' played this month · total ' + total : 'No games played this month.') + '</p>';
+      $('#ivh-prev', s).onclick = function () { view = new Date(y, m - 1, 1); draw(); };
+      $('#ivh-next', s).onclick = function () { view = new Date(y, m + 1, 1); draw(); };
+    }
+    draw();
+  }
+  IV.openHistory = openHistory;
+  // ---- progress screen --------------------------------------------------------------------------
+  function pct(x) { return Math.round(x * 100); }
+  function openProgress() {
+    var games = IV.GAMES, played = Core.allPlayedDates(), streak = Core.practiceStreak();
+    var totalAns = 0, totalCor = 0, doneToday = 0;
+    games.forEach(function (g) {
+      var st = Core.statsFor(g.id);
+      totalAns += st.totalPlayed; totalCor += st.totalCorrect;
+      if (st.lastPlayedDate === Core.todayStr()) doneToday++;
+    });
+    var accuracy = totalAns ? pct(totalCor / totalAns) + '%' : '–';
+
+    // the last five weeks, Monday first; darker = more games finished that day
+    var today = Core.dailySeedDate(), dow = (new Date().getDay() + 6) % 7, start = Core.addDays(today, -(dow + 28));
+    var cells = '', activeDays = 0, daysShown = 0, n;
+    for (n = 0; n < 35; n++) {
+      var d = Core.addDays(start, n), c = played[d] || 0;
+      if (d > today) { cells += '<div class="iv-heat-cell e"></div>'; continue; }
+      daysShown++;
+      if (c) activeDays++;
+      cells += '<div class="iv-heat-cell' + (c ? ' l' + Math.min(c, 4) : '') + (d === today ? ' today' : '') + '"></div>';
+    }
+
+    function spotRow(x, tone) {
+      return '<div class="iv-scoreline iv-spot ' + tone + '"><div class="iv-grow"><div class="t"><span aria-hidden="true">' + x.game.icon + '</span> ' + esc(x.label) + '</div>' +
+        '<div class="s">' + esc(x.game.name) + ' · ' + pct(x.recent) + '% of your last ' + x.recentN + '</div>' +
+        '<span class="iv-meter" aria-hidden="true"><i style="width:' + pct(x.recent) + '%"></i></span></div>' +
+        '<a class="iv-linkbtn" href="' + IV.href(x.game.url) + (tone === 'weak' ? '?weak=1' : '') + '" aria-label="Practise ' + esc(x.game.name) + (tone === 'weak' ? ' weak spots' : '') + '">Practise</a></div>';
+    }
+    var weak = Core.weakSpots(5), strong = Core.strongSpots(3);
+    var weakHtml = weak.length ? weak.map(function (x) { return spotRow(x, 'weak'); }).join('')
+      : '<p class="iv-empty">Play a few rounds and the topics you find trickiest will show up here, so you know what to practise.</p>';
+    var strongHtml = strong.length ? '<div class="iv-label" style="margin-top:1.1rem">Your strongest</div>' + strong.map(function (x) { return spotRow(x, 'strong'); }).join('') : '';
+
+    var gameRows = games.map(function (g) {
+      var st = Core.statsFor(g.id), acc = st.totalPlayed ? pct(st.totalCorrect / st.totalPlayed) + '%' : '–';
+      var done = st.lastPlayedDate === Core.todayStr();
+      return '<div class="iv-scoreline"><div class="iv-grow"><div class="t"><span aria-hidden="true">' + g.icon + '</span> ' + esc(g.name) + (done ? ' <span class="iv-tick">✓<span class="iv-sr"> done today</span></span>' : '') + '</div>' +
+        '<div class="s">Best streak ' + st.bestStreak + ' · accuracy ' + acc + '</div></div>' +
+        '<button type="button" class="iv-btn small ghost" data-hist="' + g.id + '" aria-label="' + esc(g.name) + ' history calendar">History</button></div>';
+    }).join('');
+
+    var s = openSheet(
+      '<h3>Your progress</h3>' +
+      '<div class="iv-stats3">' +
+        '<div><b>' + streak + '</b><span>day' + (streak === 1 ? '' : 's') + ' in a row</span></div>' +
+        '<div><b>' + doneToday + '/' + games.length + '</b><span>games done today</span></div>' +
+        '<div><b>' + accuracy + '</b><span>answers right</span></div>' +
+      '</div>' +
+      '<div class="iv-label" id="ivpr-heat-lbl">Last five weeks</div>' +
+      '<div class="iv-heat" role="img" aria-labelledby="ivpr-heat-lbl ivpr-heat-sum"><div class="iv-heat-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="iv-heat-grid" aria-hidden="true">' + cells + '</div></div>' +
+      '<p class="iv-note" id="ivpr-heat-sum" style="margin:.4rem 0 1rem">You played on ' + activeDays + ' of the last ' + daysShown + ' days. Darker squares mean more games finished that day.</p>' +
+      '<div class="iv-label">What to practise next</div>' + weakHtml + strongHtml +
+      '<div class="iv-label" style="margin-top:1.2rem">By game</div>' + gameRows +
+      '<details class="iv-details"><summary>Back up or move your progress</summary>' +
+        '<p class="iv-note">The website and the installed app keep their progress separately. Copy a backup here, then paste it into the other one. It’s also handy before changing phone.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn small" id="ivb-copy">Copy backup</button></div>' +
+        '<label class="iv-label" for="ivb-text" style="margin-top:.8rem">Paste a backup to restore it</label>' +
+        '<textarea class="iv-input" id="ivb-text" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>' +
+        '<div class="iv-row" style="margin-top:.5rem"><button type="button" class="iv-btn small ghost" id="ivb-restore">Restore</button></div>' +
+        '<div id="ivb-status" class="iv-status" role="status" aria-live="polite"></div>' +
+      '</details>',
+      null, 'progress');
+    Array.prototype.forEach.call(s.querySelectorAll('[data-hist]'), function (b) { b.onclick = function () { openHistory(b.getAttribute('data-hist')); }; });
+    var bs = $('#ivb-status', s);
+    $('#ivb-copy', s).onclick = function () {
+      Core.copyText(Core.exportProgress()).then(function (ok) { bs.textContent = ok ? 'Backup copied ✓ — paste it into the other one.' : 'Couldn’t copy automatically — please try again.'; });
+    };
+    $('#ivb-restore', s).onclick = function () {
+      var text = $('#ivb-text', s).value;
+      if (!text.trim()) { bs.textContent = 'Paste a backup first.'; return; }
+      if (!confirm('This replaces the progress on this device with the backup. Carry on?')) return;
+      var r = Core.importProgress(text);
+      if (!r.ok) { bs.textContent = r.error; return; }
+      bs.textContent = 'Restored ✓ — reloading…';
+      setTimeout(function () { location.reload(); }, 700);
+    };
+    return s;
+  }
+  IV.openProgress = openProgress;
+
+  // ---- installed app extras -----------------------------------------------------------------------
+  // Quietly keeps the stave pictures the games need on the phone, so they work with no signal.
+  IV.prefetch = function (urls) {
+    if (!STANDALONE || !urls || !urls.length || !('serviceWorker' in navigator)) return;
+    if (navigator.connection && navigator.connection.saveData) return;
+    navigator.serviceWorker.ready.then(function (reg) { if (reg.active) reg.active.postMessage({ type: 'prefetch', urls: urls }); }).catch(function () { /* ignore */ });
+  };
+  if (STANDALONE) {
+    var syncOnline = function () {
+      var el = document.getElementById('iv-offline');
+      if (!navigator.onLine) {
+        if (!el) {
+          el = document.createElement('div'); el.id = 'iv-offline'; el.setAttribute('role', 'status');
+          el.textContent = 'You’re offline — games and tools still work. Leaderboards catch up when you’re back online.';
+          document.body.appendChild(el);
+        }
+      } else if (el) el.remove();
+    };
+    global.addEventListener('online', syncOnline); global.addEventListener('offline', syncOnline); syncOnline();
+  }
+  var TABS = [
+    { id: 'home', icon: '🏠', label: 'Home' },
+    { id: 'games', icon: '🎮', label: 'Games' },
+    { id: 'tools', icon: '🧰', label: 'Tools' },
+    { id: 'progress', icon: '📈', label: 'Progress' },
+    { id: 'friends', icon: '👥', label: 'Friends' },
+    { id: 'you', icon: '🙂', label: 'You' }
+  ];
+  function pageTab() { return KIND === 'game' ? 'games' : KIND === 'tool' ? 'tools' : KIND; }
+  function setTab(sheetTab) {
+    var bar = document.getElementById('iv-tabbar'); if (!bar) return;
+    var on = sheetTab || pageTab();
+    Array.prototype.forEach.call(bar.children, function (t) {
+      var isOn = t.getAttribute('data-tab') === on;
+      t.classList.toggle('on', isOn);
+      if (t.tagName === 'A') { if (isOn && !sheetTab) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
+      else t.setAttribute('aria-expanded', isOn && !!sheetTab ? 'true' : 'false');
+    });
+  }
+  function buildTabBar() {
+    if (document.getElementById('iv-tabbar')) return;
+    var bar = document.createElement('nav'); bar.id = 'iv-tabbar'; bar.setAttribute('aria-label', 'Main');
+    bar.innerHTML = TABS.map(function (t) {
+      var inner = '<span class="i" aria-hidden="true">' + t.icon + '</span><span class="l">' + t.label + '</span>';
+      if (IV.SECTIONS[t.id]) return '<a class="iv-tab" data-tab="' + t.id + '" href="' + IV.href(IV.SECTIONS[t.id].url) + '">' + inner + '</a>';
+      return '<button type="button" class="iv-tab" data-tab="' + t.id + '" aria-haspopup="dialog" aria-expanded="false">' + inner + '</button>';
+    }).join('');
+    document.body.appendChild(bar);
+    bar.querySelector('[data-tab="progress"]').onclick = function () { openProgress(); };
+    bar.querySelector('[data-tab="friends"]').onclick = function () { openFriends(); };
+    bar.querySelector('[data-tab="you"]').onclick = function () { openProfile(); };
+    setTab(null);
+  }
+  buildHeader();
+  buildTabBar();
+  // "Practise my weak spots" buttons on each game's start and finished screens.
+  function refreshWeakButtons() {
+    if (KIND !== 'game' || !CFG.startFn) return;
+    var n = Core.weakLabelsFor(CFG.id || CFG.gameId, 6).length;
+    Array.prototype.forEach.call(document.querySelectorAll('.iv-weak-btn'), function (b) {
+      b.classList.toggle('hidden', !n);
+      b.innerHTML = '<span aria-hidden="true">🎯</span> Practise my weak spots';
+    });
+  }
+  (function weakButtons() {
+    if (KIND !== 'game' || !CFG.startFn) return;
+    ['screen-start', 'screen-done'].forEach(function (sid) {
+      var host = document.getElementById(sid);
+      if (!host) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn-practice iv-weak-btn hidden';
+      b.onclick = function () {
+        var fn = global[CFG.startFn];
+        if (typeof fn !== 'function') return;
+        Core.requestFocus();
+        fn(false);
+      };
+      var after = host.querySelector('.btn-practice');
+      if (after && after.parentNode) after.parentNode.insertBefore(b, after.nextSibling); else host.appendChild(b);
+    });
+    refreshWeakButtons();
+    if (/[?&]weak=1/.test(location.search)) {
+      setTimeout(function () {
+        var b = document.querySelector('#screen-start:not(.hidden) .iv-weak-btn:not(.hidden), #screen-done:not(.hidden) .iv-weak-btn:not(.hidden)');
+        if (b) b.click();
+      }, 400);
+    }
+  })();
+  // Several tools redraw their buttons when you press one. Without this, keyboard focus would fall to the top of
+  // the page each time; this puts it back on the matching new button.
+  (function keepFocus() {
+    var last = null, keyboard = false;
+    document.addEventListener('keydown', function () { keyboard = true; }, true);
+    document.addEventListener('pointerdown', function () { keyboard = false; }, true);
+    document.addEventListener('focusin', function (e) {
+      var el = e.target;
+      if (!el || el === document.body || el === document.documentElement || !el.closest || !el.closest('#intrvl-app, #iv-sheet')) { last = null; return; }
+      var host = el.parentElement;
+      while (host && !host.id) host = host.parentElement;
+      var attrs = [];
+      Array.prototype.forEach.call(el.attributes, function (a) { if (/^data-/.test(a.name)) attrs.push([a.name, a.value]); });
+      last = { el: el, id: el.id, hostId: host ? host.id : '', tag: el.tagName, attrs: attrs, text: (el.textContent || '').trim() };
+    });
+    function restore() {
+      if (!last || !keyboard || document.contains(last.el)) return;
+      var a = document.activeElement;
+      if (a && a !== document.body) return;
+      var found = last.id ? document.getElementById(last.id) : null;
+      if (!found) {
+        var host = last.hostId ? document.getElementById(last.hostId) : null;
+        var pool = host ? host.querySelectorAll(last.tag.toLowerCase()) : [];
+        for (var i = 0; i < pool.length && !found; i++) {
+          var ok = last.attrs.length > 0 && last.attrs.every(function (kv) { return pool[i].getAttribute(kv[0]) === kv[1]; });
+          if (ok) found = pool[i];
+        }
+        for (var j = 0; j < pool.length && !found; j++) if ((pool[j].textContent || '').trim() === last.text) found = pool[j];
+      }
+      if (found && !found.disabled) { try { found.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    }
+    var queued = false;
+    new MutationObserver(function () {
+      if (queued) return;
+      queued = true;
+      Promise.resolve().then(function () { queued = false; restore(); });
+    }).observe(document.body, { childList: true, subtree: true });
+  })();
+  // Toggle buttons (the chips and segmented controls that have an "on" one) tell screen readers which is selected.
+  (function syncPressed() {
+    function run() {
+      Array.prototype.forEach.call(document.querySelectorAll('#intrvl-app .iv-chips, #intrvl-app .iv-seg, #iv-sheet .iv-chips'), function (group) {
+        var buttons = group.querySelectorAll('button');
+        var hasOn = group.querySelector('button.on');
+        Array.prototype.forEach.call(buttons, function (b) {
+          if (hasOn) { var v = b.classList.contains('on') ? 'true' : 'false'; if (b.getAttribute('aria-pressed') !== v) b.setAttribute('aria-pressed', v); }
+        });
+      });
+    }
+    var scheduled = false;
+    function schedule() { if (scheduled) return; scheduled = true; (global.requestAnimationFrame || setTimeout)(function () { scheduled = false; run(); }); }
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    run();
+  })();
+  // When a game swaps screens (start -> game -> done), move keyboard/screen-reader focus to the new screen.
+  (function watchScreens() {
+    var area = document.getElementById('intrvl-game-area');
+    if (!area || !global.MutationObserver) return;
+    var interacted = false;
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, function () { interacted = true; }, { capture: true, once: true }); });
+    new MutationObserver(function (list) {
+      list.forEach(function (m) {
+        var el = m.target;
+        if (!interacted || !el.id || el.id.indexOf('screen-') !== 0 || el.classList.contains('hidden')) return;
+        if (m.oldValue && (' ' + m.oldValue + ' ').indexOf(' hidden ') === -1) return;   // it was already showing
+        refreshWeakButtons();
+        var focusTarget = el.querySelector('[data-focus]') || (el.querySelector('.game-hud') && el.querySelector('.choice-btn:not(:disabled)')) || el.querySelector('h2,h3,.level-title') || el;
+        if (!focusTarget.hasAttribute('tabindex')) focusTarget.setAttribute('tabindex', '-1');
+        try { focusTarget.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      });
+    }).observe(area, { attributes: true, attributeFilter: ['class'], attributeOldValue: true, subtree: true });
+  })();
+  if (LB.isConfigured()) setTimeout(function () { LB.register(); }, 2500);   // so friends can find your code
+  function setupShortcut() {
+    var base = (IV.CONFIG && IV.CONFIG.assets) || '';
+    if (!base || STANDALONE) return;
+    var key = item ? item.id : KIND;
+    var name = KIND === 'home' ? 'intrvl' : 'intrvl | ' + (item ? item.name : IV.SECTIONS[KIND].title);
+    var head = document.head;
+    Array.prototype.forEach.call(head.querySelectorAll('link[rel="apple-touch-icon"],link[rel="apple-touch-icon-precomposed"],link[rel="manifest"],link[rel~="icon"]'), function (n) { n.parentNode.removeChild(n); });
+    function tag(t, attrs) { var el = document.createElement(t); Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); }); head.appendChild(el); }
+    var small = base + '/icons/' + key + '-180.png', big = base + '/icons/' + key + '-512.png';
+    tag('link', { rel: 'apple-touch-icon', sizes: '180x180', href: small });
+    tag('link', { rel: 'icon', type: 'image/png', href: small });
+    tag('meta', { name: 'apple-mobile-web-app-title', content: name });
+    tag('meta', { name: 'application-name', content: name });
+    tag('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+    tag('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+    document.title = name;
+    try {
+      var manifest = {
+        name: name, short_name: name, start_url: location.origin + location.pathname, scope: location.origin + '/',
+        display: 'standalone', background_color: '#f5f3ef', theme_color: '#f5f3ef',
+        icons: [{ src: small, sizes: '180x180', type: 'image/png' }, { src: big, sizes: '512x512', type: 'image/png', purpose: 'any' }]
+      };
+      tag('link', { rel: 'manifest', href: URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })) });
+    } catch (e) { /* older browsers: the apple-touch-icon alone is enough */ }
+  }
+  setupShortcut();
+  (function () {
+    var m = /[?&]add=([A-Za-z0-9]{4,12})/.exec(location.search);
+    if (!m) return;
+    var code = m[1].toUpperCase();
+    setTimeout(function () {
+      var s = openFriends();
+      var inp = $('#ivf-code', s);
+      if (inp) { inp.value = code; var b = $('#ivf-add', s); if (b) b.click(); }
+    }, 400);
+  })();
+})(window);

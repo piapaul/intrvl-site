@@ -1,0 +1,308 @@
+<!--@shared-css-->
+<style>
+  .md-row { display: flex; gap: 4px; }
+  .md-note { flex: 1; min-width: 0; text-align: center; padding: .5rem 0; border-radius: 9px; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); font: 800 .95rem var(--intrvl-font-body); }
+  .md-note small { display: block; font: 600 .62rem var(--intrvl-font-body); color: var(--intrvl-ink-soft); margin-top: 1px; }
+  .md-note.root { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); }
+  .md-note.alt { border-color: var(--intrvl-accent-dark); border-width: 2px; }
+  .md-note.alt small { color: var(--intrvl-accent-dark); font-weight: 800; }
+  .md-steps { display: flex; gap: 4px; padding: 0 calc(100% / 14); margin-top: .3rem; }
+  .md-steps span { flex: 1; text-align: center; font-size: .72rem; font-weight: 700; color: var(--intrvl-ink-soft); }
+  .md-ladder { display: flex; flex-direction: column; gap: 4px; }
+  .md-rung { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem .75rem; border-radius: 10px; background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); cursor: pointer; font-size: .86rem; }
+  .md-rung b { font-family: var(--intrvl-font-head); font-weight: 900; }
+  .md-rung.on { background: var(--intrvl-accent); border-color: var(--intrvl-accent-dark); }
+  .md-rung span { color: var(--intrvl-ink-soft); font-weight: 600; text-align: right; }
+  .md-rung.on span { color: var(--intrvl-ink); }
+  .iv-piano { display: block; width: 100%; height: auto; }
+</style>
+
+<div id="intrvl-app">
+  <div class="iv-card" style="background:var(--intrvl-panel-bg)">
+    <b style="font-family:var(--intrvl-font-head);font-weight:900">The big idea</b>
+    <p style="margin-top:.35rem;color:var(--intrvl-ink-soft)">A mode is just a major scale played from a <b style="color:var(--intrvl-ink)">different starting note</b>. Same seven notes — a different “home” — a totally different mood.</p>
+  </div>
+
+  <div class="iv-label" style="margin-top:1.1rem">How do you want to look at it?</div>
+  <div class="iv-seg" id="md-view">
+    <button data-v="notes" class="on">Same notes</button>
+    <button data-v="root">Same starting note</button>
+  </div>
+  <p class="iv-note" id="md-viewhelp" style="margin:.4rem 0 .8rem"></p>
+
+  <div class="iv-label" id="md-keylabel">Major key</div>
+  <select class="iv-select" id="md-key" aria-labelledby="md-keylabel"></select>
+
+  <div class="iv-label" style="margin-top:1rem">Pick a mode</div>
+  <div class="iv-chips" id="md-modes"></div>
+
+  <div class="iv-card" style="margin-top:1rem" id="md-out"></div>
+
+  <h2 class="iv-h2">The brightness ladder</h2>
+  <p class="iv-note" style="margin-bottom:.5rem">Every mode compared with the major scale on the same starting note. Tap one.</p>
+  <div class="md-ladder" id="md-ladder"></div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'tool', id: 'modes' };</script>
+<!--@shared-js-->
+<script>
+(function (global) {
+  'use strict';
+  var LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  var BASE_PC = [0, 2, 4, 5, 7, 9, 11];
+  var FIFTHS = [0, 2, 4, -1, 1, 3, 5];          // position of each natural on the line of fifths
+  var ACC = { '-2': '𝄫', '-1': '♭', '0': '', '1': '♯', '2': '𝄪' };
+  var MAJOR = [0, 2, 4, 5, 7, 9, 11];
+  function N(l, a) { return { l: l, a: a || 0 }; }
+  function name(n) { return LETTERS[n.l] + (ACC[n.a] != null ? ACC[n.a] : (n.a > 0 ? '♯♯♯' : '♭♭♭')); }
+  function pc(n) { return (((BASE_PC[n.l] + n.a) % 12) + 12) % 12; }
+  function fifths(n) { return FIFTHS[n.l] + 7 * n.a; }
+  function same(a, b) { return a.l === b.l && a.a === b.a; }
+  var BY_FIFTH = { '-1': 3, '0': 0, '1': 4, '2': 1, '3': 5, '4': 2, '5': 6 };
+  function fromFifths(f) {
+    var a = Math.floor((f + 1) / 7);
+    var r = f - 7 * a;
+    return N(BY_FIFTH[r], a);
+  }
+  function parse(s) {
+    var m = /^([A-Ga-g])([#♯b♭]*)$/.exec(String(s).trim());
+    if (!m) return null;
+    var a = 0;
+    m[2].split('').forEach(function (c) { a += (c === '#' || c === '♯') ? 1 : -1; });
+    return N(LETTERS.indexOf(m[1].toUpperCase()), a);
+  }
+  function transpose(n, steps, semis) {
+    var l = (((n.l + steps) % 7) + 7) % 7;
+    var target = (((pc(n) + semis) % 12) + 12) % 12;
+    var d = (((target - BASE_PC[l]) % 12) + 12) % 12;
+    if (d > 6) d -= 12;
+    return N(l, d);
+  }
+  function spell(tonic, pattern) {
+    var t = pc(tonic);
+    return pattern.map(function (semi, i) {
+      var l = (tonic.l + i) % 7;
+      var target = (t + semi) % 12;
+      var d = (((target - BASE_PC[l]) % 12) + 12) % 12;
+      if (d > 6) d -= 12;
+      return N(l, d);
+    });
+  }
+  var MODES = [
+    { id: 'ionian',     name: 'Ionian',     pattern: [0, 2, 4, 5, 7, 9, 11], offset: 0,  parent: 0, feel: 'bright, settled — the major scale', char: 'none — this is plain major' },
+    { id: 'dorian',     name: 'Dorian',     pattern: [0, 2, 3, 5, 7, 9, 10], offset: -2, parent: 1, feel: 'minor but hopeful, a bit jazzy', char: 'natural 6 (♮6)' },
+    { id: 'phrygian',   name: 'Phrygian',   pattern: [0, 1, 3, 5, 7, 8, 10], offset: -4, parent: 2, feel: 'dark and Spanish-sounding', char: 'flat 2 (♭2)' },
+    { id: 'lydian',     name: 'Lydian',     pattern: [0, 2, 4, 6, 7, 9, 11], offset: 1,  parent: 3, feel: 'bright, floating, dreamy', char: 'sharp 4 (♯4)' },
+    { id: 'mixolydian', name: 'Mixolydian', pattern: [0, 2, 4, 5, 7, 9, 10], offset: -1, parent: 4, feel: 'major with a bluesy, relaxed edge', char: 'flat 7 (♭7)' },
+    { id: 'aeolian',    name: 'Aeolian',    pattern: [0, 2, 3, 5, 7, 8, 10], offset: -3, parent: 5, feel: 'sad and serious — natural minor', char: 'flat 3, 6 and 7' },
+    { id: 'locrian',    name: 'Locrian',    pattern: [0, 1, 3, 5, 6, 8, 10], offset: -5, parent: 6, feel: 'unstable and tense — rarely a home key', char: 'flat 2 and flat 5' }
+  ];
+  var DEGREE_NAMES = ['1', '2', '3', '4', '5', '6', '7'];
+  function degreeLabel(semi, i) {
+    var maj = MAJOR[i];
+    return (semi < maj ? '♭' : semi > maj ? '♯' : '') + DEGREE_NAMES[i];
+  }
+  var SHARP_ORDER = [3, 0, 4, 1, 5, 2, 6];  // F C G D A E B
+  function keySignature(tonic, modeOffset) {
+    var f = fifths(tonic) + (modeOffset || 0);
+    var order = f >= 0 ? SHARP_ORDER : SHARP_ORDER.slice().reverse();
+    var notes = [];
+    for (var i = 0; i < Math.abs(f); i++) notes.push(N(order[i], f >= 0 ? 1 : -1));
+    return { count: f, notes: notes };
+  }
+  function sigText(count) {
+    if (count === 0) return 'no sharps or flats';
+    var c = Math.abs(count);
+    return c + (count > 0 ? ' sharp' : ' flat') + (c > 1 ? 's' : '');
+  }
+  var SIG_POS = {
+    treble: { sharp: [8, 5, 9, 6, 3, 7, 4], flat: [4, 7, 3, 6, 2, 5, 1] },
+    bass:   { sharp: [6, 3, 7, 4, 1, 5, 2], flat: [2, 5, 1, 4, 0, 3, -1] }
+  };
+  /* Clef and accidental outlines from Noto Music (SIL Open Font License 1.1, (c) The Noto Project Authors).
+     Font units (1000 per em), y pointing UP — draw with transform="translate(x,y) scale(s,-s)". */
+  var GLYPH = {
+    treble: 'M314 801Q300 854 291 906Q282 958 282 1012Q282 1059 288.5 1100.5Q295 1142 307 1177Q320 1217 341 1252.5Q362 1288 385.5 1311Q409 1334 427 1334Q451 1334 493 1249Q514 1206 524 1156Q534 1106 534 1049Q534 978 515 907.5Q496 837 459.5 775Q423 713 372 666L407 498Q422 500 432 501Q442 502 447 502Q508 502 556 467.5Q604 433 632.5 377Q661 321 661 254Q661 177 621.5 115.5Q582 54 503 25Q508 8 532 -117Q538 -147 541 -164.5Q544 -182 545 -195Q546 -208 546 -225Q546 -275 521.5 -314.5Q497 -354 455.5 -376Q414 -398 363 -398Q311 -398 271 -378.5Q231 -359 208 -324.5Q185 -290 185 -245Q185 -197 211.5 -165Q238 -133 287 -133Q329 -133 355.5 -163.5Q382 -194 382 -236Q382 -272 357 -299Q332 -326 292 -326H282Q308 -365 364 -365Q433 -365 472 -320Q511 -275 511 -205Q511 -188 507 -159.5Q503 -131 493 -91Q483 -51 477.5 -25Q472 1 470 12Q436 2 390 2Q304 2 222 52Q142 102 96 184Q50 266 50 361Q50 451 91 530Q132 609 192.5 675Q253 741 314 801ZM341 826Q364 838 390 870.5Q416 903 440 945Q464 987 479 1029.5Q494 1072 494 1106Q494 1142 483 1163Q472 1184 445 1184Q421 1184 398.5 1162Q376 1140 358.5 1103.5Q341 1067 331 1022Q321 977 321 930Q321 898 327.5 872Q334 846 341 826ZM398 379Q371 373 347 353.5Q323 334 308.5 306.5Q294 279 294 248Q294 223 307 196.5Q320 170 339 154Q352 142 365 136Q380 129 380 123Q380 120 370 117Q332 126 301.5 151Q271 176 253.5 211.5Q236 247 236 287Q236 330 253.5 370Q271 410 302.5 442Q334 474 374 490L345 641Q229 547 174.5 456.5Q120 366 120 277Q120 212 154 156Q188 100 247 65.5Q306 31 380 31Q400 31 420.5 35Q441 39 464 45ZM495 55Q593 97 593 227Q593 270 571 305.5Q549 341 512 362Q475 383 429 383Z',
+    bass: 'M50 123Q216 231 288 301Q336 348 373 408.5Q410 469 431.5 536Q453 603 453 669Q453 728 435 773.5Q417 819 383 845Q349 871 302 871Q284 871 264.5 867Q245 863 224 855Q181 839 158 813.5Q135 788 135 765Q135 756 143 752Q151 748 158 748Q168 748 183 752Q190 754 196.5 755Q203 756 210 756Q248 756 272 733.5Q296 711 296 674Q296 638 266 612Q236 586 195 586Q146 586 111 617Q76 648 76 697Q76 756 109 802Q142 848 198.5 874Q255 900 324 900Q400 900 460 867Q520 834 555.5 776.5Q591 719 591 646Q591 551 538 464Q511 419 476.5 379Q442 339 389 297.5Q336 256 256 208Q176 160 57 101ZM687 809Q710 809 726 793Q742 777 742 754Q742 731 726 715.5Q710 700 687 700Q664 700 648 715.5Q632 731 632 754Q632 777 648 793Q664 809 687 809ZM687 589Q710 589 726 573Q742 557 742 534Q742 511 726 495.5Q710 480 687 480Q664 480 648 495.5Q632 511 632 534Q632 557 648 573Q664 589 687 589Z',
+    sharp: 'M97 46V189L50 177V277L97 290V486H128V298L195 314V509H226V322L275 333V234L226 220V77L275 89V-14L226 -26V-214H195V-34L128 -52V-247H97V-59L50 -71V32ZM195 70V214L128 197V54Z',
+    flat: 'M50 615H81V225Q118 262 165 262Q197 262 223 240.5Q249 219 249 178Q249 146 230 119Q211 92 179 65L110 6Q91 -10 76 -25.5Q61 -41 50 -55ZM81 12Q107 40 125 63.5Q143 87 153 105Q164 124 169.5 140Q175 156 175 170Q175 198 162 210.5Q149 223 134 223Q118 223 102.5 211.5Q87 200 81 180Z'
+  };
+  var ctx = null;
+  function audio() {
+    if (!ctx) ctx = new (global.AudioContext || global.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function freq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+  function play(midis, opts) {
+    opts = opts || {};
+    var c = audio(), list = [].concat(midis), dur = opts.dur || 1.4, gap = opts.gap || 0, t0 = c.currentTime + 0.02;
+    list.forEach(function (m, i) {
+      var t = t0 + i * gap;
+      var o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle'; o2.type = 'sine';
+      o.frequency.value = freq(m); o2.frequency.value = freq(m) * 2;
+      var vol = (opts.vol || 0.5) / Math.max(1, Math.sqrt(list.length));
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); o2.connect(g); g.connect(c.destination);
+      o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+    });
+  }
+  var IS_BLACK = [false, true, false, true, false, false, true, false, true, false, true, false];
+  function pianoSvg(opts) {
+    var from = opts.from, to = opts.to, keys = opts.keys || {};
+    var W = 22, H = 92, BW = 14, BH = 56;
+    var whites = [];
+    for (var m = from; m <= to; m++) if (!IS_BLACK[m % 12]) whites.push(m);
+    var width = whites.length * W;
+    var out = '<svg class="iv-piano" viewBox="0 0 ' + width + ' ' + (H + 2) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + (opts.label || 'Piano keyboard') + '">';
+    var x = {};
+    whites.forEach(function (m2, i) {
+      x[m2] = i * W;
+      var k = keys[m2];
+      out += '<rect x="' + (i * W + 0.5) + '" y="1" width="' + (W - 1) + '" height="' + H + '" rx="3" fill="' + (k ? k.fill : '#fff') + '" stroke="#bdb8b0" stroke-width="1"/>';
+      if (k && k.label) out += '<text x="' + (i * W + W / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" font-weight="700" fill="' + (k.text || '#1c1c1c') + '" font-family="Raleway,sans-serif">' + k.label + '</text>';
+      else if (m2 % 12 === 0) out += '<text x="' + (i * W + W / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="7" fill="#a39a8d" font-family="Raleway,sans-serif">C' + (Math.floor(m2 / 12) - 1) + '</text>';
+    });
+    for (var b = from; b <= to; b++) {
+      if (!IS_BLACK[b % 12]) continue;
+      var left = x[b - 1];
+      if (left == null) left = (x[b + 1] || 0) - W;
+      var bx = left + W - BW / 2;
+      var kb = keys[b];
+      out += '<rect x="' + bx + '" y="1" width="' + BW + '" height="' + BH + '" rx="2" fill="' + (kb ? kb.fill : '#1c1c1c') + '" stroke="#1c1c1c" stroke-width="1"/>';
+      if (kb && kb.label) out += '<text x="' + (bx + BW / 2) + '" y="' + (BH - 7) + '" text-anchor="middle" font-size="7.5" font-weight="700" fill="' + (kb.text || '#fff') + '" font-family="Raleway,sans-serif">' + kb.label + '</text>';
+    }
+    return out + '</svg>';
+  }
+  global.IVT = {
+    LETTERS: LETTERS, BASE_PC: BASE_PC, MAJOR: MAJOR, MODES: MODES, ACC: ACC,
+    N: N, name: name, pc: pc, fifths: fifths, fromFifths: fromFifths, same: same, parse: parse,
+    transpose: transpose, spell: spell, degreeLabel: degreeLabel,
+    keySignature: keySignature, sigText: sigText, SIG_POS: SIG_POS,
+    GLYPH: GLYPH, audio: audio, freq: freq, play: play, pianoSvg: pianoSvg
+  };
+})(window);
+</script>
+<script>
+(function () {
+  var T = IVT, $ = function (id) { return document.getElementById(id); };
+  var st = { view: 'notes', modeIdx: 1, s: 0, root: 2 };   // s: parent key signature; root: index in ROOTS
+  var ROOTS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'].map(function (n) { return T.parse(n); });
+  var FEEL = { ionian: 'Bright and settled.', dorian: 'Minor, but hopeful.', phrygian: 'Dark, Spanish.', lydian: 'Bright and dreamy.', mixolydian: 'Major with a bluesy edge.', aeolian: 'Sad and serious.', locrian: 'Unstable, tense.' };
+  var LADDER = [3, 0, 4, 1, 5, 2, 6];   // Lydian → Locrian (brightest to darkest)
+  var STEPS = ['W', 'W', 'H', 'W', 'W', 'W', 'H'];
+
+  function stepsFor(mode) {
+    var p = mode.pattern.concat([12]), out = [];
+    for (var i = 0; i < 7; i++) out.push(p[i + 1] - p[i] === 1 ? 'H' : 'W');
+    return out;
+  }
+  function tonicFor() {
+    var m = T.MODES[st.modeIdx];
+    if (st.view === 'root') return ROOTS[st.root];
+    var parent = T.spell(T.fromFifths(st.s), T.MAJOR);
+    return parent[m.parent];
+  }
+  function altDegrees(mode) {                    // vs the major scale on the same root
+    return mode.pattern.map(function (semi, i) { return semi !== T.MAJOR[i] ? i : -1; }).filter(function (i) { return i >= 0; });
+  }
+  function midiScale(scale) {
+    var pc0 = T.pc(scale[0]), prev = 60 + pc0, out = [prev];
+    for (var i = 1; i < scale.length; i++) { prev += (((T.pc(scale[i]) - T.pc(scale[i - 1])) % 12 + 12) % 12) || 12; out.push(prev); }
+    out.push(out[0] + 12);
+    return out;
+  }
+
+  function drawControls() {
+    $('md-viewhelp').textContent = st.view === 'notes'
+      ? 'Pick a major key, then see each of its seven modes — they all use the very same notes.'
+      : 'Pick one starting note, then hear how each mode changes the notes from that same starting point.';
+    $('md-keylabel').textContent = st.view === 'notes' ? 'Major key (the notes you start with)' : 'Starting note';
+    if (st.view === 'notes') {
+      var opts = '';
+      for (var s = -7; s <= 7; s++) opts += '<option value="' + s + '"' + (s === st.s ? ' selected' : '') + '>' + T.name(T.fromFifths(s)) + ' major · ' + T.sigText(s) + '</option>';
+      $('md-key').innerHTML = opts;
+    } else {
+      $('md-key').innerHTML = ROOTS.map(function (n, i) { return '<option value="' + i + '"' + (i === st.root ? ' selected' : '') + '>' + T.name(n) + '</option>'; }).join('');
+    }
+    var t0 = st.view === 'notes' ? T.spell(T.fromFifths(st.s), T.MAJOR) : null;
+    $('md-modes').innerHTML = T.MODES.map(function (m, i) {
+      var label = st.view === 'notes' ? T.name(t0[m.parent]) + ' ' + m.name : m.name;
+      return '<button class="iv-chip' + (i === st.modeIdx ? ' on' : '') + '" data-i="' + i + '">' + label + '</button>';
+    }).join('');
+  }
+
+  function drawOut() {
+    var m = T.MODES[st.modeIdx], tonic = tonicFor(), scale = T.spell(tonic, m.pattern), steps = stepsFor(m);
+    var alt = altDegrees(m), title = T.name(tonic) + ' ' + m.name;
+    var sigCount = T.keySignature(tonic, m.offset).count;
+    var sigTxt = Math.abs(sigCount) > 7 ? 'a theoretical key (more than 7 sharps/flats)' : T.sigText(sigCount);
+    var html = '<div class="iv-row between"><div><div style="font:900 1.25rem var(--intrvl-font-head)">' + title + '</div><div class="iv-note">' + FEEL[m.id] + '</div></div>' +
+      '<button class="iv-btn small" id="md-play">▶ Play + drone</button></div>';
+
+    html += '<div class="iv-label" style="margin-top:1rem">The notes</div><div class="md-row">' +
+      scale.map(function (n, i) {
+        var isAlt = alt.indexOf(i) !== -1;
+        return '<div class="md-note' + (i === 0 ? ' root' : '') + (isAlt ? ' alt' : '') + '">' + T.name(n) + '<small>' + T.degreeLabel(m.pattern[i], i) + '</small></div>';
+      }).join('') + '</div>' +
+      '<div class="md-steps">' + steps.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>' +
+      '<p class="iv-note" style="margin-top:.3rem">W = whole step · H = half step' + (alt.length ? ' · outlined notes differ from the major scale' : '') + '</p>';
+
+    if (st.view === 'notes') {
+      var parent = T.name(T.fromFifths(st.s));
+      html += '<p style="margin-top:.8rem">These are exactly the notes of <b>' + parent + ' major</b> — you just treat <b>' + T.name(tonic) + '</b> as home (degree ' + (m.parent + 1) + ' of the major scale).</p>';
+    } else {
+      html += '<p style="margin-top:.8rem">Compared with <b>' + T.name(tonic) + ' major</b>' + (alt.length ? ': ' + alt.map(function (i) { return '<b>' + T.degreeLabel(m.pattern[i], i) + '</b>'; }).join(', ') + ' ' + (alt.length > 1 ? 'are' : 'is') + ' altered.' : ' — identical, this IS major.') +
+        ' Written out, it has the key signature of <b>' + T.name(T.fromFifths(sigCount)) + ' major</b> (' + sigTxt + ').</p>';
+    }
+    html += '<p style="margin-top:.5rem"><b>Hear it by:</b> ' + (m.id === 'ionian' ? 'it’s the sound you already know — do-re-mi.' : 'listening for the <b>' + m.char + '</b> — that’s the note that gives this mode its colour.') + '</p>';
+
+    var midis = midiScale(scale), keys = {};
+    midis.forEach(function (mm, i) { keys[mm] = { fill: i % 7 === 0 ? 'var(--intrvl-accent-dark)' : 'var(--intrvl-accent)', label: T.name(scale[i % 7]), text: i % 7 === 0 ? '#fff' : '#1c1c1c' }; });
+    html += '<div style="margin-top:.9rem">' + T.pianoSvg({ from: 60, to: 84, keys: keys, label: title + ' on piano' }) + '</div>';
+    $('md-out').innerHTML = html;
+    $('md-play').onclick = function () {
+      T.play(midis[0] - 12, { dur: midis.length * 0.42 + 1.4, vol: 0.35 });
+      T.play(midis, { gap: 0.42, dur: 1.1 });
+    };
+  }
+
+  function drawLadder() {
+    var root = tonicFor();
+    $('md-ladder').innerHTML = LADDER.map(function (mi) {
+      var m = T.MODES[mi], alt = altDegrees(m);
+      var txt = alt.length ? alt.map(function (i) { return T.degreeLabel(m.pattern[i], i); }).join(' ') : 'no changes (major)';
+      return '<div class="md-rung' + (mi === st.modeIdx ? ' on' : '') + '" data-i="' + mi + '" role="button" tabindex="0" aria-pressed="' + (mi === st.modeIdx) + '"><b>' + T.name(root) + ' ' + m.name + '</b><span>' + txt + '</span></div>';
+    }).join('');
+  }
+
+  function refresh() { drawControls(); drawOut(); drawLadder(); }
+
+  $('md-view').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    st.view = b.getAttribute('data-v');
+    Array.prototype.forEach.call(this.children, function (c) { c.classList.toggle('on', c === b); });
+    refresh();
+  };
+  $('md-key').onchange = function () { if (st.view === 'notes') st.s = Number(this.value); else st.root = Number(this.value); refresh(); };
+  $('md-modes').onclick = function (e) { var b = e.target.closest('.iv-chip'); if (b) { st.modeIdx = Number(b.getAttribute('data-i')); refresh(); } };
+  $('md-ladder').onkeydown = function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('md-rung')) { e.preventDefault(); e.target.click(); }
+  };
+  $('md-ladder').onclick = function (e) {
+    var r = e.target.closest('.md-rung'); if (!r) return;
+    if (st.view === 'notes') {          // the ladder compares modes on ONE starting note, so switch to that view
+      var tn = tonicFor();
+      for (var i = 0; i < ROOTS.length; i++) if (T.pc(ROOTS[i]) === T.pc(tn)) st.root = i;
+      st.view = 'root';
+      Array.prototype.forEach.call($('md-view').children, function (c) { c.classList.toggle('on', c.getAttribute('data-v') === 'root'); });
+    }
+    st.modeIdx = Number(r.getAttribute('data-i')); refresh();
+  };
+  refresh();
+})();
+</script>
+

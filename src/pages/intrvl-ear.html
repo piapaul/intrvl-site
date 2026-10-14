@@ -1,0 +1,286 @@
+<!--@shared-css-->
+
+<style>
+  #btn-play-1 { background: #ada6b8; }
+  #btn-play-2 { background: var(--intrvl-accent); }
+  #streak-count { color: var(--intrvl-accent-dark); }
+  #accuracy-count { color: var(--intrvl-active-dark); }
+</style>
+
+<canvas aria-hidden="true" id="confetti-canvas-ear" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; opacity:0; transition:opacity 1s ease;"></canvas>
+
+<div id="intrvl-app">
+
+  <div class="intrvl-header-v2">
+    <div class="stats-wrapper">
+      <div class="stat-box">
+        <span class="stat-label">Streak</span>
+        <div class="stat-display"><span aria-hidden="true">🔥</span> <span id="streak-count">0</span></div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-display"><span aria-hidden="true">🎯</span> <span id="accuracy-count">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="intrvl-game-area">
+    <div id="screen-start">
+      <p style="margin-bottom: 1rem; color: var(--intrvl-ink-soft); line-height: 1.6; font-size: 1.1rem;">
+        Test your ears. Three levels of precision.<br>A new challenge every day.
+      </p>
+
+      <div class="mobile-warning">
+        🔔 Phone Users: Please ensure your device's physical Silent Switch is turned OFF.
+      </div>
+
+      <button class="btn-start" onclick="startGame(true)">Start Daily Puzzle</button>
+    </div>
+
+    <div id="screen-game" class="hidden">
+      <div class="level-title" id="ui-level-title" aria-live="polite">Level 1</div>
+      <p class="instruction-text" id="ui-question-text">Which pitch is <strong>LOWER</strong>?</p>
+
+      <div class="press-indicator" id="ui-indicator"><span aria-hidden="true">👇</span> Tap to listen</div>
+
+      <div class="audio-controls">
+        <button class="play-btn" id="btn-play-1" onclick="playCurrentPitch(1)">Pitch 1</button>
+        <button class="play-btn" id="btn-play-2" onclick="playCurrentPitch(2)">Pitch 2</button>
+      </div>
+
+      <div class="choice-wrapper">
+        <div class="choice-controls">
+          <button class="choice-btn" id="btn-choice-1" onclick="submitGuess(1)">Pitch 1</button>
+          <button class="choice-btn" id="btn-choice-2" onclick="submitGuess(2)">Pitch 2</button>
+        </div>
+      </div>
+
+      <div class="message" id="ui-message" role="status" aria-live="polite"></div>
+    </div>
+
+    <div id="screen-done" class="hidden">
+      <h2 style="font-size: 1.4rem; margin-bottom: 1rem; color: var(--intrvl-active-dark);" id="done-title">Puzzle Complete!</h2>
+      <p style="color: var(--intrvl-ink-soft); line-height: 1.6; margin-bottom: 2.5rem;">
+        You've secured your streak for today.<br>Come back tomorrow, or keep practicing.
+      </p>
+
+      <div class="button-stack">
+        <button class="btn-share hidden" id="btn-share" onclick="shareResults()">Share Results 🚀</button>
+        <button class="btn-practice" onclick="startGame(false)">Endless Practice Mode</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  window.INTRVL_CONFIG = {
+    startFn: 'startGame',
+    kind: 'game', id: 'pitch', gameId: 'pitch',
+    legacyStatsKeys: ['intrvlDailyStatsV2'],
+    accentColors: ['#b8a877', '#A9B9A2', '#ada6b8', '#c2a687']
+  };
+</script>
+<!--@shared-js-->
+<script>
+  let audioCtx;
+  let currentPuzzle = [];
+  let currentLevel = 0;
+  let isDailyMode = true;
+  let sessionResults = [];
+  let stats;
+
+  function generatePuzzle(useSeed) {
+    const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
+    const puzzle = [];
+    const configs = [{ minC: 25, maxC: 40 }, { minC: 15, maxC: 30 }, { minC: 2, maxC: 20 }];
+    const GAPS = ['wide', 'medium', 'narrow'];
+    const focus = IntrvlCore.takeFocus('pitch');   // topics to lean towards in "practise my weak spots"
+
+    let qTypes = ['lower', 'higher', randomFunc() < 0.5 ? 'lower' : 'higher'];
+    for (let i = qTypes.length - 1; i > 0; i--) {
+      const j = Math.floor(randomFunc() * (i + 1));
+      [qTypes[i], qTypes[j]] = [qTypes[j], qTypes[i]];
+    }
+
+    const plan = configs.map((c, i) => ({ cfg: i, ask: qTypes[i] }));
+    if (!useSeed && focus.length) {
+      for (let i = 0; i < plan.length; i++) {
+        const m = /^Spot the (lower|higher) note \((wide|medium|narrow) gap\)$/.exec(focus[Math.floor(randomFunc() * focus.length)]);
+        if (m) plan[i] = { cfg: GAPS.indexOf(m[2]), ask: m[1] };
+      }
+    }
+    plan.forEach((p, index) => {
+      const config = configs[p.cfg];
+      const baseFreq = 220 + (randomFunc() * 660);
+      const isPitch2Sharp = randomFunc() < 0.5;
+      let centsOffset = config.minC + (randomFunc() * (config.maxC - config.minC));
+      if (!isPitch2Sharp) centsOffset = -centsOffset;
+
+      const pitch2Freq = baseFreq * Math.pow(2, centsOffset / 1200);
+      const askType = p.ask;
+
+      let correctAnswer = askType === 'lower'
+        ? (baseFreq < pitch2Freq ? 1 : 2)
+        : (baseFreq > pitch2Freq ? 1 : 2);
+
+      puzzle.push({ pitch1: baseFreq, pitch2: pitch2Freq, question: askType, answer: correctAnswer, label: 'Spot the ' + askType + ' note (' + GAPS[p.cfg] + ' gap)' });
+    });
+    return puzzle;
+  }
+
+  function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioCtx.createBuffer(1, 1, 22050);
+    source.connect(audioCtx.destination);
+    source.start(0);
+  }
+
+  function playTone(frequency) {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    document.getElementById('ui-indicator').style.opacity = '0';
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = frequency;
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.8, audioCtx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.2);
+  }
+
+  function playCurrentPitch(num) {
+    const data = currentPuzzle[currentLevel];
+    playTone(num === 1 ? data.pitch1 : data.pitch2);
+  }
+
+  function initApp() {
+    stats = IntrvlCore.loadStats();
+    updateStatsUI();
+    if (stats.lastPlayedDate === IntrvlCore.todayStr()) {
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('done-title').textContent = "Daily Complete!";
+      const todaysBlocks = IntrvlCore.loadDailyBlocks();
+      const todayKey = IntrvlCore.dailySeedDate();
+      if (todaysBlocks[todayKey]) {
+        document.getElementById('btn-share').classList.remove('hidden');
+        const correctCount = (todaysBlocks[todayKey].match(/✅/g) || []).length;
+        IntrvlLeaderboard.attachSubmitButton({ gameId: 'pitch', score: correctCount, streak: stats.currentStreak });
+      }
+      document.getElementById('screen-done').classList.remove('hidden');
+    }
+  }
+
+  function updateStatsUI() {
+    document.getElementById('streak-count').textContent = stats.currentStreak;
+    let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    document.getElementById('accuracy-count').textContent = accuracy + "%";
+  }
+
+  function startGame(isDaily) {
+    initAudio();
+    isDailyMode = isDaily;
+    currentLevel = 0;
+    sessionResults = [];
+    currentPuzzle = generatePuzzle(isDailyMode);
+
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('ui-indicator').style.opacity = '1';
+
+    document.getElementById('ui-level-title').style.color = !isDailyMode ? 'var(--intrvl-active-dark)' : 'var(--intrvl-accent-dark)';
+    loadLevelUI();
+  }
+
+  function loadLevelUI() {
+    let modeText = isDailyMode ? "Level " : "Practice Round ";
+    document.getElementById('ui-level-title').textContent = modeText + (currentLevel + 1);
+    const qText = currentPuzzle[currentLevel].question.toUpperCase();
+    document.getElementById('ui-question-text').innerHTML = `Which pitch is <strong>${qText}</strong>?`;
+    document.getElementById('ui-message').textContent = "";
+    document.getElementById('ui-message').className = "message";
+    IntrvlCore.refocus('btn-play-1');
+  }
+
+  function submitGuess(guessNum) {
+    const correctAnswer = currentPuzzle[currentLevel].answer;
+    const msgEl = document.getElementById('ui-message');
+
+    document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+    if (guessNum === correctAnswer) {
+      msgEl.textContent = "Correct!";
+      msgEl.className = "message msg-success";
+      sessionResults.push(true);
+      IntrvlCore.recordItem('pitch', currentPuzzle[currentLevel].label, true);
+    } else {
+      msgEl.textContent = "Incorrect.";
+      msgEl.className = "message msg-error";
+      sessionResults.push(false);
+      IntrvlCore.recordItem('pitch', currentPuzzle[currentLevel].label, false);
+      IntrvlCore.shake(document.getElementById('intrvl-game-area'));
+    }
+
+    setTimeout(() => {
+      document.querySelectorAll('.choice-btn').forEach(b => b.disabled = false);
+      currentLevel++;
+
+      if (currentLevel >= 3) {
+        if (isDailyMode && stats.lastPlayedDate !== IntrvlCore.todayStr()) {
+          const correctCount = sessionResults.filter(Boolean).length;
+          IntrvlCore.recordCompletion(stats, correctCount, 3);
+          IntrvlCore.recordDailyResult(correctCount);
+          IntrvlCore.saveDailyBlock(sessionResults);
+          updateStatsUI();
+          IntrvlCore.confetti('confetti-canvas-ear');
+        } else if (isDailyMode) {
+          const correctCount = sessionResults.filter(Boolean).length;
+          stats.totalPlayed += 3;
+          stats.totalCorrect += correctCount;
+          IntrvlCore.saveStats(stats);
+          updateStatsUI();
+        }
+
+        document.getElementById('screen-game').classList.add('hidden');
+        if (isDailyMode) {
+          document.getElementById('done-title').textContent = "Puzzle Complete!";
+          document.getElementById('btn-share').classList.remove('hidden');
+          IntrvlLeaderboard.attachSubmitButton({ gameId: 'pitch', score: sessionResults.filter(Boolean).length, streak: stats.currentStreak });
+        } else {
+          document.getElementById('done-title').textContent = "Great Practice!";
+          document.getElementById('btn-share').classList.add('hidden');
+        }
+        document.getElementById('screen-done').classList.remove('hidden');
+      } else {
+        document.getElementById('ui-indicator').style.opacity = '1';
+        loadLevelUI();
+      }
+    }, 1200);
+  }
+
+  function shareResults() {
+    const correctAnswers = sessionResults.filter(Boolean).length;
+    let introPhrase = "";
+
+    if (correctAnswers === 3) introPhrase = "I got a perfect 3/3 on today's Ear Training game with Intrvl! 🎯 Can you do as well?";
+    else if (correctAnswers === 2) introPhrase = "I got 2/3 on today's Ear Training game with Intrvl! 🎵 Almost perfect.";
+    else if (correctAnswers === 1) introPhrase = "I got 1/3 on today's Ear Training game with Intrvl. It's a tricky one today! 👂";
+    else introPhrase = "Today's Ear Training game with Intrvl was tough! 😅 Can you do better?";
+
+    const accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    const blocks = sessionResults.map(res => res ? "🟩" : "🟥").join("");
+    const pageUrl = window.location.href.split('?')[0];
+
+    const textToShare = `${introPhrase}\n\nStreak: 🔥 ${stats.currentStreak} | Accuracy: 🎯 ${accuracy}%\n\n${blocks}\n\nTest your ears at:\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Daily Pitch Score');
+  }
+
+  initApp();
+</script>
+

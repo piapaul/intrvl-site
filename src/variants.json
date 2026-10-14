@@ -1,0 +1,74 @@
+[
+ {
+  "name": "intrvl-notes-easy",
+  "from": "intrvl-notes",
+  "config": {
+   "startFn": "startGame",
+   "kind": "game",
+   "id": "note-easy",
+   "gameId": "note-easy",
+   "easy": true,
+   "title": "Note Sprint (Easy)",
+   "accentColors": [
+    "#bfae94",
+    "#A9B9A2",
+    "#C1A45F",
+    "#a3b0bd"
+   ]
+  }
+ },
+ {
+  "name": "intrvl-clefs-easy",
+  "from": "intrvl-clefs",
+  "config": {
+   "startFn": "startGame",
+   "kind": "game",
+   "id": "clef-easy",
+   "gameId": "clef-easy",
+   "easy": true,
+   "title": "Clef Sprint (Easy)",
+   "accentColors": [
+    "#a3b0bd",
+    "#A9B9A2",
+    "#C1A45F",
+    "#c79aa0"
+   ]
+  }
+ },
+ {
+  "name": "intrvl-keysigs-easy",
+  "from": "intrvl-keysigs",
+  "config": {
+   "startFn": "startKsSprint",
+   "kind": "game",
+   "id": "keysig-easy",
+   "gameId": "keysig-easy",
+   "easy": true,
+   "title": "Key Signature Sprint (Easy)",
+   "accentColors": [
+    "#D9A074",
+    "#A9B9A2",
+    "#C1A45F",
+    "#B7A7C9"
+   ]
+  }
+ },
+ {
+  "name": "intrvl-rhythm-easy",
+  "from": "intrvl-rhythm",
+  "config": {
+   "startFn": "startRhythm",
+   "kind": "game",
+   "id": "rhythm-easy",
+   "gameId": "rhythm-easy",
+   "easy": true,
+   "title": "Rhythm Tap (Easy)",
+   "accentColors": [
+    "#C1A45F",
+    "#A9B9A2",
+    "#D9A074",
+    "#B7A7C9"
+   ]
+  }
+ }
+]

@@ -1,0 +1,406 @@
+<!--@shared-css-->
+
+<style>
+  #clefsprint-streak-count { color: var(--intrvl-accent-dark); }
+  #clefsprint-accuracy-count { color: var(--intrvl-active-dark); }
+  .instruction-text strong { font-size: 1.6rem; }
+
+  .clef-options-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    max-width: 100%;
+  }
+  /* 4 columns need a much smaller minimum than the shared 2-column games'
+     .choice-btn (120px) — without this override, 4 x 120px forces the row
+     wider than the card on phone screens and the buttons overflow. */
+  .clef-options-grid .choice-btn {
+    min-width: 0;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 6px 8px;
+  }
+  .choice-btn.correct .clef-btn-img, .choice-btn.incorrect .clef-btn-img { filter: invert(1) brightness(2); }
+
+  #clefsprint-img-container {
+    background: var(--intrvl-panel-bg);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 280px;
+    height: 120px;
+    margin: 0 auto 1.5rem auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+    padding: 5px;
+    box-sizing: border-box;
+  }
+  #main-target-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+</style>
+
+<canvas aria-hidden="true" id="confetti-canvas-clefsprint" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; opacity:0; transition:opacity 1s ease;"></canvas>
+
+<div id="intrvl-app">
+
+  <div class="intrvl-header-v2">
+    <div class="stats-wrapper">
+      <div class="stat-box">
+        <span class="stat-label">Streak</span>
+        <div class="stat-display"><span aria-hidden="true">🔥</span> <span id="clefsprint-streak-count">0</span></div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-display"><span aria-hidden="true">🎯</span> <span id="clefsprint-accuracy-count">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="intrvl-game-area">
+
+    <div id="screen-start" class="button-stack">
+      <p style="color: var(--intrvl-ink-soft); line-height: 1.5; margin-bottom: 2rem;">
+        30 seconds. Match the Clef to the Note.<br>Build your combo for massive points.
+      </p>
+      <button class="btn-primary" onclick="startGame(true)">Start Daily Sprint</button>
+      <button class="btn-practice" onclick="startGame(false)">Practice Sprint</button>
+    </div>
+
+    <div id="screen-game" class="hidden" style="width: 100%;">
+      <div class="game-hud">
+        <div>Score: <span id="ui-score" class="score-highlight">0</span></div>
+        <div id="ui-combo" class="combo-badge" aria-hidden="true">🔥 x2 COMBO</div>
+        <div><span id="ui-timer" class="timer-highlight">30</span>s</div>
+      </div>
+
+      <p class="instruction-text">Make this note a <strong id="ui-target-note">X</strong></p>
+
+      <div id="clefsprint-img-container">
+        <img id="main-target-image" src="" alt="Note on stave" />
+      </div>
+
+      <div class="clef-options-grid" id="clef-buttons-container"></div>
+    </div>
+
+    <div id="screen-done" class="hidden button-stack">
+      <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;" id="end-title">Time's Up!</h2>
+      <p style="font-size: 1.4rem; font-family: var(--intrvl-font-head); font-weight: 900; color: var(--intrvl-accent-dark); margin-bottom: 0.5rem;" id="end-score">Score: 0</p>
+      <p style="color: var(--intrvl-ink-soft); font-size: 0.9rem; margin-bottom: 2rem;" id="end-high-score">Personal High: 0</p>
+
+      <button class="btn-share hidden" id="btn-share" onclick="shareResults()">Share Results 🚀</button>
+      <button class="btn-primary hidden" id="btn-try-again" onclick="resetToStart()">Back to Menu</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.INTRVL_CONFIG = {
+    startFn: 'startGame',
+    kind: 'game', id: 'clef', gameId: 'clef',
+    legacyStatsKeys: ['intrvlClefSprintStatsV1'],
+    accentColors: ['#a3b0bd', '#A9B9A2', '#bda569', '#c79aa0']
+  };
+</script>
+<!--@notation-js-->
+<!--@shared-js-->
+<script>
+  let currentPool = [];
+  let currentQuestion = null;
+  let score = 0;
+  let combo = 0;
+  let maxCombo = 0;
+  let timerInterval;
+  let endTime;
+  let isDailyMode = true;
+  let isGameActive = false;
+  let currentLevel = 0;
+  let stats;
+
+  const positionToTrebleFile = {
+    "-5": "D4", "-4": "E4", "-3": "F4", "-2": "G4", "-1": "A4",
+    "0": "B4",
+    "1": "C5", "2": "D5", "3": "E5", "4": "F5", "5": "G5"
+  };
+
+  const PAGE_CFG = window.INTRVL_CONFIG;
+  const GAME_ID = PAGE_CFG.gameId;                 // 'clef' or 'clef-easy'
+  const EASY = !!PAGE_CFG.easy;                    // easy: only treble and bass, with sharps and flats
+  const TITLE = PAGE_CFG.title || 'Clef Sprint';
+  const POSITION_WORDS = { '-5': 'just below the bottom line', '-4': 'on the bottom line', '-3': 'in the bottom space', '-2': 'on the second line', '-1': 'in the second space', '0': 'on the middle line', '1': 'in the third space', '2': 'on the fourth line', '3': 'in the top space', '4': 'on the top line', '5': 'just above the top line' };
+  const BASE_IMAGE_URL = "https://piapaul.github.io/music-theory-images/single/nocleftreble";
+
+  const clefNames = EASY ? ['Treble', 'Bass'] : ['Treble', 'Bass', 'Alto', 'Tenor'];
+  const notesArray = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const bases = [6, 1, 0, 5];
+
+  const clefImages = {
+    'Treble': 'https://piapaul.github.io/music-theory-images/buttons/clefs/treble.png',
+    'Bass': 'https://piapaul.github.io/music-theory-images/buttons/clefs/bass.png',
+    'Alto': 'https://piapaul.github.io/music-theory-images/buttons/clefs/alto.png',
+    'Tenor': 'https://piapaul.github.io/music-theory-images/buttons/clefs/tenor.png'
+  };
+
+  function initApp() {
+    if (EASY) document.querySelector('#screen-start p').innerHTML = '30 seconds. Treble or bass?<br>Sharps and flats included.';
+    stats = IntrvlCore.loadStats();
+    if (!stats.highScoreDaily) stats.highScoreDaily = 0;
+    if (!stats.highScorePractice) stats.highScorePractice = 0;
+    updateUIStats();
+    injectClefButtons();
+    preloadImages();
+
+    if (stats.lastPlayedDate === IntrvlCore.todayStr()) {
+      showEndScreen(true, stats.highScoreDaily);
+    }
+  }
+
+  function updateUIStats() {
+    document.getElementById('clefsprint-streak-count').textContent = stats.currentStreak;
+    let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    document.getElementById('clefsprint-accuracy-count').textContent = accuracy + "%";
+  }
+
+  function preloadImages() {
+    if (EASY) return;   // nothing to download: notes are drawn in the page
+    IV.prefetch(Object.keys(positionToTrebleFile).map(pos => `${BASE_IMAGE_URL}/single-${positionToTrebleFile[pos]}-natural-nocleftreble.png`).concat(Object.values(clefImages)));   // installed app: keep them for offline play
+    for (const pos in positionToTrebleFile) {
+      const img = new Image();
+      img.src = `${BASE_IMAGE_URL}/single-${positionToTrebleFile[pos]}-natural-nocleftreble.png`;
+    }
+  }
+
+  function injectClefButtons() {
+    const container = document.getElementById('clef-buttons-container');
+    container.innerHTML = '';
+    if (EASY) { container.style.gridTemplateColumns = 'repeat(2, 150px)'; container.style.justifyContent = 'center'; }
+
+    clefNames.forEach((name, index) => {
+      container.innerHTML += `
+        <button class="choice-btn" id="btn-clef-${index}" onclick="submitGuess(${index})">
+          ${EASY ? IVN.clefIconSvg(name.toLowerCase()) : `<img src="${clefImages[name]}" class="clef-btn-img" alt="${name} Clef" onerror="this.style.display='none';">`}
+          <span>${name}</span>
+        </button>
+      `;
+    });
+  }
+
+  function generatePool(useSeed) {
+    const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
+    const pool = [];
+    const focus = IntrvlCore.takeFocus(GAME_ID);   // topics to lean towards in "practise my weak spots"
+    const focusIdx = useSeed ? [] : focus.map(l => clefNames.findIndex(n => n + ' clef' === l)).filter(k => k >= 0);
+
+    for (let i = 0; i < 200; i++) {
+      const p = Math.floor(randomFunc() * 11) - 5;
+      const targetClefIndex = (focusIdx.length && randomFunc() < 0.7) ? focusIdx[Math.floor(randomFunc() * focusIdx.length)] : Math.floor(randomFunc() * clefNames.length);
+      let noteIdx = (bases[targetClefIndex] + p) % 7;
+      if (noteIdx < 0) noteIdx += 7;
+
+      // easy version also uses sharps and flats - but never the awkward ones (E sharp, B sharp, C flat, F flat)
+      const letter = notesArray[noteIdx];
+      const accChoices = ['natural'].concat('EB'.includes(letter) ? [] : ['sharp'], 'CF'.includes(letter) ? [] : ['flat']);
+      const acc = EASY ? accChoices[Math.floor(randomFunc() * accChoices.length)] : 'natural';
+      pool.push({ position: p, targetNote: notesArray[noteIdx] + (acc === 'sharp' ? '♯' : acc === 'flat' ? '♭' : ''), acc: acc, answerIndex: targetClefIndex });
+    }
+    return pool;
+  }
+
+  function startGame(daily) {
+    isDailyMode = daily;
+    score = 0;
+    combo = 0;
+    maxCombo = 0;
+    isGameActive = true;
+
+    currentPool = generatePool(isDailyMode);
+    currentLevel = 0;
+
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+
+    updateHUD();
+
+    endTime = Date.now() + 30000;
+    timerInterval = setInterval(tick, 100);
+
+    nextQuestion();
+  }
+
+  function tick() {
+    const remaining = Math.max(0, endTime - Date.now());
+    document.getElementById('ui-timer').textContent = Math.ceil(remaining / 1000);
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      endGame();
+    }
+  }
+
+  function updateHUD() {
+    document.getElementById('ui-score').textContent = score;
+    const badge = document.getElementById('ui-combo');
+    if (combo >= 3) {
+      const mult = 1 + Math.floor(combo / 3);
+      badge.textContent = `🔥 x${mult} COMBO`;
+      badge.classList.add('active');
+    } else {
+      badge.classList.remove('active');
+    }
+  }
+
+  function nextQuestion() {
+    if (!isGameActive) return;
+
+    for (let i = 0; i < clefNames.length; i++) {
+      const btn = document.getElementById(`btn-clef-${i}`);
+      btn.className = 'choice-btn';
+      btn.disabled = false;
+    }
+
+    currentQuestion = currentPool[currentLevel];
+    currentLevel++;
+
+    document.getElementById('ui-target-note').textContent = currentQuestion.targetNote;
+
+    const fileReference = positionToTrebleFile[currentQuestion.position];
+    const alt = 'A note ' + POSITION_WORDS[currentQuestion.position] + ' of a five-line stave' + (currentQuestion.acc !== 'natural' ? ', with a ' + currentQuestion.acc + ' sign' : '') + '. No clef is shown yet.';
+    if (EASY) {
+      document.getElementById('clefsprint-img-container').innerHTML = IVN.noteSvg({ clef: null, pos: Number(currentQuestion.position) + 4, acc: currentQuestion.acc, label: alt });   // drawn here, so no pictures needed
+    } else {
+      document.getElementById('main-target-image').src = `${BASE_IMAGE_URL}/single-${fileReference}-natural-nocleftreble.png`;
+      document.getElementById('main-target-image').alt = alt;
+    }
+    IntrvlCore.refocus('btn-clef-0');
+  }
+
+  function submitGuess(btnIndex) {
+    if (!isGameActive) return;
+    for (let i = 0; i < clefNames.length; i++) document.getElementById(`btn-clef-${i}`).disabled = true;
+
+    const btn = document.getElementById(`btn-clef-${btnIndex}`);
+    const isCorrect = btnIndex === currentQuestion.answerIndex;
+
+    stats.totalPlayed++;
+    IntrvlCore.recordItem(GAME_ID, clefNames[currentQuestion.answerIndex] + ' clef', isCorrect);
+    IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. The answer was ' + clefNames[currentQuestion.answerIndex] + ' clef');
+
+    if (isCorrect) {
+      stats.totalCorrect++;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+      const multiplier = 1 + Math.floor(combo / 3);
+      score += (2 * multiplier);
+      btn.classList.add('correct');
+    } else {
+      combo = 0;
+      score = Math.max(0, score - 1);
+      btn.classList.add('incorrect');
+      document.getElementById(`btn-clef-${currentQuestion.answerIndex}`).classList.add('correct');
+    }
+
+    updateHUD();
+    setTimeout(nextQuestion, 250);
+  }
+
+  function endGame() {
+    isGameActive = false;
+    document.getElementById('screen-game').classList.add('hidden');
+
+    let isNewHigh = false;
+
+    if (isDailyMode) {
+      if (stats.lastPlayedDate !== IntrvlCore.todayStr()) {
+        stats.currentStreak++;
+        stats.bestStreak = Math.max(stats.bestStreak, stats.currentStreak);
+        stats.lastPlayedDate = IntrvlCore.todayStr();
+        IntrvlCore.recordDailyResult(score);
+      }
+      if (score > stats.highScoreDaily) {
+        stats.highScoreDaily = score;
+        stats.dailyBest = { date: IntrvlCore.dailySeedDate(), score: score };
+        isNewHigh = true;
+      }
+    } else {
+      if (score > stats.highScorePractice) {
+        stats.highScorePractice = score;
+        isNewHigh = true;
+      }
+    }
+
+    IntrvlCore.saveStats(stats);
+    updateUIStats();
+
+    if (isNewHigh) IntrvlCore.confetti('confetti-canvas-clefsprint');
+
+    IntrvlCore.announce('Time is up. You scored ' + score + '.');
+    showEndScreen(isDailyMode, isDailyMode ? stats.highScoreDaily : stats.highScorePractice, isNewHigh);
+  }
+
+  function showEndScreen(wasDaily, high, isNewHigh = false) {
+    document.getElementById('screen-done').classList.remove('hidden');
+
+    if (!isGameActive && score === 0 && wasDaily) {
+      document.getElementById('end-title').textContent = "Daily Complete!";
+      document.getElementById('end-score').textContent = `Best Score: ${stats.highScoreDaily}`;
+      document.getElementById('end-high-score').style.display = 'none';
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: stats.highScoreDaily, streak: stats.currentStreak });
+
+      if (!document.getElementById('temp-prac')) {
+        const pracBtn = document.createElement('button');
+        pracBtn.id = 'temp-prac';
+        pracBtn.className = 'btn-practice';
+        pracBtn.textContent = 'Play Practice Sprint';
+        pracBtn.onclick = () => { document.getElementById('temp-prac').remove(); startGame(false); };
+        document.getElementById('screen-done').appendChild(pracBtn);
+      }
+      return;
+    }
+
+    document.getElementById('end-title').textContent = isNewHigh ? "New High Score! 🎉" : "Time's Up!";
+    document.getElementById('end-score').textContent = `Score: ${score}`;
+    document.getElementById('end-high-score').style.display = 'block';
+    document.getElementById('end-high-score').textContent = `Personal High: ${high}`;
+
+    if (wasDaily) {
+      document.getElementById('btn-share').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: score, streak: stats.currentStreak });
+
+      if (!document.getElementById('temp-prac')) {
+        const pracBtn = document.createElement('button');
+        pracBtn.id = 'temp-prac';
+        pracBtn.className = 'btn-practice';
+        pracBtn.textContent = 'Play Practice Sprint';
+        pracBtn.onclick = () => { document.getElementById('temp-prac').remove(); startGame(false); };
+        document.getElementById('screen-done').appendChild(pracBtn);
+      }
+    } else {
+      document.getElementById('btn-share').classList.add('hidden');
+      document.getElementById('btn-try-again').classList.remove('hidden');
+    }
+  }
+
+  function resetToStart() {
+    document.getElementById('screen-done').classList.add('hidden');
+    document.getElementById('screen-start').classList.remove('hidden');
+    const tempPrac = document.getElementById('temp-prac');
+    if (tempPrac) tempPrac.remove();
+  }
+
+  function shareResults() {
+    let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
+    const pageUrl = window.location.href.split('?')[0];
+    const textToShare = `I scored ${score} on the Intrvl Daily ${TITLE}! 🎼\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl ' + TITLE);
+  }
+
+  initApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away
+</script>
+

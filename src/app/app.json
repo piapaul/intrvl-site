@@ -1,0 +1,26 @@
+{
+  "name": "intrvl - daily music games and tools",
+  "shortName": "intrvl",
+  "description": "Daily music games and practice tools by Paul Emmett Music.",
+  "themeColor": "#A9B9A2",
+  "backgroundColor": "#FAFAFA",
+  "pageIcons": {
+    "intrvl": "home",
+    "intrvl-games": "games",
+    "intrvl-tools": "tools",
+    "intrvl-intervals": "interval",
+    "intrvl-matchmaker": "enharmonic",
+    "intrvl-ear": "pitch",
+    "intrvl-heaven": "seventh",
+    "intrvl-spelling": "spelling",
+    "intrvl-clefs": "clef",
+    "intrvl-notes": "note",
+    "intrvl-metronome": "metronome",
+    "intrvl-tuner": "tuner",
+    "intrvl-note-spinner": "note-spinner",
+    "intrvl-circle-of-fifths": "circle",
+    "intrvl-modes": "modes",
+    "intrvl-transpose": "transpose",
+    "intrvl-chords": "chords"
+  }
+}

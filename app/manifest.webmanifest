@@ -1,0 +1,33 @@
+{
+  "name": "intrvl - daily music games and tools",
+  "short_name": "intrvl",
+  "description": "Daily music games and practice tools by Paul Emmett Music.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAFAFA",
+  "theme_color": "#A9B9A2",
+  "lang": "en-GB",
+  "icons": [
+    {
+      "src": "../icons/home-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../icons/home-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../icons/home-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

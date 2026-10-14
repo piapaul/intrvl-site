@@ -1,0 +1,52 @@
+<!--@shared-css-->
+
+<div id="intrvl-app">
+  <div class="iv-hero" id="home-hero"></div>
+
+  <div class="iv-card iv-row between" id="home-progress" style="margin-top:1rem"></div>
+
+  <div class="iv-card iv-row between" id="home-league" style="margin-top:.7rem"></div>
+
+  <div class="iv-row between" style="margin-top:1.3rem">
+    <h2 class="iv-h2" style="margin:0">Today’s games</h2>
+    <span class="iv-note" id="home-count"></span>
+  </div>
+  <div class="iv-icongrid" id="home-games" style="margin-top:.6rem"></div>
+
+  <h2 class="iv-h2">Tools</h2>
+  <div class="iv-icongrid" id="home-tools"></div>
+</div>
+
+<script>window.INTRVL_CONFIG = { kind: 'home' };</script>
+<!--@shared-js-->
+<script>
+  (function () {
+    var S = IV.SECTIONS, Core = IntrvlCore;
+
+    document.getElementById('home-hero').innerHTML =
+      ['games', 'tools'].map(function (k) {
+        return '<a href="' + IV.href(S[k].url) + '"><div class="iv-badge" aria-hidden="true">' + S[k].icon + '</div><b>' + S[k].title + '</b><small>' + Core.esc(S[k].blurb) + '</small></a>';
+      }).join('');
+
+    var done = 0;
+    function tile(it, isGame) {
+      var played = isGame && Core.playedToday(it.id);
+      if (played) done++;
+      return '<a href="' + IV.href(it.url) + '" style="--item-accent:' + it.accent + '">' +
+        (played ? '<span class="iv-done" aria-hidden="true">✓</span><span class="iv-sr">Done today. </span>' : '') +
+        '<div class="iv-badge" aria-hidden="true">' + it.icon + '</div><span class="n">' + Core.esc(it.name) + '</span></a>';
+    }
+    document.getElementById('home-games').innerHTML = IV.GAMES.map(function (g) { return tile(g, true); }).join('');
+    document.getElementById('home-tools').innerHTML = IV.TOOLS.map(function (t) { return tile(t, false); }).join('');
+    document.getElementById('home-count').textContent = done + ' of ' + IV.GAMES.length + ' done';
+
+    var streak = Core.practiceStreak();
+    document.getElementById('home-progress').innerHTML =
+      '<div><div class="iv-label" style="margin:0">Your streak</div><b class="iv-strong-accent" style="font-size:1.05rem">' +
+      (streak ? streak + (streak === 1 ? ' day' : ' days') + ' in a row' : 'Start your streak today') + '</b></div>' +
+      '<button type="button" class="iv-btn small ghost" id="home-progress-btn">📈 See progress</button>';
+    document.getElementById('home-progress-btn').onclick = function () { IV.openProgress(); };
+    IV.renderLeagueCard(document.getElementById('home-league'));
+  })();
+</script>
+
