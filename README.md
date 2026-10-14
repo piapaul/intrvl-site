@@ -49,7 +49,7 @@ node build.mjs
 | Rhythm Tap / Rhythm Tap (Easy) | `/intrvl-rhythm`, `/intrvl-rhythm-easy` | See below |
 | Practice Log | `/intrvl-practice` | Timer with a switch for what you're practising, overview, "send to teacher" text for My Music Staff |
 
-The **home page order** is set by the list at the top of `src/shared/core.js` (`IV.GAMES`): Note Sprint and Clef Sprint come first.
+The **home page order** is set by the lists at the top of `src/shared/core.js` (`IV.GAMES`, `IV.TOOLS`). Games with an Easy version (`variantOf`) show as one tile with **Normal | Easy** buttons on the home and Games pages; the order is Note Sprint, Clef Sprint, Key Signature Sprint, Rhythm Tap, then the rest. Practice Log is first in Tools.
 
 **Each new page needs its own Squarespace page and loader**, like the existing ones (the installable app needs nothing).
 

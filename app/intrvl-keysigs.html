@@ -152,8 +152,8 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 .iv-done { width: 22px; height: 22px; border-radius: 50%; background: var(--intrvl-active-dark); color: #fff; font-size: .72rem; display: flex; align-items: center; justify-content: center; font-weight: 800; }
 .iv-chev { color: var(--intrvl-placeholder); font-size: 1.1rem; }
 .iv-icongrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
-.iv-icongrid a { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-radius: 12px; text-align: center; }
-.iv-icongrid a:hover { border-color: var(--item-accent, var(--intrvl-accent)); }
+.iv-icongrid > a, .iv-icongrid > .iv-gtile { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-radius: 12px; text-align: center; }
+.iv-icongrid > a:hover, .iv-icongrid > .iv-gtile:hover { border-color: var(--item-accent, var(--intrvl-accent)); }
 .iv-icongrid .iv-badge { width: 36px; height: 36px; font-size: 1.1rem; background: var(--item-accent, var(--intrvl-accent)); }
 .iv-icongrid span.n { font-size: .68rem; font-weight: 700; line-height: 1.15; }
 .iv-icongrid .iv-done { position: absolute; top: 4px; right: 4px; width: 17px; height: 17px; font-size: .58rem; }
@@ -320,6 +320,22 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
 .rt-offset summary { list-style: none; }
 .rt-offset summary::-webkit-details-marker { display: none; }
 .rt-offset summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); }
+
+/* a game with a Normal | Easy pair: one tile, two buttons */
+.iv-icongrid.cols3 { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }      /* two across on a phone, so Normal | Easy sit side by side */
+.iv-icongrid.cols3 > a, .iv-icongrid.cols3 > .iv-gtile { padding: .8rem .4rem .7rem; }
+.iv-icongrid.cols3 span.n { font-size: .82rem; }
+.iv-icongrid.cols3 .iv-pills { flex-wrap: nowrap; }
+.iv-pills { display: flex; gap: .3rem; justify-content: center; flex-wrap: wrap; margin-top: .15rem; }
+.iv-pill { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; min-height: 32px; padding: .2rem .6rem; border: 1px solid var(--intrvl-stone); border-radius: 999px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .72rem; font-weight: 800; line-height: 1.1; text-decoration: none; }
+.iv-pill:hover { border-color: var(--item-accent, var(--intrvl-accent)); background: var(--intrvl-card-bg); }
+.iv-pill.done { background: var(--intrvl-success-bg); border-color: var(--intrvl-active); color: var(--intrvl-success-fg); }
+.iv-gitem { flex-wrap: wrap; }
+.iv-gitem .iv-pills { flex-basis: 100%; justify-content: flex-start; padding-left: calc(38px + .8rem); margin-top: 0; }
+.iv-gitem .iv-pill { font-size: .8rem; padding: .25rem .8rem; }
+.iv-scoreline.iv-gh { border-bottom: none; padding-bottom: 0; }
+.iv-scoreline.iv-sub { padding-left: 2.1rem; padding-top: .3rem; padding-bottom: .4rem; }
+.iv-scoreline.iv-sub .t { font-size: .88rem; }
 </style>
 
 <style>
@@ -480,29 +496,39 @@ IV.SECTIONS = {
   tools: { title: 'Tools',   icon: '🧰', url: '/intrvl-tools', blurb: 'Practice tools for every musician' }
 };
 IV.GAMES = [
-  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' },
-  { id: 'note-easy',  name: 'Note Sprint (Easy)',    icon: '🎵', accent: '#bfae94', url: '/intrvl-notes-easy',  blurb: 'Treble and bass clef, natural notes only' },
-  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
-  { id: 'clef-easy',  name: 'Clef Sprint (Easy)',    icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs-easy',  blurb: 'Just treble and bass, with sharps and flats' },
-  { id: 'keysig',     name: 'Key Signature Sprint',  icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs',     blurb: '30 seconds: name the key from its signature' },
-  { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats' },
-  { id: 'interval',   name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',   blurb: 'Name the interval you hear' },
-  { id: 'enharmonic', name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',  blurb: '30 seconds: find the enharmonic twin' },
-  { id: 'pitch',      name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',         blurb: 'Which pitch is higher, which is lower?' },
-  { id: 'seventh',    name: '7th Heaven',            icon: '🎹', accent: '#9db0a8', url: '/intrvl-heaven',      blurb: 'Hear the quality of a 7th chord' },
-  { id: 'spelling',   name: 'Chord Spelling Bee',    icon: '🐝', accent: '#c79aa0', url: '/intrvl-spelling',    blurb: '30 seconds: spell the chord correctly' },
-  { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',    icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy', blurb: 'Tap the rhythm with the metronome running' },
-  { id: 'rhythm',     name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',      blurb: 'Tap the rhythm, then keep time on your own' }
+  { id: 'note',        name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',        blurb: '30 seconds: name the note on the stave' },
+  { id: 'note-easy',   name: 'Note Sprint (Easy)',    icon: '🎵', accent: '#bfae94', url: '/intrvl-notes-easy',   blurb: 'Treble and bass clef, natural notes only', variantOf: 'note' },
+  { id: 'clef',        name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',        blurb: '30 seconds: match the clef to the note' },
+  { id: 'clef-easy',   name: 'Clef Sprint (Easy)',    icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs-easy',   blurb: 'Just treble and bass, with sharps and flats', variantOf: 'clef' },
+  { id: 'keysig',      name: 'Key Signature Sprint',  icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs',      blurb: '30 seconds: name the key from its signature' },
+  { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats', variantOf: 'keysig' },
+  { id: 'rhythm',      name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',       blurb: 'Tap the rhythm, then keep time on your own' },
+  { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',     icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy',  blurb: 'Tap the rhythm with the metronome running', variantOf: 'rhythm' },
+  { id: 'interval',    name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',    blurb: 'Name the interval you hear' },
+  { id: 'enharmonic',  name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',   blurb: '30 seconds: find the enharmonic twin' },
+  { id: 'pitch',       name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',          blurb: 'Which pitch is higher, which is lower?' },
+  { id: 'seventh',     name: '7th Heaven',            icon: '🎹', accent: '#9db0a8', url: '/intrvl-heaven',       blurb: 'Hear the quality of a 7th chord' },
+  { id: 'spelling',    name: 'Chord Spelling Bee',    icon: '🐝', accent: '#c79aa0', url: '/intrvl-spelling',     blurb: '30 seconds: spell the chord correctly' }
 ];
+// The home and Games pages show each game once, with Normal | Easy buttons where there is an Easy version.
+IV.groups = function () {
+  var out = [], byId = {};
+  IV.GAMES.forEach(function (g) {
+    if (g.variantOf) { byId[g.variantOf].variants.push({ label: 'Easy', game: g }); byId[g.variantOf].variants[0].label = 'Normal'; return; }
+    var grp = { id: g.id, name: g.name, icon: g.icon, accent: g.accent, blurb: g.blurb, variants: [{ label: '', game: g }] };
+    byId[g.id] = grp; out.push(grp);
+  });
+  return out;
+};
 IV.TOOLS = [
+  { id: 'practice',     name: 'Practice Log',       icon: '📒', accent: '#D9A5B3', url: '/intrvl-practice',         blurb: 'Time your practice and send it to your teacher' },
   { id: 'metronome',    name: 'Metronome',          icon: '⏱️', accent: '#c2a687', url: '/intrvl-metronome',        blurb: 'Tempo, time signatures and tap tempo' },
   { id: 'tuner',        name: 'Tuner',              icon: '🎸', accent: '#9db0a8', url: '/intrvl-tuner',            blurb: 'Tune with your microphone or by ear' },
   { id: 'note-spinner', name: 'Note Spinner',       icon: '🎡', accent: '#b0a3c7', url: '/intrvl-note-spinner',     blurb: 'Spin for an expressive word to play with' },
   { id: 'circle',       name: 'Circle of Fifths',   icon: '🕛', accent: '#8eaab5', url: '/intrvl-circle-of-fifths', blurb: 'Every key, scale and key signature' },
   { id: 'modes',        name: 'Modes Buster',       icon: '🌗', accent: '#c9a0b8', url: '/intrvl-modes',            blurb: 'See how the modes really work' },
   { id: 'transpose',    name: 'Transposer',         icon: '🎷', accent: '#b9ae8a', url: '/intrvl-transpose',        blurb: 'Concert pitch and transposing instruments' },
-  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' },
-  { id: 'practice',     name: 'Practice Log',       icon: '📒', accent: '#D9A5B3', url: '/intrvl-practice',         blurb: 'Time your practice and send it to your teacher' }
+  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' }
 ];
 IV.find = function (id) {
   var all = IV.GAMES.concat(IV.TOOLS);
@@ -798,7 +824,7 @@ IV.find = function (id) {
     lsSet('intrvl.displayName', t);
     return t;
   }
-  var AVATARS = ['🎹', '🎸', '🥁', '🎺', '🎻', '🎷', '😀', '🦊', '🐱', '🐶', '🦁', '🐼'];
+  var AVATARS = ['🎹', '🎸', '🥁', '🎺', '🎻', '🎷', '😀', '🦊', '🐱', '🐶', '🦁', '🐼', '🎤', '🎧', '🦩', '🦄', '🐙', '🐧'];
   function getAvatar() { return lsGet('intrvl.avatar') || AVATARS[0]; }
   function setAvatar(emoji) {
     var c = String(emoji || '').replace(/[<>]/g, '').trim().slice(0, 16) || AVATARS[0];
@@ -1494,9 +1520,6 @@ IV.find = function (id) {
       '<div class="iv-label" id="ivp-av-lbl">Your avatar</div>' +
       '<div class="iv-avatars" id="ivp-avatars" role="group" aria-labelledby="ivp-av-lbl"></div>' +
       '<div class="iv-addrow"><input class="iv-input" id="ivp-custom" maxlength="8" aria-label="Or type your own emoji as an avatar" placeholder="…or type your own emoji" value="' + (isPreset ? '' : esc(cur)) + '"><button class="iv-btn small ghost" id="ivp-usecustom">Use</button></div>' +
-      '<div class="iv-row" style="margin-top:1.1rem"><button class="iv-btn small" id="ivp-progress">📈 See your progress</button></div>' +
-      '<div class="iv-label" style="margin-top:1.1rem">Your history</div>' +
-      '<div id="ivp-hist" class="iv-chips"></div>' +
       '<div class="iv-label" style="margin-top:1.1rem">Leaderboard connection</div>' +
       '<div id="ivp-conn" class="iv-note">Checking…</div>',
       null, 'you');
@@ -1510,9 +1533,6 @@ IV.find = function (id) {
     $('#ivp-avatars', s).onclick = function (e) { var b = e.target.closest('button'); if (!b) return; Core.setAvatar(b.getAttribute('data-a')); $('#ivp-custom', s).value = ''; drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
     $('#ivp-usecustom', s).onclick = function () { var v = $('#ivp-custom', s).value.trim(); if (!v) return; Core.setAvatar(v); drawAvatars(); sync(); status.textContent = 'Avatar updated ✓'; };
     $('#ivp-save', s).onclick = function () { var n = Core.setDisplayName($('#ivp-name', s).value); $('#ivp-name', s).value = n; sync(); status.textContent = 'Name saved ✓'; };
-    $('#ivp-hist', s).innerHTML = IV.GAMES.map(function (g) { return '<button class="iv-chip" data-id="' + g.id + '">📅 ' + esc(g.name) + '</button>'; }).join('');
-    $('#ivp-hist', s).onclick = function (e) { var b = e.target.closest('.iv-chip'); if (b) openHistory(b.getAttribute('data-id')); };
-    $('#ivp-progress', s).onclick = function () { openProgress(); };
     var conn = $('#ivp-conn', s);
     if (!LB.isConfigured()) conn.textContent = 'Not set up (src/config.js has no endpoint yet).';
     else LB.ping().then(function (r) {

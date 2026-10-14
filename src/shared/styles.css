@@ -120,8 +120,8 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 .iv-done { width: 22px; height: 22px; border-radius: 50%; background: var(--intrvl-active-dark); color: #fff; font-size: .72rem; display: flex; align-items: center; justify-content: center; font-weight: 800; }
 .iv-chev { color: var(--intrvl-placeholder); font-size: 1.1rem; }
 .iv-icongrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
-.iv-icongrid a { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-radius: 12px; text-align: center; }
-.iv-icongrid a:hover { border-color: var(--item-accent, var(--intrvl-accent)); }
+.iv-icongrid > a, .iv-icongrid > .iv-gtile { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; text-decoration: none; color: var(--intrvl-ink); background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-radius: 12px; text-align: center; }
+.iv-icongrid > a:hover, .iv-icongrid > .iv-gtile:hover { border-color: var(--item-accent, var(--intrvl-accent)); }
 .iv-icongrid .iv-badge { width: 36px; height: 36px; font-size: 1.1rem; background: var(--item-accent, var(--intrvl-accent)); }
 .iv-icongrid span.n { font-size: .68rem; font-weight: 700; line-height: 1.15; }
 .iv-icongrid .iv-done { position: absolute; top: 4px; right: 4px; width: 17px; height: 17px; font-size: .58rem; }
@@ -288,3 +288,19 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
 .rt-offset summary { list-style: none; }
 .rt-offset summary::-webkit-details-marker { display: none; }
 .rt-offset summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); }
+
+/* a game with a Normal | Easy pair: one tile, two buttons */
+.iv-icongrid.cols3 { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }      /* two across on a phone, so Normal | Easy sit side by side */
+.iv-icongrid.cols3 > a, .iv-icongrid.cols3 > .iv-gtile { padding: .8rem .4rem .7rem; }
+.iv-icongrid.cols3 span.n { font-size: .82rem; }
+.iv-icongrid.cols3 .iv-pills { flex-wrap: nowrap; }
+.iv-pills { display: flex; gap: .3rem; justify-content: center; flex-wrap: wrap; margin-top: .15rem; }
+.iv-pill { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; min-height: 32px; padding: .2rem .6rem; border: 1px solid var(--intrvl-stone); border-radius: 999px; background: var(--intrvl-panel-bg); color: var(--intrvl-ink); font-size: .72rem; font-weight: 800; line-height: 1.1; text-decoration: none; }
+.iv-pill:hover { border-color: var(--item-accent, var(--intrvl-accent)); background: var(--intrvl-card-bg); }
+.iv-pill.done { background: var(--intrvl-success-bg); border-color: var(--intrvl-active); color: var(--intrvl-success-fg); }
+.iv-gitem { flex-wrap: wrap; }
+.iv-gitem .iv-pills { flex-basis: 100%; justify-content: flex-start; padding-left: calc(38px + .8rem); margin-top: 0; }
+.iv-gitem .iv-pill { font-size: .8rem; padding: .25rem .8rem; }
+.iv-scoreline.iv-gh { border-bottom: none; padding-bottom: 0; }
+.iv-scoreline.iv-sub { padding-left: 2.1rem; padding-top: .3rem; padding-bottom: .4rem; }
+.iv-scoreline.iv-sub .t { font-size: .88rem; }
