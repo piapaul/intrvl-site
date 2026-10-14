@@ -3,7 +3,7 @@
    which is what makes the phone pick up updates). Edit src/app/sw.js, not app/sw.js. */
 'use strict';
 
-var VERSION = '6ee77adfd244';
+var VERSION = '150bb789b4d8';
 var CACHE = 'intrvl-app-' + VERSION;       // the app itself: replaced on every update
 var RUNTIME = 'intrvl-pictures-v1';       // stave pictures: kept between updates
 var PRECACHE = [
@@ -16,16 +16,23 @@ var PRECACHE = [
   "intrvl-games.html",
   "intrvl-heaven.html",
   "intrvl-intervals.html",
+  "intrvl-keysigs.html",
   "intrvl-matchmaker.html",
   "intrvl-metronome.html",
   "intrvl-modes.html",
   "intrvl-note-spinner.html",
   "intrvl-notes.html",
+  "intrvl-practice.html",
+  "intrvl-rhythm.html",
   "intrvl-spelling.html",
   "intrvl-tools.html",
   "intrvl-transpose.html",
   "intrvl-tuner.html",
   "index.html",
+  "intrvl-notes-easy.html",
+  "intrvl-clefs-easy.html",
+  "intrvl-keysigs-easy.html",
+  "intrvl-rhythm-easy.html",
   "fonts/fonts.css",
   "fonts/fraunces-latin.woff2",
   "fonts/raleway-latin.woff2",

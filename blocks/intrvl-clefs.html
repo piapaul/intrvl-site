@@ -267,6 +267,28 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 #intrvl-app .iv-bigval, #intrvl-app .tn-note, #intrvl-app .tn-freq { font-variant-numeric: lining-nums tabular-nums; }
 
 .iv-focus-note { font-size: .82rem; font-weight: 700; color: var(--intrvl-accent-dark); background: var(--intrvl-panel-bg); border: 1px dashed var(--intrvl-stone); border-radius: 10px; padding: .45rem .7rem; margin: 0 auto .9rem; max-width: 380px; text-align: center; line-height: 1.35; }
+
+/* notation drawn as SVG */
+.ivn-svg { display: block; width: 100%; height: auto; max-height: 100%; }
+.choice-btn .ivn-clef { max-width: 70px; max-height: 44px; margin: 0 auto; }
+.choice-btn.correct .ivn-clef, .choice-btn.incorrect .ivn-clef { filter: none; }
+
+/* friends league table */
+.iv-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.iv-table th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--intrvl-ink-soft); padding: .3rem .3rem; border-bottom: 2px solid var(--intrvl-border); }
+.iv-table td { padding: .55rem .3rem; border-bottom: 1px solid var(--intrvl-border); }
+.iv-table .num { text-align: right; width: 3.6rem; }
+.iv-table .rk { width: 1.6rem; color: var(--intrvl-ink-soft); font-weight: 800; }
+.iv-table tr.me td { background: color-mix(in srgb, var(--intrvl-accent) 22%, white); font-weight: 700; }
+button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-offset: 2px; }
+
+.iv-details summary { list-style: none; }
+.iv-details summary::-webkit-details-marker { display: none; }
+.iv-details summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); transition: transform .15s ease; }
+.iv-details[open] summary::after { transform: rotate(180deg); }
+.rt-offset summary { list-style: none; }
+.rt-offset summary::-webkit-details-marker { display: none; }
+.rt-offset summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); }
 </style>
 
 <style>
@@ -376,6 +398,66 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
   };
 </script>
 <script>
+/* intrvl notation - draws staves, notes and key signatures as SVG (no pictures to download, so it works offline).
+   Shared by Key Signature Sprint and Clef Sprint (Easy).  Rhythm Tap has its own drawing code. */
+window.IVN = (function () {
+  'use strict';
+  var INK = '#1c1c1c';
+  /* Clef and accidental outlines from Noto Music (SIL Open Font License 1.1, (c) The Noto Project Authors).
+     Font units (1000 per em), y pointing UP — draw with transform="translate(x,y) scale(s,-s)". */
+  var GLYPH = {
+    treble: 'M314 801Q300 854 291 906Q282 958 282 1012Q282 1059 288.5 1100.5Q295 1142 307 1177Q320 1217 341 1252.5Q362 1288 385.5 1311Q409 1334 427 1334Q451 1334 493 1249Q514 1206 524 1156Q534 1106 534 1049Q534 978 515 907.5Q496 837 459.5 775Q423 713 372 666L407 498Q422 500 432 501Q442 502 447 502Q508 502 556 467.5Q604 433 632.5 377Q661 321 661 254Q661 177 621.5 115.5Q582 54 503 25Q508 8 532 -117Q538 -147 541 -164.5Q544 -182 545 -195Q546 -208 546 -225Q546 -275 521.5 -314.5Q497 -354 455.5 -376Q414 -398 363 -398Q311 -398 271 -378.5Q231 -359 208 -324.5Q185 -290 185 -245Q185 -197 211.5 -165Q238 -133 287 -133Q329 -133 355.5 -163.5Q382 -194 382 -236Q382 -272 357 -299Q332 -326 292 -326H282Q308 -365 364 -365Q433 -365 472 -320Q511 -275 511 -205Q511 -188 507 -159.5Q503 -131 493 -91Q483 -51 477.5 -25Q472 1 470 12Q436 2 390 2Q304 2 222 52Q142 102 96 184Q50 266 50 361Q50 451 91 530Q132 609 192.5 675Q253 741 314 801ZM341 826Q364 838 390 870.5Q416 903 440 945Q464 987 479 1029.5Q494 1072 494 1106Q494 1142 483 1163Q472 1184 445 1184Q421 1184 398.5 1162Q376 1140 358.5 1103.5Q341 1067 331 1022Q321 977 321 930Q321 898 327.5 872Q334 846 341 826ZM398 379Q371 373 347 353.5Q323 334 308.5 306.5Q294 279 294 248Q294 223 307 196.5Q320 170 339 154Q352 142 365 136Q380 129 380 123Q380 120 370 117Q332 126 301.5 151Q271 176 253.5 211.5Q236 247 236 287Q236 330 253.5 370Q271 410 302.5 442Q334 474 374 490L345 641Q229 547 174.5 456.5Q120 366 120 277Q120 212 154 156Q188 100 247 65.5Q306 31 380 31Q400 31 420.5 35Q441 39 464 45ZM495 55Q593 97 593 227Q593 270 571 305.5Q549 341 512 362Q475 383 429 383Z',
+    bass: 'M50 123Q216 231 288 301Q336 348 373 408.5Q410 469 431.5 536Q453 603 453 669Q453 728 435 773.5Q417 819 383 845Q349 871 302 871Q284 871 264.5 867Q245 863 224 855Q181 839 158 813.5Q135 788 135 765Q135 756 143 752Q151 748 158 748Q168 748 183 752Q190 754 196.5 755Q203 756 210 756Q248 756 272 733.5Q296 711 296 674Q296 638 266 612Q236 586 195 586Q146 586 111 617Q76 648 76 697Q76 756 109 802Q142 848 198.5 874Q255 900 324 900Q400 900 460 867Q520 834 555.5 776.5Q591 719 591 646Q591 551 538 464Q511 419 476.5 379Q442 339 389 297.5Q336 256 256 208Q176 160 57 101ZM687 809Q710 809 726 793Q742 777 742 754Q742 731 726 715.5Q710 700 687 700Q664 700 648 715.5Q632 731 632 754Q632 777 648 793Q664 809 687 809ZM687 589Q710 589 726 573Q742 557 742 534Q742 511 726 495.5Q710 480 687 480Q664 480 648 495.5Q632 511 632 534Q632 557 648 573Q664 589 687 589Z',
+    sharp: 'M97 46V189L50 177V277L97 290V486H128V298L195 314V509H226V322L275 333V234L226 220V77L275 89V-14L226 -26V-214H195V-34L128 -52V-247H97V-59L50 -71V32ZM195 70V214L128 197V54Z',
+    flat: 'M50 615H81V225Q118 262 165 262Q197 262 223 240.5Q249 219 249 178Q249 146 230 119Q211 92 179 65L110 6Q91 -10 76 -25.5Q61 -41 50 -55ZM81 12Q107 40 125 63.5Q143 87 153 105Q164 124 169.5 140Q175 156 175 170Q175 198 162 210.5Q149 223 134 223Q118 223 102.5 211.5Q87 200 81 180Z'
+  };
+  var SP = 10, K = SP / 250;                       // staff space in px; glyph units -> px
+  var BOTTOM = 4 * SP;                             // y of the bottom staff line
+  var SIG_POS = {                                  // half-space steps above the bottom line, in order of sharps / flats
+    treble: { sharp: [8, 5, 9, 6, 3, 7, 4], flat: [4, 7, 3, 6, 2, 5, 1] },
+    bass:   { sharp: [6, 3, 7, 4, 1, 5, 2], flat: [2, 5, 1, 4, 0, 3, -1] }
+  };
+  function glyph(name, x, y, scale) { return '<path transform="translate(' + x + ',' + y + ') scale(' + scale + ',' + (-scale) + ')" d="' + GLYPH[name] + '"/>'; }
+  function lines(x1, x2) {
+    var g = '', i;
+    for (i = 0; i < 5; i++) g += '<line x1="' + x1 + '" x2="' + x2 + '" y1="' + (BOTTOM - i * SP) + '" y2="' + (BOTTOM - i * SP) + '" stroke="' + INK + '" stroke-width="1"/>';
+    return g + '<line x1="' + x1 + '" x2="' + x1 + '" y1="0" y2="' + BOTTOM + '" stroke="' + INK + '" stroke-width="1.4"/>';
+  }
+  function clefGlyph(clef) {
+    return clef === 'treble' ? glyph('treble', 12, BOTTOM, K) : clef === 'bass' ? glyph('bass', 12, BOTTOM - 6 * SP / 9, K) : '';
+  }
+  function accidental(sharp, x, y) { return sharp ? glyph('sharp', x, y + 131 * K, K) : glyph('flat', x, y + 100 * K, K); }
+
+  // A key signature on a stave.  count: +1..+7 sharps, -1..-7 flats, 0 none.
+  function keySigSvg(clef, count, label) {
+    var sharp = count >= 0, pos = SIG_POS[clef][sharp ? 'sharp' : 'flat'], i, g = '';
+    g += lines(4, 150) + clefGlyph(clef);
+    for (i = 0; i < Math.abs(count); i++) g += accidental(sharp, 58 + i * (sharp ? 12 : 10), BOTTOM - pos[i] * SP / 2);
+    var words = count === 0 ? 'no sharps or flats' : Math.abs(count) + (sharp ? ' sharp' : ' flat') + (Math.abs(count) > 1 ? 's' : '');
+    return '<svg class="ivn-svg" viewBox="0 -22 154 78" role="img" aria-label="' + (label || ('Key signature with ' + words + ' on the ' + clef + ' clef')) + '"><g fill="' + INK + '">' + g + '</g></svg>';
+  }
+
+  // One note on a stave.  pos: 0 = bottom line, 1 = first space, ... 8 = top line (negative / above 8 uses ledger lines).
+  // acc: 'sharp' | 'flat' | null.  clef: 'treble' | 'bass' | null (null draws the stave with no clef).
+  function noteSvg(opts) {
+    var pos = opts.pos, y = BOTTOM - pos * SP / 2, g = lines(4, 130) + clefGlyph(opts.clef), x = 86, i;
+    for (i = -2; i >= pos; i -= 2) g += '<line x1="' + (x - 11) + '" x2="' + (x + 11) + '" y1="' + (BOTTOM - i * SP / 2) + '" y2="' + (BOTTOM - i * SP / 2) + '" stroke="' + INK + '" stroke-width="1.2"/>';
+    for (i = 10; i <= pos; i += 2) g += '<line x1="' + (x - 11) + '" x2="' + (x + 11) + '" y1="' + (BOTTOM - i * SP / 2) + '" y2="' + (BOTTOM - i * SP / 2) + '" stroke="' + INK + '" stroke-width="1.2"/>';
+    if (opts.acc === 'sharp' || opts.acc === 'flat') g += accidental(opts.acc === 'sharp', x - 20, y);
+    var up = pos < 4;
+    g += '<ellipse cx="' + x + '" cy="' + y + '" rx="6.4" ry="4.6" transform="rotate(-20 ' + x + ' ' + y + ')" fill="' + INK + '"/>';
+    g += up ? '<line x1="' + (x + 5.8) + '" x2="' + (x + 5.8) + '" y1="' + (y - 1) + '" y2="' + (y - 3.4 * SP) + '" stroke="' + INK + '" stroke-width="1.4"/>'
+            : '<line x1="' + (x - 5.8) + '" x2="' + (x - 5.8) + '" y1="' + (y + 1) + '" y2="' + (y + 3.4 * SP) + '" stroke="' + INK + '" stroke-width="1.4"/>';
+    return '<svg class="ivn-svg" viewBox="0 -34 134 106" role="img" aria-label="' + (opts.label || 'A note on a stave') + '"><g fill="' + INK + '">' + g + '</g></svg>';
+  }
+  // A small stave with just a clef on it - used on answer buttons.
+  function clefIconSvg(clef) {
+    return '<svg class="ivn-svg ivn-clef" viewBox="0 -22 52 78" aria-hidden="true" focusable="false"><g fill="' + INK + '">' + lines(2, 50) + clefGlyph(clef) + '</g></svg>';
+  }
+  return { keySigSvg: keySigSvg, noteSvg: noteSvg, clefIconSvg: clefIconSvg, SIG_POS: SIG_POS, GLYPH: GLYPH, INK: INK };
+})();
+</script>
+<script>
 window.IV = window.IV || {};
 IV.CONFIG = {
   assets: 'https://piapaul.github.io/intrvl-site',   // where icons are published (GitHub Pages)
@@ -389,13 +471,19 @@ IV.SECTIONS = {
   tools: { title: 'Tools',   icon: '🧰', url: '/intrvl-tools', blurb: 'Practice tools for every musician' }
 };
 IV.GAMES = [
+  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' },
+  { id: 'note-easy',  name: 'Note Sprint (Easy)',    icon: '🎵', accent: '#bfae94', url: '/intrvl-notes-easy',  blurb: 'Treble and bass clef, natural notes only' },
+  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
+  { id: 'clef-easy',  name: 'Clef Sprint (Easy)',    icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs-easy',  blurb: 'Just treble and bass, with sharps and flats' },
+  { id: 'keysig',     name: 'Key Signature Sprint',  icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs',     blurb: '30 seconds: name the key from its signature' },
+  { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats' },
   { id: 'interval',   name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',   blurb: 'Name the interval you hear' },
   { id: 'enharmonic', name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',  blurb: '30 seconds: find the enharmonic twin' },
   { id: 'pitch',      name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',         blurb: 'Which pitch is higher, which is lower?' },
   { id: 'seventh',    name: '7th Heaven',            icon: '🎹', accent: '#9db0a8', url: '/intrvl-heaven',      blurb: 'Hear the quality of a 7th chord' },
   { id: 'spelling',   name: 'Chord Spelling Bee',    icon: '🐝', accent: '#c79aa0', url: '/intrvl-spelling',    blurb: '30 seconds: spell the chord correctly' },
-  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
-  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' }
+  { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',    icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy', blurb: 'Tap the rhythm with the metronome running' },
+  { id: 'rhythm',     name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',      blurb: 'Tap the rhythm, then keep time on your own' }
 ];
 IV.TOOLS = [
   { id: 'metronome',    name: 'Metronome',          icon: '⏱️', accent: '#c2a687', url: '/intrvl-metronome',        blurb: 'Tempo, time signatures and tap tempo' },
@@ -404,7 +492,8 @@ IV.TOOLS = [
   { id: 'circle',       name: 'Circle of Fifths',   icon: '🕛', accent: '#8eaab5', url: '/intrvl-circle-of-fifths', blurb: 'Every key, scale and key signature' },
   { id: 'modes',        name: 'Modes Buster',       icon: '🌗', accent: '#c9a0b8', url: '/intrvl-modes',            blurb: 'See how the modes really work' },
   { id: 'transpose',    name: 'Transposer',         icon: '🎷', accent: '#b9ae8a', url: '/intrvl-transpose',        blurb: 'Concert pitch and transposing instruments' },
-  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' }
+  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' },
+  { id: 'practice',     name: 'Practice Log',       icon: '📒', accent: '#D9A5B3', url: '/intrvl-practice',         blurb: 'Time your practice and send it to your teacher' }
 ];
 IV.find = function (id) {
   var all = IV.GAMES.concat(IV.TOOLS);
@@ -903,6 +992,39 @@ IV.find = function (id) {
     });
     return rows.join('');
   }
+  // ---- friends leagues (all of these need the player to be registered first) ----
+  function leagueCall(payload) {
+    return register().then(function () {
+      payload.code = Core.getPlayerCode();
+      payload.deviceId = Core.getDeviceId();
+      return post(payload);
+    });
+  }
+  function createLeague(name) { return leagueCall({ action: 'createLeague', name: name }); }
+  function joinLeague(invite) { return leagueCall({ action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() }); }
+  function leaveLeague(id) { return leagueCall({ action: 'leaveLeague', leagueId: id }); }
+  function removeMember(id, memberCode) { return leagueCall({ action: 'removeMember', leagueId: id, memberCode: memberCode }); }
+  function renameLeague(id, name) { return leagueCall({ action: 'renameLeague', leagueId: id, name: name }); }
+  function resetInvite(id) { return leagueCall({ action: 'resetInvite', leagueId: id }); }
+  function deleteLeague(id) { return leagueCall({ action: 'deleteLeague', leagueId: id }); }
+  function myLeagues() {
+    return get({ action: 'myLeagues', code: Core.getPlayerCode() }).then(function (res) {
+      if (res.ok) Core.lsSet('intrvl.leagues.v1', JSON.stringify(res.leagues));
+      return res;
+    });
+  }
+  function cachedLeagues() { try { return JSON.parse(Core.lsGet('intrvl.leagues.v1') || 'null'); } catch (e) { return null; } }
+  function getLeague(id, week) {
+    var p = { action: 'league', code: Core.getPlayerCode(), leagueId: id };
+    if (week) p.week = week;
+    return get(p).then(function (res) {
+      if (res.ok && !week) Core.lsSet('intrvl.league.' + id, JSON.stringify(res));
+      return res;
+    });
+  }
+  function cachedLeague(id) { try { return JSON.parse(Core.lsGet('intrvl.league.' + id) || 'null'); } catch (e) { return null; } }
+  function invitePreview(invite) { return get({ action: 'invitePreview', invite: String(invite || '').trim().toUpperCase() }); }
+
   var retryArmed = false;
   function attachSubmitButton(opts) {
     var host = document.getElementById('screen-done') || document.getElementById('intrvl-app');
@@ -944,6 +1066,8 @@ IV.find = function (id) {
   global.IntrvlLeaderboard = {
     isConfigured: isConfigured, ping: ping, register: register,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
+    createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
+    resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
     submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
   };
 })(window);
@@ -1040,11 +1164,24 @@ IV.find = function (id) {
   }
   IV.openSheet = openSheet; IV.closeSheet = closeSheet;
   function $(sel, root) { return (root || document).querySelector(sel); }
+  // "Friends | League" switch at the top of both sheets
+  function viewSwitch(on) {
+    return '<div class="iv-seg" id="iv-viewsw" role="group" aria-label="Friends or league" style="margin-bottom:1rem">' +
+      '<button type="button" data-v="friends" class="' + (on === 'friends' ? 'on' : '') + '" aria-pressed="' + (on === 'friends') + '">👥 Friends</button>' +
+      '<button type="button" data-v="league" class="' + (on === 'league' ? 'on' : '') + '" aria-pressed="' + (on === 'league') + '">🏆 League</button></div>';
+  }
+  function wireSwitch(s) {
+    var sw = s.querySelector('#iv-viewsw'); if (!sw) return;
+    sw.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.getAttribute('data-v') === 'league') openLeague(); else openFriends();
+    };
+  }
   function openFriends(gameId) {
     var gid = gameId || (KIND === 'game' ? (CFG.id || CFG.gameId) : IV.GAMES[0].id);
     var inviteBase = IV.fullUrl(IV.SECTIONS.home.url);
     var s = openSheet(
-      '<h3>Friends</h3>' +
+      '<h3>Friends</h3>' + viewSwitch('friends') +
       '<div class="iv-code"><div><div class="iv-label" style="margin:0">Your code</div><b>' + esc(Core.getPlayerCode()) + '</b></div>' +
       '<div class="iv-row"><button class="iv-btn small ghost" id="ivf-copy">Copy code</button><button class="iv-btn small" id="ivf-link">Invite link</button></div></div>' +
       '<div id="ivf-note" class="iv-status" role="status" aria-live="polite"></div>' +
@@ -1055,6 +1192,7 @@ IV.find = function (id) {
       '<div class="iv-chips" id="ivf-games" role="group" aria-labelledby="ivf-lbl" style="margin-bottom:.6rem"></div>' +
       '<div id="ivf-board" aria-live="polite"><div class="iv-note">Loading…</div></div>',
       null, 'friends');
+    wireSwitch(s);
     var note = $('#ivf-note', s), status = $('#ivf-status', s), codeIn = $('#ivf-code', s);
     function say(el, msg) { el.textContent = msg; }
     $('#ivf-copy', s).onclick = function () { Core.copyText(Core.getPlayerCode()).then(function (ok) { say(note, ok ? 'Code copied ✓' : 'Copy failed — long-press the code instead'); }); };
@@ -1120,6 +1258,222 @@ IV.find = function (id) {
     return s;
   }
   IV.openFriends = openFriends;
+
+  // ---- friends league -----------------------------------------------------------------------------
+  var LEAGUE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function shortDate(ds) { var d = new Date(ds + 'T12:00:00'); return d.getDate() + ' ' + LEAGUE_MONTHS[d.getMonth()]; }
+  function leagueError(err) {
+    if (err === 'network error') return 'Couldn’t reach the leaderboard — check your connection and try again.';
+    if (err === 'not configured') return 'The friends leaderboard isn’t switched on yet.';
+    return err || 'Something went wrong — try again.';
+  }
+  function inviteLink(code) { return IV.fullUrl(IV.SECTIONS.home.url) + '?league=' + code; }
+
+  function openLeague(preferId, opts) {
+    opts = opts || {};
+    var s = openSheet('<h3>Friends League</h3>' + viewSwitch('league') + '<div id="ivl-body" aria-live="polite"><div class="iv-note">Loading…</div></div>', null, 'friends');
+    wireSwitch(s);
+    var body = $('#ivl-body', s), weekOffset = 0;
+    function say(msg) { var el = $('#ivl-msg', s); if (el) el.textContent = msg; }
+    if (!LB.isConfigured()) { body.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return s; }
+    LB.register();
+
+    // ---- all my leagues / create / join
+    function showList(leagues) {
+      var html = '';
+      if (leagues.length) {
+        html += '<div class="iv-label">Your leagues</div><div class="iv-list" style="margin-bottom:1.1rem">' + leagues.map(function (l) {
+          return '<button type="button" class="iv-item" data-id="' + esc(l.leagueId) + '" style="text-align:left;cursor:pointer;width:100%;font:inherit"><div class="iv-grow"><div class="iv-item-name">' + esc(l.name) + '</div><div class="iv-item-blurb">' + l.members + ' member' + (l.members === 1 ? '' : 's') + (l.role === 'owner' ? ' · you run this one' : (l.ownerName ? ' · run by ' + esc(l.ownerName) : '')) + '</div></div><span class="iv-chev" aria-hidden="true">›</span></button>';
+        }).join('') + '</div>';
+      } else {
+        html += '<p class="iv-note" style="margin-bottom:1rem">A league is a small group — a class, a family, a band — that competes for points each week from the daily games. Start one and send the invite link, or join one with a code.</p>';
+      }
+      html += '<label class="iv-label" for="ivl-new">Start a league</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivl-new" maxlength="30" placeholder="e.g. Thursday piano group" autocomplete="off"><button type="button" class="iv-btn small" id="ivl-create">Create</button></div>' +
+        '<label class="iv-label" for="ivl-join" style="margin-top:.8rem">Join with an invite code or link</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
+        '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite"></div>' + privacyNote();
+      body.innerHTML = html;
+      Array.prototype.forEach.call(body.querySelectorAll('[data-id]'), function (b) { b.onclick = function () { showLeague(b.getAttribute('data-id')); }; });
+      $('#ivl-create', s).onclick = function () {
+        var name = $('#ivl-new', s).value.trim();
+        if (!name) { say('Give your league a name first.'); return; }
+        say('Creating…');
+        LB.createLeague(name).then(function (r) {
+          if (!r.ok) { say(leagueError(r.error)); return; }
+          showLeague(r.league.leagueId, true);
+        });
+      };
+      $('#ivl-joinbtn', s).onclick = function () {
+        var raw = $('#ivl-join', s).value, m = /[?&]league=([A-Za-z0-9]+)/.exec(raw), code = (m ? m[1] : raw).trim();
+        if (!code) { say('Paste an invite code or link first.'); return; }
+        say('Joining…');
+        LB.joinLeague(code).then(function (r) {
+          if (!r.ok) { say(r.error === 'invite not found' ? 'That invite doesn’t work — ask for a fresh link.' : leagueError(r.error)); return; }
+          showLeague(r.league.leagueId);
+        });
+      };
+    }
+    function privacyNote() {
+      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. Nothing else is shared.</p>';
+    }
+
+    // ---- one league
+    function showLeague(id, justCreated) {
+      body.innerHTML = '<div class="iv-note">Loading…</div>';
+      var week = null;
+      if (weekOffset) { var base = new Date(); base.setDate(base.getDate() + weekOffset * 7); week = Core.dailySeedDate(base); }
+      LB.getLeague(id, week).then(function (r) {
+        if (!r.ok) {
+          var cached = !week && LB.cachedLeague(id);
+          if (cached) { draw(cached, true); return; }
+          body.innerHTML = '<div class="iv-empty">' + esc(r.error === 'you are not in this league' ? 'You’re no longer in this league.' : leagueError(r.error)) + '</div><p style="margin-top:.8rem"><button type="button" class="iv-btn small ghost" id="ivl-back">All leagues</button></p>';
+          $('#ivl-back', s).onclick = loadList;
+          return;
+        }
+        draw(r, false);
+      });
+      function draw(r, stale) {
+        var L = r.league, me = Core.getPlayerCode(), owner = L.role === 'owner';
+        var rows = r.members.map(function (m) {
+          return '<tr class="' + (m.code === me ? 'me' : '') + '"><td class="rk">' + m.rank + '</td><td>' + esc(m.avatar || '') + ' ' + esc(m.displayName) + (m.code === me ? ' <span class="iv-note">(you)</span>' : '') + (m.role === 'owner' ? ' <span class="iv-note" title="Runs the league">★</span>' : '') + '</td><td class="num">' + m.played + '</td><td class="num"><b>' + m.points + '</b></td></tr>';
+        }).join('');
+        var html = '<p style="margin:0 0 .6rem"><button type="button" class="iv-linkbtn" id="ivl-back">‹ All leagues</button></p>' +
+          '<h4 class="iv-h2" style="margin:.2rem 0 .1rem" id="ivl-title">' + esc(L.name) + '</h4>' +
+          '<div class="iv-row between" style="margin-bottom:.5rem"><button type="button" class="iv-iconbtn" id="ivl-prev" aria-label="Previous week">‹</button><b>' + shortDate(r.week) + ' – ' + shortDate(r.weekEnd) + (weekOffset === 0 ? ' (this week)' : '') + '</b><button type="button" class="iv-iconbtn" id="ivl-next" aria-label="Next week"' + (weekOffset >= 0 ? ' disabled' : '') + '>›</button></div>' +
+          (stale ? '<div class="iv-note" style="margin-bottom:.4rem">Couldn’t update — showing the last table you saw.</div>' : '') +
+          '<table class="iv-table"><caption class="iv-sr">League table for the week</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Games</th><th scope="col" class="num">Points</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+          (r.lastWeekWinner && weekOffset === 0 ? '<p class="iv-note" style="margin-top:.6rem">Last week’s winner: ' + esc(r.lastWeekWinner.avatar || '') + ' <b>' + esc(r.lastWeekWinner.displayName) + '</b> with ' + r.lastWeekWinner.points + ' points 🏆</p>' : '') +
+          '<details class="iv-details" style="margin-top:.8rem"><summary>How points work</summary><p class="iv-note">Each finished daily game earns <b>1 point</b>. The best score of the day in that game earns <b>+2</b>, second best <b>+1</b> (ties share). The table runs Monday to Sunday, then starts again.</p></details>';
+        if (owner) {
+          var link = inviteLink(L.inviteCode);
+          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>Manage this league</summary>' +
+            '<div class="iv-label">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
+            '<div class="iv-row" style="margin:.2rem 0 .8rem"><button type="button" class="iv-btn small ghost" id="ivl-share">Share link…</button><button type="button" class="iv-btn small ghost" id="ivl-reset">Make a new link</button></div>' +
+            '<label class="iv-label" for="ivl-rename">League name</label><div class="iv-addrow"><input class="iv-input" id="ivl-rename" maxlength="30" value="' + esc(L.name) + '"><button type="button" class="iv-btn small" id="ivl-rensave">Save</button></div>' +
+            '<div class="iv-label" style="margin-top:.8rem">Members</div><div id="ivl-members">' + r.members.map(function (m) {
+              return '<div class="iv-boardrow"><span class="iv-grow">' + esc(m.avatar || '') + ' ' + esc(m.displayName) + (m.role === 'owner' ? ' (you, owner)' : '') + '</span>' + (m.role === 'owner' ? '' : '<button type="button" class="iv-btn small ghost" data-rm="' + esc(m.code) + '" data-name="' + esc(m.displayName) + '" aria-label="Remove ' + esc(m.displayName) + ' from the league">Remove</button>') + '</div>';
+            }).join('') + '</div>' +
+            '<div style="margin-top:1rem"><button type="button" class="iv-btn small danger" id="ivl-delete">Delete this league</button></div></details>';
+        } else {
+          html += '<div style="margin-top:1rem"><button type="button" class="iv-btn small ghost" id="ivl-leave">Leave this league</button></div>';
+        }
+        html += '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>' + privacyNote();
+        body.innerHTML = html;
+        $('#ivl-back', s).onclick = loadList;
+        $('#ivl-prev', s).onclick = function () { weekOffset--; showLeague(id); };
+        $('#ivl-next', s).onclick = function () { if (weekOffset < 0) { weekOffset++; showLeague(id); } };
+        if (owner) {
+          $('#ivl-copy', s).onclick = function () { Core.copyText(inviteLink(L.inviteCode)).then(function (ok) { say(ok ? 'Invite link copied ✓ — send it to your group.' : 'Couldn’t copy automatically — select the link and copy it.'); }); };
+          $('#ivl-share', s).onclick = function () {
+            var text = 'Join my intrvl league “' + L.name + '” — a little weekly music-game competition:';
+            if (navigator.share) navigator.share({ title: 'Join my intrvl league', text: text, url: inviteLink(L.inviteCode) }).catch(function () { /* cancelled */ });
+            else Core.copyText(text + ' ' + inviteLink(L.inviteCode)).then(function () { say('Sharing isn’t available here, so the message was copied ✓'); });
+          };
+          $('#ivl-reset', s).onclick = function () {
+            if (!confirm('Make a new invite link? The old link will stop working (people already in the league stay in).')) return;
+            LB.resetInvite(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+          };
+          $('#ivl-rensave', s).onclick = function () {
+            var n = $('#ivl-rename', s).value.trim(); if (!n) { say('A league needs a name.'); return; }
+            LB.renameLeague(id, n).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+          };
+          Array.prototype.forEach.call(body.querySelectorAll('[data-rm]'), function (b) {
+            b.onclick = function () {
+              if (!confirm('Remove ' + b.getAttribute('data-name') + ' from the league?')) return;
+              LB.removeMember(id, b.getAttribute('data-rm')).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+            };
+          });
+          $('#ivl-delete', s).onclick = function () {
+            if (!confirm('Delete “' + L.name + '” for everyone? This can’t be undone.')) return;
+            LB.deleteLeague(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } loadList(); });
+          };
+        } else {
+          $('#ivl-leave', s).onclick = function () {
+            if (!confirm('Leave “' + L.name + '”?')) return;
+            LB.leaveLeague(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } loadList(); });
+          };
+        }
+      }
+    }
+
+    function loadList() {
+      weekOffset = 0;
+      body.innerHTML = '<div class="iv-note">Loading…</div>';
+      LB.myLeagues().then(function (r) {
+        if (!r.ok) {
+          var cached = LB.cachedLeagues();
+          if (cached) { showList(cached); return; }
+          body.innerHTML = '<div class="iv-empty">' + esc(leagueError(r.error)) + '</div>';
+          return;
+        }
+        if (r.leagues.length === 1 && !opts.showList) showLeague(r.leagues[0].leagueId); else showList(r.leagues);
+        opts.showList = true;
+      });
+    }
+    if (preferId) showLeague(preferId); else loadList();
+    return s;
+  }
+  IV.openLeague = openLeague;
+
+  // Invite link: ?league=CODE -> "Join this league?" with a quick chance to set your name
+  function openLeagueInvite(code) {
+    var s = openSheet('<h3>You’re invited</h3><div id="ivi-body" aria-live="polite"><div class="iv-note">Checking the invite…</div></div>', null, 'friends');
+    var body = $('#ivi-body', s);
+    if (!LB.isConfigured()) { body.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return; }
+    LB.invitePreview(code).then(function (r) {
+      if (!r.ok) { body.innerHTML = '<div class="iv-empty">This invite link doesn’t work any more. Ask the person who sent it for a new one.</div>'; return; }
+      body.innerHTML = '<p style="margin-bottom:.8rem"><b>' + esc(r.ownerName) + '</b> has invited you to join <b>' + esc(r.name) + '</b> (' + r.members + ' member' + (r.members === 1 ? '' : 's') + '), a weekly music-game league.</p>' +
+        '<label class="iv-label" for="ivi-name">Your name in the league</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivi-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"></div>' +
+        '<p class="iv-note" style="margin:.2rem 0 .8rem">Members can see each other’s name, avatar and daily scores.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
+        '<div class="iv-status" id="ivi-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>';
+      $('#ivi-no', s).onclick = function () { closeSheet(); };
+      $('#ivi-join', s).onclick = function () {
+        Core.setDisplayName($('#ivi-name', s).value);
+        $('#ivi-msg', s).textContent = 'Joining…';
+        LB.register(true).then(function () { return LB.joinLeague(code); }).then(function (j) {
+          if (!j.ok) { $('#ivi-msg', s).textContent = leagueError(j.error); return; }
+          try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+          openLeague(j.league.leagueId);
+        });
+      };
+    });
+  }
+
+  // The League card on the home page
+  IV.renderLeagueCard = function (el) {
+    if (!el || !LB.isConfigured()) { if (el) el.classList.add('hidden'); return; }
+    function paint(leagues, standings) {
+      if (!leagues || !leagues.length) {
+        el.innerHTML = '<div><div class="iv-label" style="margin:0">Friends league</div><b class="iv-strong-accent" style="font-size:1.05rem">Compete with friends each week</b></div>' +
+          '<button type="button" class="iv-btn small ghost" id="home-league-btn">🏆 Start or join</button>';
+      } else {
+        var l = leagues[0], line = '';
+        if (standings && standings.ok) {
+          var me = standings.members.filter(function (m) { return m.code === Core.getPlayerCode(); })[0];
+          if (me) line = 'You’re ' + ordinal(me.rank) + ' of ' + standings.members.length + ' this week · ' + me.points + ' pts';
+        }
+        el.innerHTML = '<div><div class="iv-label" style="margin:0">' + esc(l.name) + (leagues.length > 1 ? ' +' + (leagues.length - 1) + ' more' : '') + '</div><b class="iv-strong-accent" style="font-size:1.05rem">' + esc(line || l.members + ' member' + (l.members === 1 ? '' : 's')) + '</b></div>' +
+          '<button type="button" class="iv-btn small ghost" id="home-league-btn">🏆 Open league</button>';
+      }
+      var b = el.querySelector('#home-league-btn');
+      if (b) b.onclick = function () { openLeague(null, { showList: !!(leagues && leagues.length > 1) }); };
+    }
+    function ordinal(n) { var v = n % 100; return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] || ['th', 'st', 'nd', 'rd'][v] || 'th'); }
+    var cached = LB.cachedLeagues();
+    paint(cached, cached && cached.length ? LB.cachedLeague(cached[0].leagueId) : null);
+    LB.myLeagues().then(function (r) {
+      if (!r.ok) return;
+      if (!r.leagues.length) { paint([], null); return; }
+      LB.getLeague(r.leagues[0].leagueId).then(function (st) { paint(r.leagues, st); });
+    });
+  };
+  (function () {
+    var m = /[?&]league=([A-Za-z0-9]{6,12})/.exec(location.search);
+    if (m) setTimeout(function () { openLeagueInvite(m[1].toUpperCase()); }, 450);
+  })();
   function openProfile() {
     var cur = Core.getAvatar();
     var isPreset = Core.AVATARS.indexOf(cur) !== -1;
@@ -1491,10 +1845,14 @@ IV.find = function (id) {
     "1": "C5", "2": "D5", "3": "E5", "4": "F5", "5": "G5"
   };
 
+  const PAGE_CFG = window.INTRVL_CONFIG;
+  const GAME_ID = PAGE_CFG.gameId;                 // 'clef' or 'clef-easy'
+  const EASY = !!PAGE_CFG.easy;                    // easy: only treble and bass, with sharps and flats
+  const TITLE = PAGE_CFG.title || 'Clef Sprint';
   const POSITION_WORDS = { '-5': 'just below the bottom line', '-4': 'on the bottom line', '-3': 'in the bottom space', '-2': 'on the second line', '-1': 'in the second space', '0': 'on the middle line', '1': 'in the third space', '2': 'on the fourth line', '3': 'in the top space', '4': 'on the top line', '5': 'just above the top line' };
   const BASE_IMAGE_URL = "https://piapaul.github.io/music-theory-images/single/nocleftreble";
 
-  const clefNames = ['Treble', 'Bass', 'Alto', 'Tenor'];
+  const clefNames = EASY ? ['Treble', 'Bass'] : ['Treble', 'Bass', 'Alto', 'Tenor'];
   const notesArray = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   const bases = [6, 1, 0, 5];
 
@@ -1506,6 +1864,7 @@ IV.find = function (id) {
   };
 
   function initApp() {
+    if (EASY) document.querySelector('#screen-start p').innerHTML = '30 seconds. Treble or bass?<br>Sharps and flats included.';
     stats = IntrvlCore.loadStats();
     if (!stats.highScoreDaily) stats.highScoreDaily = 0;
     if (!stats.highScorePractice) stats.highScorePractice = 0;
@@ -1525,6 +1884,7 @@ IV.find = function (id) {
   }
 
   function preloadImages() {
+    if (EASY) return;   // nothing to download: notes are drawn in the page
     IV.prefetch(Object.keys(positionToTrebleFile).map(pos => `${BASE_IMAGE_URL}/single-${positionToTrebleFile[pos]}-natural-nocleftreble.png`).concat(Object.values(clefImages)));   // installed app: keep them for offline play
     for (const pos in positionToTrebleFile) {
       const img = new Image();
@@ -1535,11 +1895,12 @@ IV.find = function (id) {
   function injectClefButtons() {
     const container = document.getElementById('clef-buttons-container');
     container.innerHTML = '';
+    if (EASY) { container.style.gridTemplateColumns = 'repeat(2, 150px)'; container.style.justifyContent = 'center'; }
 
     clefNames.forEach((name, index) => {
       container.innerHTML += `
         <button class="choice-btn" id="btn-clef-${index}" onclick="submitGuess(${index})">
-          <img src="${clefImages[name]}" class="clef-btn-img" alt="${name} Clef" onerror="this.style.display='none';">
+          ${EASY ? IVN.clefIconSvg(name.toLowerCase()) : `<img src="${clefImages[name]}" class="clef-btn-img" alt="${name} Clef" onerror="this.style.display='none';">`}
           <span>${name}</span>
         </button>
       `;
@@ -1549,16 +1910,20 @@ IV.find = function (id) {
   function generatePool(useSeed) {
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const pool = [];
-    const focus = IntrvlCore.takeFocus('clef');   // topics to lean towards in "practise my weak spots"
+    const focus = IntrvlCore.takeFocus(GAME_ID);   // topics to lean towards in "practise my weak spots"
     const focusIdx = useSeed ? [] : focus.map(l => clefNames.findIndex(n => n + ' clef' === l)).filter(k => k >= 0);
 
     for (let i = 0; i < 200; i++) {
       const p = Math.floor(randomFunc() * 11) - 5;
-      const targetClefIndex = (focusIdx.length && randomFunc() < 0.7) ? focusIdx[Math.floor(randomFunc() * focusIdx.length)] : Math.floor(randomFunc() * 4);
+      const targetClefIndex = (focusIdx.length && randomFunc() < 0.7) ? focusIdx[Math.floor(randomFunc() * focusIdx.length)] : Math.floor(randomFunc() * clefNames.length);
       let noteIdx = (bases[targetClefIndex] + p) % 7;
       if (noteIdx < 0) noteIdx += 7;
 
-      pool.push({ position: p, targetNote: notesArray[noteIdx], answerIndex: targetClefIndex });
+      // easy version also uses sharps and flats - but never the awkward ones (E sharp, B sharp, C flat, F flat)
+      const letter = notesArray[noteIdx];
+      const accChoices = ['natural'].concat('EB'.includes(letter) ? [] : ['sharp'], 'CF'.includes(letter) ? [] : ['flat']);
+      const acc = EASY ? accChoices[Math.floor(randomFunc() * accChoices.length)] : 'natural';
+      pool.push({ position: p, targetNote: notesArray[noteIdx] + (acc === 'sharp' ? '♯' : acc === 'flat' ? '♭' : ''), acc: acc, answerIndex: targetClefIndex });
     }
     return pool;
   }
@@ -1609,7 +1974,7 @@ IV.find = function (id) {
   function nextQuestion() {
     if (!isGameActive) return;
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < clefNames.length; i++) {
       const btn = document.getElementById(`btn-clef-${i}`);
       btn.className = 'choice-btn';
       btn.disabled = false;
@@ -1621,20 +1986,25 @@ IV.find = function (id) {
     document.getElementById('ui-target-note').textContent = currentQuestion.targetNote;
 
     const fileReference = positionToTrebleFile[currentQuestion.position];
-    document.getElementById('main-target-image').src = `${BASE_IMAGE_URL}/single-${fileReference}-natural-nocleftreble.png`;
-    document.getElementById('main-target-image').alt = 'A note ' + POSITION_WORDS[currentQuestion.position] + ' of a five-line stave. No clef is shown yet.';
+    const alt = 'A note ' + POSITION_WORDS[currentQuestion.position] + ' of a five-line stave' + (currentQuestion.acc !== 'natural' ? ', with a ' + currentQuestion.acc + ' sign' : '') + '. No clef is shown yet.';
+    if (EASY) {
+      document.getElementById('clefsprint-img-container').innerHTML = IVN.noteSvg({ clef: null, pos: Number(currentQuestion.position) + 4, acc: currentQuestion.acc, label: alt });   // drawn here, so no pictures needed
+    } else {
+      document.getElementById('main-target-image').src = `${BASE_IMAGE_URL}/single-${fileReference}-natural-nocleftreble.png`;
+      document.getElementById('main-target-image').alt = alt;
+    }
     IntrvlCore.refocus('btn-clef-0');
   }
 
   function submitGuess(btnIndex) {
     if (!isGameActive) return;
-    for (let i = 0; i < 4; i++) document.getElementById(`btn-clef-${i}`).disabled = true;
+    for (let i = 0; i < clefNames.length; i++) document.getElementById(`btn-clef-${i}`).disabled = true;
 
     const btn = document.getElementById(`btn-clef-${btnIndex}`);
     const isCorrect = btnIndex === currentQuestion.answerIndex;
 
     stats.totalPlayed++;
-    IntrvlCore.recordItem('clef', clefNames[currentQuestion.answerIndex] + ' clef', isCorrect);
+    IntrvlCore.recordItem(GAME_ID, clefNames[currentQuestion.answerIndex] + ' clef', isCorrect);
     IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. The answer was ' + clefNames[currentQuestion.answerIndex] + ' clef');
 
     if (isCorrect) {
@@ -1698,7 +2068,7 @@ IV.find = function (id) {
       document.getElementById('end-high-score').style.display = 'none';
       document.getElementById('btn-share').classList.remove('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
-      IntrvlLeaderboard.attachSubmitButton({ gameId: 'clef', score: stats.highScoreDaily, streak: stats.currentStreak });
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: stats.highScoreDaily, streak: stats.currentStreak });
 
       if (!document.getElementById('temp-prac')) {
         const pracBtn = document.createElement('button');
@@ -1719,7 +2089,7 @@ IV.find = function (id) {
     if (wasDaily) {
       document.getElementById('btn-share').classList.remove('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
-      IntrvlLeaderboard.attachSubmitButton({ gameId: 'clef', score: score, streak: stats.currentStreak });
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: score, streak: stats.currentStreak });
 
       if (!document.getElementById('temp-prac')) {
         const pracBtn = document.createElement('button');
@@ -1745,8 +2115,8 @@ IV.find = function (id) {
   function shareResults() {
     let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
     const pageUrl = window.location.href.split('?')[0];
-    const textToShare = `I scored ${score} on the Intrvl Daily Clef Sprint! 🎼\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
-    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Clef Sprint');
+    const textToShare = `I scored ${score} on the Intrvl Daily ${TITLE}! 🎼\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl ' + TITLE);
   }
 
   initApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away

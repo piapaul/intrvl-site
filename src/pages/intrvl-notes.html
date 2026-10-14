@@ -87,6 +87,10 @@
 </script>
 <!--@shared-js-->
 <script>
+  const PAGE_CFG = window.INTRVL_CONFIG;
+  const GAME_ID = PAGE_CFG.gameId;                 // 'note' or 'note-easy'
+  const EASY = !!PAGE_CFG.easy;                    // easy: treble and bass clef, natural notes only
+  const TITLE = PAGE_CFG.title || 'Note Sprint';
   const DATA_URL = "https://piapaul.github.io/music-theory-images/standard-notes.json";
   const IMAGE_BASE_URL = "https://piapaul.github.io/music-theory-images/single";
 
@@ -106,6 +110,12 @@
   async function initApp() {
     try {
       allNotesData = await fetch(DATA_URL).then(r => r.json());
+      if (EASY) allNotesData = allNotesData.filter(d => ['treble', 'bass'].includes(String(d.clef).toLowerCase()) && isNaturalNote(d, getFilename(d)));
+      if (EASY) {
+        const startButtons = document.querySelectorAll('#screen-start button');
+        startButtons[0].textContent = 'Start Daily Sprint';
+        startButtons[1].textContent = 'Practice Sprint';
+      }
       IV.prefetch(Array.from(new Set(allNotesData.map(q => `${IMAGE_BASE_URL}/${q.clef}/${getFilename(q)}`))));   // installed app: keep the pictures for offline play
       stats = IntrvlCore.loadStats();
       if (!stats.highScoreDaily) stats.highScoreDaily = 0;
@@ -161,7 +171,7 @@
     maxCombo = 0;
     isGameActive = true;
 
-    const focusLabels = IntrvlCore.takeFocus('note');   // topics to lean towards in "practise my weak spots"
+    const focusLabels = IntrvlCore.takeFocus(GAME_ID);   // topics to lean towards in "practise my weak spots"
     focusNotes = isDailyMode ? [] : focusLabels;
     if (isDailyMode) {
       currentPool = allNotesData;
@@ -254,7 +264,7 @@
     const isCorrect = currentQuestion.options[btnIndex] === currentQuestion.correct;
 
     stats.totalPlayed++;
-    IntrvlCore.recordItem('note', currentQuestion.correct, isCorrect);
+    IntrvlCore.recordItem(GAME_ID, currentQuestion.correct, isCorrect);
     IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. The answer was ' + currentQuestion.correct);
 
     if (isCorrect) {
@@ -317,7 +327,7 @@
       document.getElementById('end-high-score').style.display = 'none';
       document.getElementById('btn-share').classList.remove('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
-      IntrvlLeaderboard.attachSubmitButton({ gameId: 'note', score: stats.highScoreDaily, streak: stats.currentStreak });
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: stats.highScoreDaily, streak: stats.currentStreak });
 
       if (!document.getElementById('temp-prac')) {
         const pracBtn = document.createElement('button');
@@ -338,7 +348,7 @@
     if (wasDaily) {
       document.getElementById('btn-share').classList.remove('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
-      IntrvlLeaderboard.attachSubmitButton({ gameId: 'note', score: score, streak: stats.currentStreak });
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: score, streak: stats.currentStreak });
 
       if (!document.getElementById('temp-prac')) {
         const pracBtn = document.createElement('button');
@@ -362,8 +372,8 @@
   function shareResults() {
     let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
     const pageUrl = window.location.href.split('?')[0];
-    const textToShare = `I scored ${score} on the Intrvl Daily Note Sprint! 🎵\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
-    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Note Sprint');
+    const textToShare = `I scored ${score} on the Intrvl Daily ${TITLE}! 🎵\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl ' + TITLE);
   }
 
   initApp();

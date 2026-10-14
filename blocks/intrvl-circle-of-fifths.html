@@ -267,6 +267,28 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 #intrvl-app .iv-bigval, #intrvl-app .tn-note, #intrvl-app .tn-freq { font-variant-numeric: lining-nums tabular-nums; }
 
 .iv-focus-note { font-size: .82rem; font-weight: 700; color: var(--intrvl-accent-dark); background: var(--intrvl-panel-bg); border: 1px dashed var(--intrvl-stone); border-radius: 10px; padding: .45rem .7rem; margin: 0 auto .9rem; max-width: 380px; text-align: center; line-height: 1.35; }
+
+/* notation drawn as SVG */
+.ivn-svg { display: block; width: 100%; height: auto; max-height: 100%; }
+.choice-btn .ivn-clef { max-width: 70px; max-height: 44px; margin: 0 auto; }
+.choice-btn.correct .ivn-clef, .choice-btn.incorrect .ivn-clef { filter: none; }
+
+/* friends league table */
+.iv-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.iv-table th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--intrvl-ink-soft); padding: .3rem .3rem; border-bottom: 2px solid var(--intrvl-border); }
+.iv-table td { padding: .55rem .3rem; border-bottom: 1px solid var(--intrvl-border); }
+.iv-table .num { text-align: right; width: 3.6rem; }
+.iv-table .rk { width: 1.6rem; color: var(--intrvl-ink-soft); font-weight: 800; }
+.iv-table tr.me td { background: color-mix(in srgb, var(--intrvl-accent) 22%, white); font-weight: 700; }
+button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-offset: 2px; }
+
+.iv-details summary { list-style: none; }
+.iv-details summary::-webkit-details-marker { display: none; }
+.iv-details summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); transition: transform .15s ease; }
+.iv-details[open] summary::after { transform: rotate(180deg); }
+.rt-offset summary { list-style: none; }
+.rt-offset summary::-webkit-details-marker { display: none; }
+.rt-offset summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); }
 </style>
 <style>
   .cf-wheel { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
@@ -305,13 +327,19 @@ IV.SECTIONS = {
   tools: { title: 'Tools',   icon: '🧰', url: '/intrvl-tools', blurb: 'Practice tools for every musician' }
 };
 IV.GAMES = [
+  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' },
+  { id: 'note-easy',  name: 'Note Sprint (Easy)',    icon: '🎵', accent: '#bfae94', url: '/intrvl-notes-easy',  blurb: 'Treble and bass clef, natural notes only' },
+  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
+  { id: 'clef-easy',  name: 'Clef Sprint (Easy)',    icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs-easy',  blurb: 'Just treble and bass, with sharps and flats' },
+  { id: 'keysig',     name: 'Key Signature Sprint',  icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs',     blurb: '30 seconds: name the key from its signature' },
+  { id: 'keysig-easy', name: 'Key Signature Sprint (Easy)', icon: '🔑', accent: '#D9A074', url: '/intrvl-keysigs-easy', blurb: 'Major keys with up to 4 sharps or flats' },
   { id: 'interval',   name: 'Interval Practice',     icon: '🎯', accent: '#c2a687', url: '/intrvl-intervals',   blurb: 'Name the interval you hear' },
   { id: 'enharmonic', name: 'Enharmonic Matchmaker', icon: '🔀', accent: '#ada6b8', url: '/intrvl-matchmaker',  blurb: '30 seconds: find the enharmonic twin' },
   { id: 'pitch',      name: 'Pitch Training',        icon: '👂', accent: '#b8a877', url: '/intrvl-ear',         blurb: 'Which pitch is higher, which is lower?' },
   { id: 'seventh',    name: '7th Heaven',            icon: '🎹', accent: '#9db0a8', url: '/intrvl-heaven',      blurb: 'Hear the quality of a 7th chord' },
   { id: 'spelling',   name: 'Chord Spelling Bee',    icon: '🐝', accent: '#c79aa0', url: '/intrvl-spelling',    blurb: '30 seconds: spell the chord correctly' },
-  { id: 'clef',       name: 'Clef Sprint',           icon: '🎼', accent: '#a3b0bd', url: '/intrvl-clefs',       blurb: '30 seconds: match the clef to the note' },
-  { id: 'note',       name: 'Note Sprint',           icon: '🎵', accent: '#bfae94', url: '/intrvl-notes',       blurb: '30 seconds: name the note on the stave' }
+  { id: 'rhythm-easy', name: 'Rhythm Tap (Easy)',    icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm-easy', blurb: 'Tap the rhythm with the metronome running' },
+  { id: 'rhythm',     name: 'Rhythm Tap',            icon: '🥁', accent: '#C1A45F', url: '/intrvl-rhythm',      blurb: 'Tap the rhythm, then keep time on your own' }
 ];
 IV.TOOLS = [
   { id: 'metronome',    name: 'Metronome',          icon: '⏱️', accent: '#c2a687', url: '/intrvl-metronome',        blurb: 'Tempo, time signatures and tap tempo' },
@@ -320,7 +348,8 @@ IV.TOOLS = [
   { id: 'circle',       name: 'Circle of Fifths',   icon: '🕛', accent: '#8eaab5', url: '/intrvl-circle-of-fifths', blurb: 'Every key, scale and key signature' },
   { id: 'modes',        name: 'Modes Buster',       icon: '🌗', accent: '#c9a0b8', url: '/intrvl-modes',            blurb: 'See how the modes really work' },
   { id: 'transpose',    name: 'Transposer',         icon: '🎷', accent: '#b9ae8a', url: '/intrvl-transpose',        blurb: 'Concert pitch and transposing instruments' },
-  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' }
+  { id: 'chords',       name: 'Chords in a Key',    icon: '🎶', accent: '#94b8a4', url: '/intrvl-chords',           blurb: 'Roman numerals, extensions and piano voicings' },
+  { id: 'practice',     name: 'Practice Log',       icon: '📒', accent: '#D9A5B3', url: '/intrvl-practice',         blurb: 'Time your practice and send it to your teacher' }
 ];
 IV.find = function (id) {
   var all = IV.GAMES.concat(IV.TOOLS);
@@ -819,6 +848,39 @@ IV.find = function (id) {
     });
     return rows.join('');
   }
+  // ---- friends leagues (all of these need the player to be registered first) ----
+  function leagueCall(payload) {
+    return register().then(function () {
+      payload.code = Core.getPlayerCode();
+      payload.deviceId = Core.getDeviceId();
+      return post(payload);
+    });
+  }
+  function createLeague(name) { return leagueCall({ action: 'createLeague', name: name }); }
+  function joinLeague(invite) { return leagueCall({ action: 'joinLeague', invite: String(invite || '').trim().toUpperCase() }); }
+  function leaveLeague(id) { return leagueCall({ action: 'leaveLeague', leagueId: id }); }
+  function removeMember(id, memberCode) { return leagueCall({ action: 'removeMember', leagueId: id, memberCode: memberCode }); }
+  function renameLeague(id, name) { return leagueCall({ action: 'renameLeague', leagueId: id, name: name }); }
+  function resetInvite(id) { return leagueCall({ action: 'resetInvite', leagueId: id }); }
+  function deleteLeague(id) { return leagueCall({ action: 'deleteLeague', leagueId: id }); }
+  function myLeagues() {
+    return get({ action: 'myLeagues', code: Core.getPlayerCode() }).then(function (res) {
+      if (res.ok) Core.lsSet('intrvl.leagues.v1', JSON.stringify(res.leagues));
+      return res;
+    });
+  }
+  function cachedLeagues() { try { return JSON.parse(Core.lsGet('intrvl.leagues.v1') || 'null'); } catch (e) { return null; } }
+  function getLeague(id, week) {
+    var p = { action: 'league', code: Core.getPlayerCode(), leagueId: id };
+    if (week) p.week = week;
+    return get(p).then(function (res) {
+      if (res.ok && !week) Core.lsSet('intrvl.league.' + id, JSON.stringify(res));
+      return res;
+    });
+  }
+  function cachedLeague(id) { try { return JSON.parse(Core.lsGet('intrvl.league.' + id) || 'null'); } catch (e) { return null; } }
+  function invitePreview(invite) { return get({ action: 'invitePreview', invite: String(invite || '').trim().toUpperCase() }); }
+
   var retryArmed = false;
   function attachSubmitButton(opts) {
     var host = document.getElementById('screen-done') || document.getElementById('intrvl-app');
@@ -860,6 +922,8 @@ IV.find = function (id) {
   global.IntrvlLeaderboard = {
     isConfigured: isConfigured, ping: ping, register: register,
     resolveCode: resolveCode, getFriends: getFriends, addFriend: addFriend, removeFriend: removeFriend, syncFriends: syncFriends,
+    createLeague: createLeague, joinLeague: joinLeague, leaveLeague: leaveLeague, removeMember: removeMember, renameLeague: renameLeague,
+    resetInvite: resetInvite, deleteLeague: deleteLeague, myLeagues: myLeagues, cachedLeagues: cachedLeagues, getLeague: getLeague, cachedLeague: cachedLeague, invitePreview: invitePreview,
     submitScore: submitScore, fetchBoard: fetchBoard, cachedBoard: cachedBoard, boardHtml: boardHtml, attachSubmitButton: attachSubmitButton
   };
 })(window);
@@ -956,11 +1020,24 @@ IV.find = function (id) {
   }
   IV.openSheet = openSheet; IV.closeSheet = closeSheet;
   function $(sel, root) { return (root || document).querySelector(sel); }
+  // "Friends | League" switch at the top of both sheets
+  function viewSwitch(on) {
+    return '<div class="iv-seg" id="iv-viewsw" role="group" aria-label="Friends or league" style="margin-bottom:1rem">' +
+      '<button type="button" data-v="friends" class="' + (on === 'friends' ? 'on' : '') + '" aria-pressed="' + (on === 'friends') + '">👥 Friends</button>' +
+      '<button type="button" data-v="league" class="' + (on === 'league' ? 'on' : '') + '" aria-pressed="' + (on === 'league') + '">🏆 League</button></div>';
+  }
+  function wireSwitch(s) {
+    var sw = s.querySelector('#iv-viewsw'); if (!sw) return;
+    sw.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.getAttribute('data-v') === 'league') openLeague(); else openFriends();
+    };
+  }
   function openFriends(gameId) {
     var gid = gameId || (KIND === 'game' ? (CFG.id || CFG.gameId) : IV.GAMES[0].id);
     var inviteBase = IV.fullUrl(IV.SECTIONS.home.url);
     var s = openSheet(
-      '<h3>Friends</h3>' +
+      '<h3>Friends</h3>' + viewSwitch('friends') +
       '<div class="iv-code"><div><div class="iv-label" style="margin:0">Your code</div><b>' + esc(Core.getPlayerCode()) + '</b></div>' +
       '<div class="iv-row"><button class="iv-btn small ghost" id="ivf-copy">Copy code</button><button class="iv-btn small" id="ivf-link">Invite link</button></div></div>' +
       '<div id="ivf-note" class="iv-status" role="status" aria-live="polite"></div>' +
@@ -971,6 +1048,7 @@ IV.find = function (id) {
       '<div class="iv-chips" id="ivf-games" role="group" aria-labelledby="ivf-lbl" style="margin-bottom:.6rem"></div>' +
       '<div id="ivf-board" aria-live="polite"><div class="iv-note">Loading…</div></div>',
       null, 'friends');
+    wireSwitch(s);
     var note = $('#ivf-note', s), status = $('#ivf-status', s), codeIn = $('#ivf-code', s);
     function say(el, msg) { el.textContent = msg; }
     $('#ivf-copy', s).onclick = function () { Core.copyText(Core.getPlayerCode()).then(function (ok) { say(note, ok ? 'Code copied ✓' : 'Copy failed — long-press the code instead'); }); };
@@ -1036,6 +1114,222 @@ IV.find = function (id) {
     return s;
   }
   IV.openFriends = openFriends;
+
+  // ---- friends league -----------------------------------------------------------------------------
+  var LEAGUE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function shortDate(ds) { var d = new Date(ds + 'T12:00:00'); return d.getDate() + ' ' + LEAGUE_MONTHS[d.getMonth()]; }
+  function leagueError(err) {
+    if (err === 'network error') return 'Couldn’t reach the leaderboard — check your connection and try again.';
+    if (err === 'not configured') return 'The friends leaderboard isn’t switched on yet.';
+    return err || 'Something went wrong — try again.';
+  }
+  function inviteLink(code) { return IV.fullUrl(IV.SECTIONS.home.url) + '?league=' + code; }
+
+  function openLeague(preferId, opts) {
+    opts = opts || {};
+    var s = openSheet('<h3>Friends League</h3>' + viewSwitch('league') + '<div id="ivl-body" aria-live="polite"><div class="iv-note">Loading…</div></div>', null, 'friends');
+    wireSwitch(s);
+    var body = $('#ivl-body', s), weekOffset = 0;
+    function say(msg) { var el = $('#ivl-msg', s); if (el) el.textContent = msg; }
+    if (!LB.isConfigured()) { body.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return s; }
+    LB.register();
+
+    // ---- all my leagues / create / join
+    function showList(leagues) {
+      var html = '';
+      if (leagues.length) {
+        html += '<div class="iv-label">Your leagues</div><div class="iv-list" style="margin-bottom:1.1rem">' + leagues.map(function (l) {
+          return '<button type="button" class="iv-item" data-id="' + esc(l.leagueId) + '" style="text-align:left;cursor:pointer;width:100%;font:inherit"><div class="iv-grow"><div class="iv-item-name">' + esc(l.name) + '</div><div class="iv-item-blurb">' + l.members + ' member' + (l.members === 1 ? '' : 's') + (l.role === 'owner' ? ' · you run this one' : (l.ownerName ? ' · run by ' + esc(l.ownerName) : '')) + '</div></div><span class="iv-chev" aria-hidden="true">›</span></button>';
+        }).join('') + '</div>';
+      } else {
+        html += '<p class="iv-note" style="margin-bottom:1rem">A league is a small group — a class, a family, a band — that competes for points each week from the daily games. Start one and send the invite link, or join one with a code.</p>';
+      }
+      html += '<label class="iv-label" for="ivl-new">Start a league</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivl-new" maxlength="30" placeholder="e.g. Thursday piano group" autocomplete="off"><button type="button" class="iv-btn small" id="ivl-create">Create</button></div>' +
+        '<label class="iv-label" for="ivl-join" style="margin-top:.8rem">Join with an invite code or link</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivl-join" maxlength="200" placeholder="Paste the code or link" autocomplete="off" autocapitalize="characters"><button type="button" class="iv-btn small ghost" id="ivl-joinbtn">Join</button></div>' +
+        '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite"></div>' + privacyNote();
+      body.innerHTML = html;
+      Array.prototype.forEach.call(body.querySelectorAll('[data-id]'), function (b) { b.onclick = function () { showLeague(b.getAttribute('data-id')); }; });
+      $('#ivl-create', s).onclick = function () {
+        var name = $('#ivl-new', s).value.trim();
+        if (!name) { say('Give your league a name first.'); return; }
+        say('Creating…');
+        LB.createLeague(name).then(function (r) {
+          if (!r.ok) { say(leagueError(r.error)); return; }
+          showLeague(r.league.leagueId, true);
+        });
+      };
+      $('#ivl-joinbtn', s).onclick = function () {
+        var raw = $('#ivl-join', s).value, m = /[?&]league=([A-Za-z0-9]+)/.exec(raw), code = (m ? m[1] : raw).trim();
+        if (!code) { say('Paste an invite code or link first.'); return; }
+        say('Joining…');
+        LB.joinLeague(code).then(function (r) {
+          if (!r.ok) { say(r.error === 'invite not found' ? 'That invite doesn’t work — ask for a fresh link.' : leagueError(r.error)); return; }
+          showLeague(r.league.leagueId);
+        });
+      };
+    }
+    function privacyNote() {
+      return '<p class="iv-note" style="margin-top:1rem">Everyone in a league can see each other’s name, avatar and daily game scores. Nothing else is shared.</p>';
+    }
+
+    // ---- one league
+    function showLeague(id, justCreated) {
+      body.innerHTML = '<div class="iv-note">Loading…</div>';
+      var week = null;
+      if (weekOffset) { var base = new Date(); base.setDate(base.getDate() + weekOffset * 7); week = Core.dailySeedDate(base); }
+      LB.getLeague(id, week).then(function (r) {
+        if (!r.ok) {
+          var cached = !week && LB.cachedLeague(id);
+          if (cached) { draw(cached, true); return; }
+          body.innerHTML = '<div class="iv-empty">' + esc(r.error === 'you are not in this league' ? 'You’re no longer in this league.' : leagueError(r.error)) + '</div><p style="margin-top:.8rem"><button type="button" class="iv-btn small ghost" id="ivl-back">All leagues</button></p>';
+          $('#ivl-back', s).onclick = loadList;
+          return;
+        }
+        draw(r, false);
+      });
+      function draw(r, stale) {
+        var L = r.league, me = Core.getPlayerCode(), owner = L.role === 'owner';
+        var rows = r.members.map(function (m) {
+          return '<tr class="' + (m.code === me ? 'me' : '') + '"><td class="rk">' + m.rank + '</td><td>' + esc(m.avatar || '') + ' ' + esc(m.displayName) + (m.code === me ? ' <span class="iv-note">(you)</span>' : '') + (m.role === 'owner' ? ' <span class="iv-note" title="Runs the league">★</span>' : '') + '</td><td class="num">' + m.played + '</td><td class="num"><b>' + m.points + '</b></td></tr>';
+        }).join('');
+        var html = '<p style="margin:0 0 .6rem"><button type="button" class="iv-linkbtn" id="ivl-back">‹ All leagues</button></p>' +
+          '<h4 class="iv-h2" style="margin:.2rem 0 .1rem" id="ivl-title">' + esc(L.name) + '</h4>' +
+          '<div class="iv-row between" style="margin-bottom:.5rem"><button type="button" class="iv-iconbtn" id="ivl-prev" aria-label="Previous week">‹</button><b>' + shortDate(r.week) + ' – ' + shortDate(r.weekEnd) + (weekOffset === 0 ? ' (this week)' : '') + '</b><button type="button" class="iv-iconbtn" id="ivl-next" aria-label="Next week"' + (weekOffset >= 0 ? ' disabled' : '') + '>›</button></div>' +
+          (stale ? '<div class="iv-note" style="margin-bottom:.4rem">Couldn’t update — showing the last table you saw.</div>' : '') +
+          '<table class="iv-table"><caption class="iv-sr">League table for the week</caption><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Games</th><th scope="col" class="num">Points</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+          (r.lastWeekWinner && weekOffset === 0 ? '<p class="iv-note" style="margin-top:.6rem">Last week’s winner: ' + esc(r.lastWeekWinner.avatar || '') + ' <b>' + esc(r.lastWeekWinner.displayName) + '</b> with ' + r.lastWeekWinner.points + ' points 🏆</p>' : '') +
+          '<details class="iv-details" style="margin-top:.8rem"><summary>How points work</summary><p class="iv-note">Each finished daily game earns <b>1 point</b>. The best score of the day in that game earns <b>+2</b>, second best <b>+1</b> (ties share). The table runs Monday to Sunday, then starts again.</p></details>';
+        if (owner) {
+          var link = inviteLink(L.inviteCode);
+          html += '<details class="iv-details" id="ivl-admin"' + (justCreated ? ' open' : '') + '><summary>Manage this league</summary>' +
+            '<div class="iv-label">Invite link</div><div class="iv-addrow"><input class="iv-input" id="ivl-link" readonly value="' + esc(link) + '" aria-label="Invite link"><button type="button" class="iv-btn small" id="ivl-copy">Copy</button></div>' +
+            '<div class="iv-row" style="margin:.2rem 0 .8rem"><button type="button" class="iv-btn small ghost" id="ivl-share">Share link…</button><button type="button" class="iv-btn small ghost" id="ivl-reset">Make a new link</button></div>' +
+            '<label class="iv-label" for="ivl-rename">League name</label><div class="iv-addrow"><input class="iv-input" id="ivl-rename" maxlength="30" value="' + esc(L.name) + '"><button type="button" class="iv-btn small" id="ivl-rensave">Save</button></div>' +
+            '<div class="iv-label" style="margin-top:.8rem">Members</div><div id="ivl-members">' + r.members.map(function (m) {
+              return '<div class="iv-boardrow"><span class="iv-grow">' + esc(m.avatar || '') + ' ' + esc(m.displayName) + (m.role === 'owner' ? ' (you, owner)' : '') + '</span>' + (m.role === 'owner' ? '' : '<button type="button" class="iv-btn small ghost" data-rm="' + esc(m.code) + '" data-name="' + esc(m.displayName) + '" aria-label="Remove ' + esc(m.displayName) + ' from the league">Remove</button>') + '</div>';
+            }).join('') + '</div>' +
+            '<div style="margin-top:1rem"><button type="button" class="iv-btn small danger" id="ivl-delete">Delete this league</button></div></details>';
+        } else {
+          html += '<div style="margin-top:1rem"><button type="button" class="iv-btn small ghost" id="ivl-leave">Leave this league</button></div>';
+        }
+        html += '<div class="iv-status" id="ivl-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>' + privacyNote();
+        body.innerHTML = html;
+        $('#ivl-back', s).onclick = loadList;
+        $('#ivl-prev', s).onclick = function () { weekOffset--; showLeague(id); };
+        $('#ivl-next', s).onclick = function () { if (weekOffset < 0) { weekOffset++; showLeague(id); } };
+        if (owner) {
+          $('#ivl-copy', s).onclick = function () { Core.copyText(inviteLink(L.inviteCode)).then(function (ok) { say(ok ? 'Invite link copied ✓ — send it to your group.' : 'Couldn’t copy automatically — select the link and copy it.'); }); };
+          $('#ivl-share', s).onclick = function () {
+            var text = 'Join my intrvl league “' + L.name + '” — a little weekly music-game competition:';
+            if (navigator.share) navigator.share({ title: 'Join my intrvl league', text: text, url: inviteLink(L.inviteCode) }).catch(function () { /* cancelled */ });
+            else Core.copyText(text + ' ' + inviteLink(L.inviteCode)).then(function () { say('Sharing isn’t available here, so the message was copied ✓'); });
+          };
+          $('#ivl-reset', s).onclick = function () {
+            if (!confirm('Make a new invite link? The old link will stop working (people already in the league stay in).')) return;
+            LB.resetInvite(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+          };
+          $('#ivl-rensave', s).onclick = function () {
+            var n = $('#ivl-rename', s).value.trim(); if (!n) { say('A league needs a name.'); return; }
+            LB.renameLeague(id, n).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+          };
+          Array.prototype.forEach.call(body.querySelectorAll('[data-rm]'), function (b) {
+            b.onclick = function () {
+              if (!confirm('Remove ' + b.getAttribute('data-name') + ' from the league?')) return;
+              LB.removeMember(id, b.getAttribute('data-rm')).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } showLeague(id, true); });
+            };
+          });
+          $('#ivl-delete', s).onclick = function () {
+            if (!confirm('Delete “' + L.name + '” for everyone? This can’t be undone.')) return;
+            LB.deleteLeague(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } loadList(); });
+          };
+        } else {
+          $('#ivl-leave', s).onclick = function () {
+            if (!confirm('Leave “' + L.name + '”?')) return;
+            LB.leaveLeague(id).then(function (x) { if (!x.ok) { say(leagueError(x.error)); return; } loadList(); });
+          };
+        }
+      }
+    }
+
+    function loadList() {
+      weekOffset = 0;
+      body.innerHTML = '<div class="iv-note">Loading…</div>';
+      LB.myLeagues().then(function (r) {
+        if (!r.ok) {
+          var cached = LB.cachedLeagues();
+          if (cached) { showList(cached); return; }
+          body.innerHTML = '<div class="iv-empty">' + esc(leagueError(r.error)) + '</div>';
+          return;
+        }
+        if (r.leagues.length === 1 && !opts.showList) showLeague(r.leagues[0].leagueId); else showList(r.leagues);
+        opts.showList = true;
+      });
+    }
+    if (preferId) showLeague(preferId); else loadList();
+    return s;
+  }
+  IV.openLeague = openLeague;
+
+  // Invite link: ?league=CODE -> "Join this league?" with a quick chance to set your name
+  function openLeagueInvite(code) {
+    var s = openSheet('<h3>You’re invited</h3><div id="ivi-body" aria-live="polite"><div class="iv-note">Checking the invite…</div></div>', null, 'friends');
+    var body = $('#ivi-body', s);
+    if (!LB.isConfigured()) { body.innerHTML = '<div class="iv-empty">The friends leaderboard isn’t switched on yet.</div>'; return; }
+    LB.invitePreview(code).then(function (r) {
+      if (!r.ok) { body.innerHTML = '<div class="iv-empty">This invite link doesn’t work any more. Ask the person who sent it for a new one.</div>'; return; }
+      body.innerHTML = '<p style="margin-bottom:.8rem"><b>' + esc(r.ownerName) + '</b> has invited you to join <b>' + esc(r.name) + '</b> (' + r.members + ' member' + (r.members === 1 ? '' : 's') + '), a weekly music-game league.</p>' +
+        '<label class="iv-label" for="ivi-name">Your name in the league</label>' +
+        '<div class="iv-addrow"><input class="iv-input" id="ivi-name" maxlength="24" value="' + esc(Core.getDisplayName()) + '"></div>' +
+        '<p class="iv-note" style="margin:.2rem 0 .8rem">Members can see each other’s name, avatar and daily scores.</p>' +
+        '<div class="iv-row"><button type="button" class="iv-btn" id="ivi-join">Join league</button><button type="button" class="iv-btn ghost" id="ivi-no">Not now</button></div>' +
+        '<div class="iv-status" id="ivi-msg" role="status" aria-live="polite" style="margin-top:.6rem"></div>';
+      $('#ivi-no', s).onclick = function () { closeSheet(); };
+      $('#ivi-join', s).onclick = function () {
+        Core.setDisplayName($('#ivi-name', s).value);
+        $('#ivi-msg', s).textContent = 'Joining…';
+        LB.register(true).then(function () { return LB.joinLeague(code); }).then(function (j) {
+          if (!j.ok) { $('#ivi-msg', s).textContent = leagueError(j.error); return; }
+          try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+          openLeague(j.league.leagueId);
+        });
+      };
+    });
+  }
+
+  // The League card on the home page
+  IV.renderLeagueCard = function (el) {
+    if (!el || !LB.isConfigured()) { if (el) el.classList.add('hidden'); return; }
+    function paint(leagues, standings) {
+      if (!leagues || !leagues.length) {
+        el.innerHTML = '<div><div class="iv-label" style="margin:0">Friends league</div><b class="iv-strong-accent" style="font-size:1.05rem">Compete with friends each week</b></div>' +
+          '<button type="button" class="iv-btn small ghost" id="home-league-btn">🏆 Start or join</button>';
+      } else {
+        var l = leagues[0], line = '';
+        if (standings && standings.ok) {
+          var me = standings.members.filter(function (m) { return m.code === Core.getPlayerCode(); })[0];
+          if (me) line = 'You’re ' + ordinal(me.rank) + ' of ' + standings.members.length + ' this week · ' + me.points + ' pts';
+        }
+        el.innerHTML = '<div><div class="iv-label" style="margin:0">' + esc(l.name) + (leagues.length > 1 ? ' +' + (leagues.length - 1) + ' more' : '') + '</div><b class="iv-strong-accent" style="font-size:1.05rem">' + esc(line || l.members + ' member' + (l.members === 1 ? '' : 's')) + '</b></div>' +
+          '<button type="button" class="iv-btn small ghost" id="home-league-btn">🏆 Open league</button>';
+      }
+      var b = el.querySelector('#home-league-btn');
+      if (b) b.onclick = function () { openLeague(null, { showList: !!(leagues && leagues.length > 1) }); };
+    }
+    function ordinal(n) { var v = n % 100; return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] || ['th', 'st', 'nd', 'rd'][v] || 'th'); }
+    var cached = LB.cachedLeagues();
+    paint(cached, cached && cached.length ? LB.cachedLeague(cached[0].leagueId) : null);
+    LB.myLeagues().then(function (r) {
+      if (!r.ok) return;
+      if (!r.leagues.length) { paint([], null); return; }
+      LB.getLeague(r.leagues[0].leagueId).then(function (st) { paint(r.leagues, st); });
+    });
+  };
+  (function () {
+    var m = /[?&]league=([A-Za-z0-9]{6,12})/.exec(location.search);
+    if (m) setTimeout(function () { openLeagueInvite(m[1].toUpperCase()); }, 450);
+  })();
   function openProfile() {
     var cur = Core.getAvatar();
     var isPreset = Core.AVATARS.indexOf(cur) !== -1;

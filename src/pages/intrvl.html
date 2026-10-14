@@ -5,6 +5,8 @@
 
   <div class="iv-card iv-row between" id="home-progress" style="margin-top:1rem"></div>
 
+  <div class="iv-card iv-row between" id="home-league" style="margin-top:.7rem"></div>
+
   <div class="iv-row between" style="margin-top:1.3rem">
     <h2 class="iv-h2" style="margin:0">Today’s games</h2>
     <span class="iv-note" id="home-count"></span>
@@ -44,6 +46,7 @@
       (streak ? streak + (streak === 1 ? ' day' : ' days') + ' in a row' : 'Start your streak today') + '</b></div>' +
       '<button type="button" class="iv-btn small ghost" id="home-progress-btn">📈 See progress</button>';
     document.getElementById('home-progress-btn').onclick = function () { IV.openProgress(); };
+    IV.renderLeagueCard(document.getElementById('home-league'));
   })();
 </script>
 

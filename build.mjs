@@ -27,15 +27,29 @@ const pages = fs.readdirSync(path.join(SRC, 'pages')).filter(f => f.endsWith('.h
 
 const outputs = new Map();   // relative path -> contents
 
+const notation = read('src', 'shared', 'notation.js');
 function expand(template) {
   return template
     .replace('<!--@shared-css-->', () => '<style>\n' + css + '</style>')
-    .replace('<!--@shared-js-->', () => '<script>\n' + js + '</script>');
+    .replace('<!--@shared-js-->', () => '<script>\n' + js + '</script>')
+    .replace('<!--@notation-js-->', () => '<script>\n' + notation + '</script>');
+}
+
+// Variants: the same page template run with a different INTRVL_CONFIG (e.g. the Easy versions of the sprints).
+const variantsPath = path.join(SRC, 'variants.json');
+const variants = fs.existsSync(variantsPath) ? JSON.parse(read('src', 'variants.json')) : [];
+const CONFIG_RE = /<script>\s*window\.INTRVL_CONFIG = \{[\s\S]*?\};?\s*<\/script>/;
+const templates = new Map();     // page name -> template text
+for (const f of pages) templates.set(f.replace(/\.html$/, ''), read('src', 'pages', f));
+for (const v of variants) {
+  const base = templates.get(v.from);
+  if (!base || !CONFIG_RE.test(base)) throw new Error('variant ' + v.name + ': cannot find base page/config ' + v.from);
+  templates.set(v.name, base.replace(CONFIG_RE, () => '<script>window.INTRVL_CONFIG = ' + JSON.stringify(v.config) + ';</script>'));
 }
 
 // ---- 1. Squarespace blocks (unchanged way of loading) ------------------------------------------
-for (const f of pages) {
-  outputs.set('blocks/' + f, expand(read('src', 'pages', f)));   // no extra header: these are loaded straight into Squarespace
+for (const [name, template] of templates) {
+  outputs.set('blocks/' + name + '.html', expand(template));   // no extra header: these are loaded straight into Squarespace
 }
 
 // ---- 2. Installable app -------------------------------------------------------------------------
@@ -45,9 +59,8 @@ if (fs.existsSync(appCfgPath)) {
   const pageIcon = (name) => cfg.pageIcons[name] || 'home';
   const appPages = [];
 
-  for (const f of pages) {
-    const name = f.replace(/\.html$/, '');                      // intrvl, intrvl-intervals, ...
-    const outName = name === 'intrvl' ? 'index.html' : f;
+  for (const [name, template] of templates) {                   // intrvl, intrvl-intervals, ...
+    const outName = name === 'intrvl' ? 'index.html' : name + '.html';
     const icon = pageIcon(name);
     const head =
       '<!doctype html>\n<html lang="en-GB">\n<head>\n' +
@@ -67,7 +80,7 @@ if (fs.existsSync(appCfgPath)) {
       '<script>window.INTRVL_STANDALONE = true;</script>\n<main>\n';
     const tail = '\n</main>\n<script>if ("serviceWorker" in navigator) addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });</script>\n</body>\n</html>\n';
     // The Google Fonts @import in the shared CSS is replaced by the self-hosted fonts in the app.
-    let body = expand(read('src', 'pages', f)).replace(/@import url\('https:\/\/fonts\.googleapis\.com[^']*'\);\n?/g, '');
+    let body = expand(template).replace(/@import url\('https:\/\/fonts\.googleapis\.com[^']*'\);\n?/g, '');
     outputs.set('app/' + outName, head + body + tail);
     appPages.push(outName);
   }

@@ -106,6 +106,7 @@
     accentColors: ['#a3b0bd', '#A9B9A2', '#bda569', '#c79aa0']
   };
 </script>
+<!--@notation-js-->
 <!--@shared-js-->
 <script>
   let currentPool = [];
@@ -126,10 +127,14 @@
     "1": "C5", "2": "D5", "3": "E5", "4": "F5", "5": "G5"
   };
 
+  const PAGE_CFG = window.INTRVL_CONFIG;
+  const GAME_ID = PAGE_CFG.gameId;                 // 'clef' or 'clef-easy'
+  const EASY = !!PAGE_CFG.easy;                    // easy: only treble and bass, with sharps and flats
+  const TITLE = PAGE_CFG.title || 'Clef Sprint';
   const POSITION_WORDS = { '-5': 'just below the bottom line', '-4': 'on the bottom line', '-3': 'in the bottom space', '-2': 'on the second line', '-1': 'in the second space', '0': 'on the middle line', '1': 'in the third space', '2': 'on the fourth line', '3': 'in the top space', '4': 'on the top line', '5': 'just above the top line' };
   const BASE_IMAGE_URL = "https://piapaul.github.io/music-theory-images/single/nocleftreble";
 
-  const clefNames = ['Treble', 'Bass', 'Alto', 'Tenor'];
+  const clefNames = EASY ? ['Treble', 'Bass'] : ['Treble', 'Bass', 'Alto', 'Tenor'];
   const notesArray = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   const bases = [6, 1, 0, 5];
 
@@ -141,6 +146,7 @@
   };
 
   function initApp() {
+    if (EASY) document.querySelector('#screen-start p').innerHTML = '30 seconds. Treble or bass?<br>Sharps and flats included.';
     stats = IntrvlCore.loadStats();
     if (!stats.highScoreDaily) stats.highScoreDaily = 0;
     if (!stats.highScorePractice) stats.highScorePractice = 0;
@@ -160,6 +166,7 @@
   }
 
   function preloadImages() {
+    if (EASY) return;   // nothing to download: notes are drawn in the page
     IV.prefetch(Object.keys(positionToTrebleFile).map(pos => `${BASE_IMAGE_URL}/single-${positionToTrebleFile[pos]}-natural-nocleftreble.png`).concat(Object.values(clefImages)));   // installed app: keep them for offline play
     for (const pos in positionToTrebleFile) {
       const img = new Image();
@@ -170,11 +177,12 @@
   function injectClefButtons() {
     const container = document.getElementById('clef-buttons-container');
     container.innerHTML = '';
+    if (EASY) { container.style.gridTemplateColumns = 'repeat(2, 150px)'; container.style.justifyContent = 'center'; }
 
     clefNames.forEach((name, index) => {
       container.innerHTML += `
         <button class="choice-btn" id="btn-clef-${index}" onclick="submitGuess(${index})">
-          <img src="${clefImages[name]}" class="clef-btn-img" alt="${name} Clef" onerror="this.style.display='none';">
+          ${EASY ? IVN.clefIconSvg(name.toLowerCase()) : `<img src="${clefImages[name]}" class="clef-btn-img" alt="${name} Clef" onerror="this.style.display='none';">`}
           <span>${name}</span>
         </button>
       `;
@@ -184,16 +192,20 @@
   function generatePool(useSeed) {
     const randomFunc = useSeed ? IntrvlCore.mulberry32(IntrvlCore.getDailySeed()) : () => Math.random();
     const pool = [];
-    const focus = IntrvlCore.takeFocus('clef');   // topics to lean towards in "practise my weak spots"
+    const focus = IntrvlCore.takeFocus(GAME_ID);   // topics to lean towards in "practise my weak spots"
     const focusIdx = useSeed ? [] : focus.map(l => clefNames.findIndex(n => n + ' clef' === l)).filter(k => k >= 0);
 
     for (let i = 0; i < 200; i++) {
       const p = Math.floor(randomFunc() * 11) - 5;
-      const targetClefIndex = (focusIdx.length && randomFunc() < 0.7) ? focusIdx[Math.floor(randomFunc() * focusIdx.length)] : Math.floor(randomFunc() * 4);
+      const targetClefIndex = (focusIdx.length && randomFunc() < 0.7) ? focusIdx[Math.floor(randomFunc() * focusIdx.length)] : Math.floor(randomFunc() * clefNames.length);
       let noteIdx = (bases[targetClefIndex] + p) % 7;
       if (noteIdx < 0) noteIdx += 7;
 
-      pool.push({ position: p, targetNote: notesArray[noteIdx], answerIndex: targetClefIndex });
+      // easy version also uses sharps and flats - but never the awkward ones (E sharp, B sharp, C flat, F flat)
+      const letter = notesArray[noteIdx];
+      const accChoices = ['natural'].concat('EB'.includes(letter) ? [] : ['sharp'], 'CF'.includes(letter) ? [] : ['flat']);
+      const acc = EASY ? accChoices[Math.floor(randomFunc() * accChoices.length)] : 'natural';
+      pool.push({ position: p, targetNote: notesArray[noteIdx] + (acc === 'sharp' ? '♯' : acc === 'flat' ? '♭' : ''), acc: acc, answerIndex: targetClefIndex });
     }
     return pool;
   }
@@ -244,7 +256,7 @@
   function nextQuestion() {
     if (!isGameActive) return;
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < clefNames.length; i++) {
       const btn = document.getElementById(`btn-clef-${i}`);
       btn.className = 'choice-btn';
       btn.disabled = false;
@@ -256,20 +268,25 @@
     document.getElementById('ui-target-note').textContent = currentQuestion.targetNote;
 
     const fileReference = positionToTrebleFile[currentQuestion.position];
-    document.getElementById('main-target-image').src = `${BASE_IMAGE_URL}/single-${fileReference}-natural-nocleftreble.png`;
-    document.getElementById('main-target-image').alt = 'A note ' + POSITION_WORDS[currentQuestion.position] + ' of a five-line stave. No clef is shown yet.';
+    const alt = 'A note ' + POSITION_WORDS[currentQuestion.position] + ' of a five-line stave' + (currentQuestion.acc !== 'natural' ? ', with a ' + currentQuestion.acc + ' sign' : '') + '. No clef is shown yet.';
+    if (EASY) {
+      document.getElementById('clefsprint-img-container').innerHTML = IVN.noteSvg({ clef: null, pos: Number(currentQuestion.position) + 4, acc: currentQuestion.acc, label: alt });   // drawn here, so no pictures needed
+    } else {
+      document.getElementById('main-target-image').src = `${BASE_IMAGE_URL}/single-${fileReference}-natural-nocleftreble.png`;
+      document.getElementById('main-target-image').alt = alt;
+    }
     IntrvlCore.refocus('btn-clef-0');
   }
 
   function submitGuess(btnIndex) {
     if (!isGameActive) return;
-    for (let i = 0; i < 4; i++) document.getElementById(`btn-clef-${i}`).disabled = true;
+    for (let i = 0; i < clefNames.length; i++) document.getElementById(`btn-clef-${i}`).disabled = true;
 
     const btn = document.getElementById(`btn-clef-${btnIndex}`);
     const isCorrect = btnIndex === currentQuestion.answerIndex;
 
     stats.totalPlayed++;
-    IntrvlCore.recordItem('clef', clefNames[currentQuestion.answerIndex] + ' clef', isCorrect);
+    IntrvlCore.recordItem(GAME_ID, clefNames[currentQuestion.answerIndex] + ' clef', isCorrect);
     IntrvlCore.announce(isCorrect ? 'Correct' : 'Incorrect. The answer was ' + clefNames[currentQuestion.answerIndex] + ' clef');
 
     if (isCorrect) {
@@ -333,7 +350,7 @@
       document.getElementById('end-high-score').style.display = 'none';
       document.getElementById('btn-share').classList.remove('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
-      IntrvlLeaderboard.attachSubmitButton({ gameId: 'clef', score: stats.highScoreDaily, streak: stats.currentStreak });
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: stats.highScoreDaily, streak: stats.currentStreak });
 
       if (!document.getElementById('temp-prac')) {
         const pracBtn = document.createElement('button');
@@ -354,7 +371,7 @@
     if (wasDaily) {
       document.getElementById('btn-share').classList.remove('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
-      IntrvlLeaderboard.attachSubmitButton({ gameId: 'clef', score: score, streak: stats.currentStreak });
+      IntrvlLeaderboard.attachSubmitButton({ gameId: GAME_ID, score: score, streak: stats.currentStreak });
 
       if (!document.getElementById('temp-prac')) {
         const pracBtn = document.createElement('button');
@@ -380,8 +397,8 @@
   function shareResults() {
     let accuracy = stats.totalPlayed > 0 ? Math.round((stats.totalCorrect / stats.totalPlayed) * 100) : 0;
     const pageUrl = window.location.href.split('?')[0];
-    const textToShare = `I scored ${score} on the Intrvl Daily Clef Sprint! 🎼\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
-    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl Clef Sprint');
+    const textToShare = `I scored ${score} on the Intrvl Daily ${TITLE}! 🎼\n\nMax Combo: 🔥 x${maxCombo}\nStreak: ${stats.currentStreak} Days | Acc: ${accuracy}%\n\nCan you read music faster than me?\n${pageUrl}`;
+    IntrvlCore.share(textToShare, document.getElementById('btn-share'), 'Intrvl ' + TITLE);
   }
 
   initApp();   // the page is already loaded by the time this runs (Squarespace loader), so call straight away

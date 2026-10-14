@@ -266,3 +266,25 @@ a.iv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28,28
 #intrvl-app .iv-bigval, #intrvl-app .tn-note, #intrvl-app .tn-freq { font-variant-numeric: lining-nums tabular-nums; }
 
 .iv-focus-note { font-size: .82rem; font-weight: 700; color: var(--intrvl-accent-dark); background: var(--intrvl-panel-bg); border: 1px dashed var(--intrvl-stone); border-radius: 10px; padding: .45rem .7rem; margin: 0 auto .9rem; max-width: 380px; text-align: center; line-height: 1.35; }
+
+/* notation drawn as SVG */
+.ivn-svg { display: block; width: 100%; height: auto; max-height: 100%; }
+.choice-btn .ivn-clef { max-width: 70px; max-height: 44px; margin: 0 auto; }
+.choice-btn.correct .ivn-clef, .choice-btn.incorrect .ivn-clef { filter: none; }
+
+/* friends league table */
+.iv-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.iv-table th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--intrvl-ink-soft); padding: .3rem .3rem; border-bottom: 2px solid var(--intrvl-border); }
+.iv-table td { padding: .55rem .3rem; border-bottom: 1px solid var(--intrvl-border); }
+.iv-table .num { text-align: right; width: 3.6rem; }
+.iv-table .rk { width: 1.6rem; color: var(--intrvl-ink-soft); font-weight: 800; }
+.iv-table tr.me td { background: color-mix(in srgb, var(--intrvl-accent) 22%, white); font-weight: 700; }
+button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-offset: 2px; }
+
+.iv-details summary { list-style: none; }
+.iv-details summary::-webkit-details-marker { display: none; }
+.iv-details summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); transition: transform .15s ease; }
+.iv-details[open] summary::after { transform: rotate(180deg); }
+.rt-offset summary { list-style: none; }
+.rt-offset summary::-webkit-details-marker { display: none; }
+.rt-offset summary::after { content: '\25BE'; margin-left: auto; padding-left: .6rem; color: var(--intrvl-ink-soft); }
