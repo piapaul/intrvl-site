@@ -17,23 +17,41 @@
   (function () {
     var Core = IntrvlCore, esc = Core.esc, today = Core.dailySeedDate(), done = 0;
 
-    document.getElementById('games-list').innerHTML = IV.GAMES.map(function (g) {
-      var st = Core.statsFor(g.id), played = st.lastPlayedDate === Core.todayStr();
-      if (played) done++;
-      return '<a class="iv-item" href="' + IV.href(g.url) + '" style="--item-accent:' + g.accent + '">' +
-        '<div class="iv-badge" aria-hidden="true">' + g.icon + '</div>' +
-        '<div><div class="iv-item-name">' + esc(g.name) + '</div><div class="iv-item-blurb">' + esc(g.blurb) + '</div></div>' +
-        '<div class="iv-item-end">' + (st.currentStreak > 0 ? '<span aria-hidden="true">🔥</span> ' + st.currentStreak + '<span class="iv-sr"> day streak</span>' : '') + (played ? '<span class="iv-done" aria-hidden="true">✓</span><span class="iv-sr">Done today</span>' : '<span class="iv-chev" aria-hidden="true">›</span>') + '</div></a>';
+    function streakBit(st) { return st.currentStreak > 0 ? '<span aria-hidden="true">🔥</span> ' + st.currentStreak + '<span class="iv-sr"> day streak</span>' : ''; }
+
+    document.getElementById('games-list').innerHTML = IV.groupsTodoFirst().map(function (grp) {
+      if (grp.variants.length === 1) {
+        var g = grp.variants[0].game, st = Core.statsFor(g.id), played = st.lastPlayedDate === Core.todayStr();
+        if (played) done++;
+        return '<a class="iv-item" href="' + IV.href(g.url) + '" style="--item-accent:' + g.accent + '">' +
+          '<div class="iv-badge" aria-hidden="true">' + g.icon + '</div>' +
+          '<div><div class="iv-item-name">' + esc(g.name) + '</div><div class="iv-item-blurb">' + esc(g.blurb) + '</div></div>' +
+          '<div class="iv-item-end">' + streakBit(st) + (played ? '<span class="iv-done" aria-hidden="true">✓</span><span class="iv-sr">Done today</span>' : '<span class="iv-chev" aria-hidden="true">›</span>') + '</div></a>';
+      }
+      // one icon and name, then Normal | Easy buttons
+      var pills = grp.variants.map(function (v) {
+        var st = Core.statsFor(v.game.id), played = st.lastPlayedDate === Core.todayStr();
+        if (played) done++;
+        return '<a class="iv-pill' + (played ? ' done' : '') + '" href="' + IV.href(v.game.url) + '" aria-label="' + esc(grp.name + ', ' + v.label.toLowerCase() + (played ? ', done today' : '')) + '">' + v.label + (st.currentStreak > 0 ? ' · ' + streakBit(st) : '') + (played ? ' <span aria-hidden="true">✓</span>' : '') + '</a>';
+      }).join('');
+      return '<div class="iv-item iv-gitem" style="--item-accent:' + grp.accent + '"><div class="iv-badge" aria-hidden="true">' + grp.icon + '</div>' +
+        '<div class="iv-grow"><div class="iv-item-name">' + esc(grp.name) + '</div><div class="iv-item-blurb">' + esc(grp.blurb) + '</div></div>' +
+        '<div class="iv-pills" role="group" aria-label="' + esc(grp.name) + '">' + pills + '</div></div>';
     }).join('');
     document.getElementById('games-count').textContent = done + ' of ' + IV.GAMES.length + ' done today';
 
-    var rows = IV.GAMES.map(function (g) {
-      var st = Core.statsFor(g.id), h = Core.getHistoryFor(g.id);
-      var played = Object.keys(h).length;
-      var sub = played ? ('🔥 ' + st.currentStreak + ' · best ' + st.bestStreak + ' · ' + played + ' day' + (played > 1 ? 's' : '') + ' played') : 'Not played yet';
+    // scores: one heading per game, with a line for Normal and Easy underneath
+    function scoreLine(g, label, sub) {
+      var st = Core.statsFor(g.id), h = Core.getHistoryFor(g.id), played = Object.keys(h).length;
+      var info = played ? ('🔥 ' + st.currentStreak + ' · best ' + st.bestStreak + ' · ' + played + ' day' + (played > 1 ? 's' : '') + ' played') : 'Not played yet';
       var todays = h[today] != null ? '<b>' + esc(h[today]) + '</b> today' : '';
-      return '<div class="iv-scoreline"><div class="iv-grow"><div class="t">' + g.icon + ' ' + esc(g.name) + '</div><div class="s">' + sub + '</div></div>' +
+      return '<div class="iv-scoreline' + (sub ? ' iv-sub' : '') + '"><div class="iv-grow"><div class="t">' + (sub ? esc(label) : '<span aria-hidden="true">' + g.icon + '</span> ' + esc(g.name)) + '</div><div class="s">' + info + '</div></div>' +
         '<span class="iv-note">' + todays + '</span><button class="iv-iconbtn" data-id="' + g.id + '" aria-label="History for ' + esc(g.name) + '">📅</button></div>';
+    }
+    var rows = IV.groups().map(function (grp) {
+      if (grp.variants.length === 1) return scoreLine(grp.variants[0].game, '', false);
+      return '<div class="iv-scoreline iv-gh"><div class="t"><span aria-hidden="true">' + grp.icon + '</span> ' + esc(grp.name) + '</div></div>' +
+        grp.variants.map(function (v) { return scoreLine(v.game, v.label, true); }).join('');
     });
     var el = document.getElementById('games-scores');
     el.innerHTML = rows.join('');

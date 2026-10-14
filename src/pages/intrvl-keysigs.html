@@ -38,7 +38,7 @@
 
     <div id="screen-start" class="button-stack">
       <p id="ks-intro" style="color: var(--intrvl-ink-soft); line-height: 1.5; margin-bottom: 2rem;">
-        30 seconds. Name the key from its signature.<br>Build your combo for massive points.
+        30 seconds. Name the major or minor key from its signature.<br>Build your combo for massive points.
       </p>
       <button class="btn-primary" onclick="startKsSprint(true)">Start Daily Sprint</button>
       <button class="btn-practice" onclick="startKsSprint(false)">Practice Sprint</button>
@@ -51,7 +51,7 @@
         <div><span id="ui-timer" class="timer-highlight">30</span>s</div>
       </div>
 
-      <p class="instruction-text" id="ks-question">Which key has this signature?</p>
+      <p class="instruction-text" id="ks-question" aria-live="polite">Which key has this signature?</p>
 
       <div id="ks-target-container"></div>
 
@@ -136,8 +136,16 @@
     return keys;
   }
 
-  // Wrong answers that a real student might pick: the relative major/minor, and the neighbouring keys round the circle of fifths
+  // Wrong answers that a real student might pick: the neighbouring keys round the circle of fifths.
+  // In the normal version the question says MAJOR or MINOR, so every option is in that same mode.
   function distractorsFor(target, level, randomFunc) {
+    if (!EASY) {
+      const near = [1, -1, 2, -2, 3, -3, 4, -4].map(d => target.count + d).filter(c => Math.abs(c) <= level.max).map(c => keyName(c, target.mode));
+      const rest = allowedKeys(level).filter(k => k.mode === target.mode && k.name !== target.name && near.indexOf(k.name) === -1).map(k => k.name);
+      const pool = near.slice(0, 6).concat(rest).slice(0, 6), picked = [];
+      while (picked.length < 3 && pool.length) picked.push(pool.splice(Math.floor(randomFunc() * pool.length), 1)[0]);
+      return picked;
+    }
     const other = target.mode === 'major' ? 'minor' : 'major';
     const wanted = [
       { count: target.count, mode: other },
@@ -172,7 +180,7 @@
         const k = Math.floor(randomFunc() * (j + 1));
         [options[j], options[k]] = [options[k], options[j]];
       }
-      pool.push({ count: target.count, clef: clef, correct: target.name, options: options, label: target.name });
+      pool.push({ count: target.count, mode: target.mode, clef: clef, correct: target.name, options: options, label: target.name });
     }
     return pool;
   }
@@ -225,6 +233,7 @@
     currentLevel++;
 
     document.getElementById('ks-target-container').innerHTML = IVN.keySigSvg(ksCurrentQ.clef, ksCurrentQ.count);
+    if (!EASY) document.getElementById('ks-question').innerHTML = 'What <strong>' + ksCurrentQ.mode.toUpperCase() + '</strong> key is this?';
 
     for (let i = 0; i < 4; i++) {
       const btn = document.getElementById(`btn-ks-${i}`);

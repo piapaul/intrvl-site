@@ -45,11 +45,11 @@ node build.mjs
 | --- | --- | --- |
 | Note Sprint / Note Sprint (Easy) | `/intrvl-notes`, `/intrvl-notes-easy` | Easy: treble and bass clef, natural notes only |
 | Clef Sprint / Clef Sprint (Easy) | `/intrvl-clefs`, `/intrvl-clefs-easy` | Easy: just treble and bass, with sharps and flats (drawn in the page) |
-| Key Signature Sprint / (Easy) | `/intrvl-keysigs`, `/intrvl-keysigs-easy` | Easy: major keys, up to 4 sharps or flats, treble clef |
+| Key Signature Sprint / (Easy) | `/intrvl-keysigs`, `/intrvl-keysigs-easy` | Normal asks "What MAJOR key is this?" or "What MINOR key is this?" and every answer is in that mode. Easy: major keys, up to 4 sharps or flats, treble clef |
 | Rhythm Tap / Rhythm Tap (Easy) | `/intrvl-rhythm`, `/intrvl-rhythm-easy` | See below |
 | Practice Log | `/intrvl-practice` | Timer with a switch for what you're practising, overview, "send to teacher" text for My Music Staff |
 
-The **home page order** is set by the list at the top of `src/shared/core.js` (`IV.GAMES`): Note Sprint and Clef Sprint come first.
+The **home page order** is set by the lists at the top of `src/shared/core.js` (`IV.GAMES`, `IV.TOOLS`). Games with an Easy version (`variantOf`) show as one tile with **Normal | Easy** buttons on the home and Games pages; the order is Note Sprint, Clef Sprint, Key Signature Sprint, Rhythm Tap, then the rest. Practice Log is first in Tools. Games you've finished today drop to the bottom of both lists, so what's left is at the top.
 
 **Each new page needs its own Squarespace page and loader**, like the existing ones (the installable app needs nothing).
 

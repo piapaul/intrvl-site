@@ -11,7 +11,7 @@
     <h2 class="iv-h2" style="margin:0">Today’s games</h2>
     <span class="iv-note" id="home-count"></span>
   </div>
-  <div class="iv-icongrid" id="home-games" style="margin-top:.6rem"></div>
+  <div class="iv-icongrid cols3" id="home-games" style="margin-top:.6rem"></div>
 
   <h2 class="iv-h2">Tools</h2>
   <div class="iv-icongrid" id="home-tools"></div>
@@ -36,7 +36,17 @@
         (played ? '<span class="iv-done" aria-hidden="true">✓</span><span class="iv-sr">Done today. </span>' : '') +
         '<div class="iv-badge" aria-hidden="true">' + it.icon + '</div><span class="n">' + Core.esc(it.name) + '</span></a>';
     }
-    document.getElementById('home-games').innerHTML = IV.GAMES.map(function (g) { return tile(g, true); }).join('');
+    // a game that has an Easy version is one tile with Normal | Easy buttons underneath
+    function groupTile(grp) {
+      if (grp.variants.length === 1) return tile(grp.variants[0].game, true);
+      var pills = grp.variants.map(function (v) {
+        var played = Core.playedToday(v.game.id);
+        if (played) done++;
+        return '<a class="iv-pill' + (played ? ' done' : '') + '" href="' + IV.href(v.game.url) + '" aria-label="' + Core.esc(grp.name + ', ' + v.label.toLowerCase() + (played ? ', done today' : '')) + '">' + v.label + (played ? ' <span aria-hidden="true">✓</span>' : '') + '</a>';
+      }).join('');
+      return '<div class="iv-gtile" style="--item-accent:' + grp.accent + '"><div class="iv-badge" aria-hidden="true">' + grp.icon + '</div><span class="n">' + Core.esc(grp.name) + '</span><div class="iv-pills" role="group" aria-label="' + Core.esc(grp.name) + '">' + pills + '</div></div>';
+    }
+    document.getElementById('home-games').innerHTML = IV.groupsTodoFirst().map(groupTile).join('');
     document.getElementById('home-tools').innerHTML = IV.TOOLS.map(function (t) { return tile(t, false); }).join('');
     document.getElementById('home-count').textContent = done + ' of ' + IV.GAMES.length + ' done';
 
