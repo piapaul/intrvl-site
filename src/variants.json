@@ -70,5 +70,23 @@
     "#B7A7C9"
    ]
   }
+ },
+ {
+  "name": "intrvl-interval-reader-easy",
+  "from": "intrvl-interval-reader",
+  "config": {
+   "startFn": "startIrSprint",
+   "kind": "game",
+   "id": "readinterval-easy",
+   "gameId": "readinterval-easy",
+   "easy": true,
+   "title": "Interval Reader (Easy)",
+   "accentColors": [
+    "#B7A7C9",
+    "#A9B9A2",
+    "#C1A45F",
+    "#D9A5B3"
+   ]
+  }
  }
 ]

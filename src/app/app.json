@@ -21,6 +21,16 @@
     "intrvl-circle-of-fifths": "circle",
     "intrvl-modes": "modes",
     "intrvl-transpose": "transpose",
-    "intrvl-chords": "chords"
+    "intrvl-chords": "chords",
+    "intrvl-interval-reader": "readinterval",
+    "intrvl-interval-reader-easy": "readinterval-easy",
+    "intrvl-chord-quality": "chordq",
+    "intrvl-keysigs": "keysig",
+    "intrvl-keysigs-easy": "keysig-easy",
+    "intrvl-rhythm": "rhythm",
+    "intrvl-rhythm-easy": "rhythm-easy",
+    "intrvl-notes-easy": "note-easy",
+    "intrvl-clefs-easy": "clef-easy",
+    "intrvl-practice": "practice"
   }
 }

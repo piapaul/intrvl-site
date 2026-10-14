@@ -3,18 +3,20 @@
    which is what makes the phone pick up updates). Edit src/app/sw.js, not app/sw.js. */
 'use strict';
 
-var VERSION = '8b24f57dfcff';
+var VERSION = 'da136aabab6d';
 var CACHE = 'intrvl-app-' + VERSION;       // the app itself: replaced on every update
 var RUNTIME = 'intrvl-pictures-v1';       // stave pictures: kept between updates
 var PRECACHE = [
   "./",
   "manifest.webmanifest",
+  "intrvl-chord-quality.html",
   "intrvl-chords.html",
   "intrvl-circle-of-fifths.html",
   "intrvl-clefs.html",
   "intrvl-ear.html",
   "intrvl-games.html",
   "intrvl-heaven.html",
+  "intrvl-interval-reader.html",
   "intrvl-intervals.html",
   "intrvl-keysigs.html",
   "intrvl-matchmaker.html",
@@ -33,6 +35,7 @@ var PRECACHE = [
   "intrvl-clefs-easy.html",
   "intrvl-keysigs-easy.html",
   "intrvl-rhythm-easy.html",
+  "intrvl-interval-reader-easy.html",
   "fonts/fonts.css",
   "fonts/fraunces-latin.woff2",
   "fonts/raleway-latin.woff2",
@@ -53,6 +56,16 @@ var PRECACHE = [
   "../icons/modes-180.png",
   "../icons/transpose-180.png",
   "../icons/chords-180.png",
+  "../icons/readinterval-180.png",
+  "../icons/readinterval-easy-180.png",
+  "../icons/chordq-180.png",
+  "../icons/keysig-180.png",
+  "../icons/keysig-easy-180.png",
+  "../icons/rhythm-180.png",
+  "../icons/rhythm-easy-180.png",
+  "../icons/note-easy-180.png",
+  "../icons/clef-easy-180.png",
+  "../icons/practice-180.png",
   "../icons/home-192.png",
   "../icons/home-512.png",
   "../icons/home-maskable-512.png"
