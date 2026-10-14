@@ -46,7 +46,7 @@
       }).join('');
       return '<div class="iv-gtile" style="--item-accent:' + grp.accent + '"><div class="iv-badge" aria-hidden="true">' + grp.icon + '</div><span class="n">' + Core.esc(grp.name) + '</span><div class="iv-pills" role="group" aria-label="' + Core.esc(grp.name) + '">' + pills + '</div></div>';
     }
-    document.getElementById('home-games').innerHTML = IV.groups().map(groupTile).join('');
+    document.getElementById('home-games').innerHTML = IV.groupsTodoFirst().map(groupTile).join('');
     document.getElementById('home-tools').innerHTML = IV.TOOLS.map(function (t) { return tile(t, false); }).join('');
     document.getElementById('home-count').textContent = done + ' of ' + IV.GAMES.length + ' done';
 

@@ -357,6 +357,16 @@ IV.groups = function () {
   });
   return out;
 };
+// Same list, but games you haven't finished today come first and finished ones drop to the bottom
+// (a game with a Normal and an Easy version only drops once both are done).
+IV.groupsTodoFirst = function () {
+  var todo = [], done = [];
+  IV.groups().forEach(function (grp) {
+    var all = grp.variants.every(function (v) { return IntrvlCore.playedToday(v.game.id); });
+    (all ? done : todo).push(grp);
+  });
+  return todo.concat(done);
+};
 IV.TOOLS = [
   { id: 'practice',     name: 'Practice Log',       icon: '📒', accent: '#D9A5B3', url: '/intrvl-practice',         blurb: 'Time your practice and send it to your teacher' },
   { id: 'metronome',    name: 'Metronome',          icon: '⏱️', accent: '#c2a687', url: '/intrvl-metronome',        blurb: 'Tempo, time signatures and tap tempo' },
@@ -1698,7 +1708,7 @@ IV.find = function (id) {
 
     function streakBit(st) { return st.currentStreak > 0 ? '<span aria-hidden="true">🔥</span> ' + st.currentStreak + '<span class="iv-sr"> day streak</span>' : ''; }
 
-    document.getElementById('games-list').innerHTML = IV.groups().map(function (grp) {
+    document.getElementById('games-list').innerHTML = IV.groupsTodoFirst().map(function (grp) {
       if (grp.variants.length === 1) {
         var g = grp.variants[0].game, st = Core.statsFor(g.id), played = st.lastPlayedDate === Core.todayStr();
         if (played) done++;

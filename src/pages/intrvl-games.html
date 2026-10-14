@@ -19,7 +19,7 @@
 
     function streakBit(st) { return st.currentStreak > 0 ? '<span aria-hidden="true">🔥</span> ' + st.currentStreak + '<span class="iv-sr"> day streak</span>' : ''; }
 
-    document.getElementById('games-list').innerHTML = IV.groups().map(function (grp) {
+    document.getElementById('games-list').innerHTML = IV.groupsTodoFirst().map(function (grp) {
       if (grp.variants.length === 1) {
         var g = grp.variants[0].game, st = Core.statsFor(g.id), played = st.lastPlayedDate === Core.todayStr();
         if (played) done++;
