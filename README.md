@@ -39,6 +39,9 @@ node build.mjs
 - Updates arrive by themselves the next time the app is opened with a signal.
 - **The website and the app keep their progress separately** (they are different web addresses). Use **Progress → Back up or move your progress** to copy everything from one to the other.
 
+## Links back to the main site
+Every page ends with a **Back to paulemmettmusic.co.uk** link, and every game page (and the Games page) has a **Want more practice?** card linking to Music lessons and Free resources. Both are built in `buildFooter()` in `src/shared/core.js`; the wording and the two links are there, the look is `.iv-promo` / `.iv-foot` in `styles.css`.
+
 ## Games and tools
 
 | Page | Squarespace address to create | Notes |
@@ -57,7 +60,7 @@ The **home page order** is set by the lists at the top of `src/shared/core.js` (
 
 ### Rhythm Tap
 Two bars of **4/4, 3/4 or 6/8** shown as notation. The daily rhythm's time signature is chosen from the date (the start screen says which; Easy and Normal share it). Practice has a **Mixed / 4/4 / 3/4 / 6/8** choice.
-- **Look first.** *Start* only shows the rhythm. Nothing plays until you press **Go**, so you can read it through. **Go stays greyed out until you've pressed *Test sound*** (a few clicks at the rhythm's tempo) so the volume gets checked; once checked, it stays unlocked until the page is reloaded.
+- **Look first.** *Start* only shows the rhythm. Nothing plays until you press **Go**, so you can read it through. **Test sound is optional**: *Go* is always available, and *Test sound* plays a few clicks at the rhythm's tempo if you want to check your volume first.
 - A one-bar count-in plays (6/8 counts all six quavers), then you tap in time.
 - **Easy:** up to quavers and simple rests; the metronome keeps going throughout.
 - **Normal:** up to semiquavers, triplets (4/4 and 3/4), dotted rhythms, syncopation and tricky rests; the metronome stops after the count-in so you keep time yourself.

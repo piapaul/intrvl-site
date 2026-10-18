@@ -1847,6 +1847,29 @@ IV.find = function (id) {
   }
   buildHeader();
   buildTabBar();
+  // Footer on every page: a link back to the main website. Game pages (and the Games page) also get a
+  // gentle "want more practice?" card pointing at lessons and free resources on paulemmettmusic.co.uk.
+  function buildFooter() {
+    if (!app || document.getElementById('iv-footer')) return;
+    var SITE = 'https://www.paulemmettmusic.co.uk';
+    var ext = STANDALONE ? ' target="_blank" rel="noopener"' : '';
+    var html = '';
+    if (KIND === 'game' || KIND === 'games') {
+      html += '<aside class="iv-promo" aria-labelledby="iv-promo-t">' +
+        '<h2 class="iv-promo-t" id="iv-promo-t">Want more practice?</h2>' +
+        '<p>Take your theory, ear training and musicianship further with a one-to-one lesson with Paul.</p>' +
+        '<div class="iv-promo-links">' +
+        '<a class="iv-btn small" href="' + SITE + '/music-lessons"' + ext + '>Music lessons <span aria-hidden="true">→</span></a>' +
+        '<a class="iv-btn small ghost" href="' + SITE + '/free-resources"' + ext + '>Free resources</a>' +
+        '</div></aside>';
+    }
+    html += '<p class="iv-foot"><a href="' + SITE + '/"' + ext + '><span aria-hidden="true">←</span> Back to paulemmettmusic.co.uk</a></p>';
+    var f = document.createElement('div');
+    f.id = 'iv-footer';
+    f.innerHTML = html;
+    app.appendChild(f);
+  }
+  buildFooter();
   // "Practise my weak spots" buttons on each game's start and finished screens.
   function refreshWeakButtons() {
     if (KIND !== 'game' || !CFG.startFn) return;

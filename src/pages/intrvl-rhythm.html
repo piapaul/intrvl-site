@@ -74,7 +74,7 @@
       <div id="rt-status" role="status" aria-live="polite">Get ready…</div>
       <div class="rt-dots" id="rt-dots" aria-hidden="true"></div>
       <div class="rt-ready" id="rt-ready">
-        <p class="iv-note" id="rt-ready-hint">Have a look at the rhythm first. Then press <b>Test sound</b> to check your volume (you should hear a few clicks), and <b>Go</b> to start the count-in.</p>
+        <p class="iv-note" id="rt-ready-hint">Have a look at the rhythm first, then press <b>Go</b> to start the count-in. If you’d like to check your volume first, press <b>Test sound</b> (optional).</p>
         <button type="button" class="btn-practice" id="rt-test">🔊 Test sound</button>
         <button type="button" class="btn-primary" id="rt-go" disabled aria-describedby="rt-ready-hint">Go</button>
         <button type="button" class="iv-btn ghost" id="rt-back" style="width:100%;margin-top:.4rem">Back</button>
@@ -545,14 +545,14 @@
     $('rt-tap').classList.add('hidden'); $('rt-tap-note').classList.add('hidden');
     $('rt-status').textContent = 'Look at the rhythm. Press Go when you’re ready.';
     refreshGo();
-    IntrvlCore.announce('Rhythm in ' + curSig.words + '. ' + describePattern(pattern) + (volumeChecked ? ' Press Go when ready.' : ' Press Test sound, then Go.'));
-    (volumeChecked ? $('rt-go') : $('rt-test')).focus({ preventScroll: true });
+    IntrvlCore.announce('Rhythm in ' + curSig.words + '. ' + describePattern(pattern) + ' Press Go when ready. Test sound is optional.');
+    $('rt-go').focus({ preventScroll: true });
   }
   function refreshGo() {
-    $('rt-go').disabled = !volumeChecked;
+    $('rt-go').disabled = false;          // the sound test is optional - Go is always available
     $('rt-ready-hint').innerHTML = volumeChecked
       ? 'Sound check done. Take your time looking at the rhythm, then press <b>Go</b> for the count-in.'
-      : 'Have a look at the rhythm first. Then press <b>Test sound</b> to check your volume (you should hear a few clicks), and <b>Go</b> to start the count-in. On a phone, make sure the silent switch is off.';
+      : 'Have a look at the rhythm first, then press <b>Go</b> for the count-in. Want to check your volume first? Press <b>Test sound</b> (optional). On a phone, make sure the silent switch is off.';
   }
   // a few clicks at this rhythm's tempo, so the volume (and the tempo) can be checked before starting
   function testSound() {
@@ -574,7 +574,7 @@
 
   // Step 2: Go -> count-in -> tap
   function go() {
-    if (!armed || running || !volumeChecked) return;
+    if (!armed || running) return;
     armed = false; running = true;
     $('rt-ready').classList.add('hidden');
     $('rt-tap').classList.remove('hidden'); $('rt-tap-note').classList.remove('hidden');

@@ -340,6 +340,17 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
 .iv-scoreline.iv-gh { border-bottom: none; padding-bottom: 0; }
 .iv-scoreline.iv-sub { padding-left: 2.1rem; padding-top: .3rem; padding-bottom: .4rem; }
 .iv-scoreline.iv-sub .t { font-size: .88rem; }
+
+/* ---------- Footer: link back to the main site + "want more practice?" card ---------- */
+#iv-footer { margin-top: 1.4rem; }
+.iv-promo { background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-left: 4px solid var(--intrvl-accent); border-radius: 12px; padding: .9rem 1rem 1rem; text-align: left; }
+#intrvl-app .iv-promo-t { font-family: var(--intrvl-font-head); font-weight: 700; font-size: 1.02rem; margin: 0 0 .25rem; }
+.iv-promo p { font-size: .88rem; color: var(--intrvl-ink-soft); margin: 0 0 .75rem; }
+.iv-promo-links { display: flex; flex-wrap: wrap; gap: .5rem; }
+.iv-promo-links .iv-btn { width: auto; max-width: none; text-decoration: none; }
+.iv-foot { text-align: center; margin: 1.1rem 0 0; font-size: .82rem; }
+.iv-foot a { color: var(--intrvl-ink-soft); font-weight: 700; text-decoration: none; }
+.iv-foot a:hover, .iv-foot a:focus-visible { color: var(--intrvl-accent-dark); text-decoration: underline; }
 </style>
 
 <style>
@@ -2270,6 +2281,29 @@ IV.find = function (id) {
   }
   buildHeader();
   buildTabBar();
+  // Footer on every page: a link back to the main website. Game pages (and the Games page) also get a
+  // gentle "want more practice?" card pointing at lessons and free resources on paulemmettmusic.co.uk.
+  function buildFooter() {
+    if (!app || document.getElementById('iv-footer')) return;
+    var SITE = 'https://www.paulemmettmusic.co.uk';
+    var ext = STANDALONE ? ' target="_blank" rel="noopener"' : '';
+    var html = '';
+    if (KIND === 'game' || KIND === 'games') {
+      html += '<aside class="iv-promo" aria-labelledby="iv-promo-t">' +
+        '<h2 class="iv-promo-t" id="iv-promo-t">Want more practice?</h2>' +
+        '<p>Take your theory, ear training and musicianship further with a one-to-one lesson with Paul.</p>' +
+        '<div class="iv-promo-links">' +
+        '<a class="iv-btn small" href="' + SITE + '/music-lessons"' + ext + '>Music lessons <span aria-hidden="true">→</span></a>' +
+        '<a class="iv-btn small ghost" href="' + SITE + '/free-resources"' + ext + '>Free resources</a>' +
+        '</div></aside>';
+    }
+    html += '<p class="iv-foot"><a href="' + SITE + '/"' + ext + '><span aria-hidden="true">←</span> Back to paulemmettmusic.co.uk</a></p>';
+    var f = document.createElement('div');
+    f.id = 'iv-footer';
+    f.innerHTML = html;
+    app.appendChild(f);
+  }
+  buildFooter();
   // "Practise my weak spots" buttons on each game's start and finished screens.
   function refreshWeakButtons() {
     if (KIND !== 'game' || !CFG.startFn) return;

@@ -308,3 +308,14 @@ button.iv-item:focus-visible { outline: 3px solid var(--intrvl-ink); outline-off
 .iv-scoreline.iv-gh { border-bottom: none; padding-bottom: 0; }
 .iv-scoreline.iv-sub { padding-left: 2.1rem; padding-top: .3rem; padding-bottom: .4rem; }
 .iv-scoreline.iv-sub .t { font-size: .88rem; }
+
+/* ---------- Footer: link back to the main site + "want more practice?" card ---------- */
+#iv-footer { margin-top: 1.4rem; }
+.iv-promo { background: var(--intrvl-panel-bg); border: 1px solid var(--intrvl-border); border-left: 4px solid var(--intrvl-accent); border-radius: 12px; padding: .9rem 1rem 1rem; text-align: left; }
+#intrvl-app .iv-promo-t { font-family: var(--intrvl-font-head); font-weight: 700; font-size: 1.02rem; margin: 0 0 .25rem; }
+.iv-promo p { font-size: .88rem; color: var(--intrvl-ink-soft); margin: 0 0 .75rem; }
+.iv-promo-links { display: flex; flex-wrap: wrap; gap: .5rem; }
+.iv-promo-links .iv-btn { width: auto; max-width: none; text-decoration: none; }
+.iv-foot { text-align: center; margin: 1.1rem 0 0; font-size: .82rem; }
+.iv-foot a { color: var(--intrvl-ink-soft); font-weight: 700; text-decoration: none; }
+.iv-foot a:hover, .iv-foot a:focus-visible { color: var(--intrvl-accent-dark); text-decoration: underline; }
